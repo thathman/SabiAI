@@ -10,5 +10,5 @@
 - **Schedule:** {'expr': '0 8 * * *', 'kind': 'cron', 'tz': 'Africa/Lagos'}
 - **Enabled:** True
 - **Model:** N/A
-- **Delivery:** {'channel': 'whatsapp', 'mode': 'announce', 'to': '+2349036001164'}
+- **Delivery:** {'channel': 'whatsapp', 'mode': 'announce', 'to': 'YOUR_PHONE_NUMBER'}
 

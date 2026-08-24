@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/home/hendrix/.openclaw/workspace/dashboard
-Environment=DASHBOARD_FINANCE_PW=airix-finance
+Environment=DASHBOARD_FINANCE_PW=YOUR_FINANCE_PASSWORD_HERE
 ExecStart=/usr/bin/python3 -m uvicorn app:app --host 127.0.0.1 --port 8090
 Restart=on-failure
 RestartSec=5
