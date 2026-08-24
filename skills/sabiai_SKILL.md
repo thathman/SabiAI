@@ -1,227 +1,268 @@
-# SabiAI Skill
+# SabiAI V2 Skill
 
-SabiAI is Hendrix's personal AI betting analyst ("sabi" = *to know*). It scans value bets,
-tracks every pick, and keeps a public performance dashboard + a daily diary at
-**https://picks.hendrix.com.ng**. Always **plain language — decimal odds, confidence as %,
-no betting jargon.**
+Use this skill for SabiAI sports research, bookmaker/ticket work, Sabi history and the Sabi blog.
 
-Related skills: `sabiai-onboarding` (first-time setup), `value-bet-scanner` (the engine),
-`sportybet-researcher` (booking-code deep dives), `betting-record`.
+Authoritative product rules live in:
 
-## Daily diary (write one entry per day)
+- `V2.md`
+- `docs/SABIAI_V2_PRODUCT_BIBLE.md`
+- `docs/SABIAI_V2_BUILD_PLAN.md`
+- `SOUL.md`
 
-SabiAI keeps a diary — an honest, human daily note about the day's betting. Triggered by the
-**"SabiAI Daily Diary"** cron (evening), or when Hendrix says "write today's diary".
+## Product Boundary
 
-How to write it:
-1. Pull the day's numbers:
-   ```bash
-   curl -s http://127.0.0.1:8090/api/overview
-   curl -s http://127.0.0.1:8090/api/history | head
-   ```
-   (bankroll, today's W/L, streak, recent results).
-2. Write a short, real entry in **plain English** — 4–8 sentences. Talk about what was backed,
-   what landed, what didn't, how the bankroll moved, and the mood/lesson. No jargon, no hype.
-   On a fresh day with no settled bets, reflect on the plan and what's coming.
-3. Save it (one entry per date, upserts):
-   ```bash
-   echo '{"date":"YYYY-MM-DD","title":"<short title>","body":"<the entry>","mood":"<one word>"}' \
-     | python3 ~/.openclaw/workspace/scripts/diary_save.py
-   ```
-4. Optionally send the same entry to Telegram `YOUR_TELEGRAM_CHANNEL_ID_HERE` with the dashboard link.
+Sabi/OpenClaw is the active sports researcher and ticket worker.
 
-Tone: confident but honest, like a sharp friend who keeps it real. Celebrate discipline over
-wins. Never promise guaranteed results.
+The dashboard is read-only and displays our own history, performance, streaks, tickets, bankroll, strategies, charts and Sabi’s blog. Do not turn it into a general sports portal.
 
-## Stats / performance
+## User-Facing Language
 
-The dashboard (`/`) already shows: bankroll over time, win rate, profit & ROI, performance by
-sport, streaks & edge (CLV), bets & tips breakdown, accumulator performance, markets covered,
-and today's picks. `/history` = every settled bet. `/diary` = the notebook. `/finance` = private
-(money) tab behind a password.
+Always use:
 
-Backing data: `~/.openclaw/workspace/data/bets.db`. Stats layer: `scripts/sabiai_data.py`.
-Config + bankroll: the `config` and `bankroll` tables (set during onboarding).
+- plain English;
+- decimal odds;
+- explicit team/player names;
+- explicit home/away wording where useful;
+- clear market names.
 
-## Logging picks
+Examples:
 
-Picks logged by the engine (`value_bet_finder.py`) and the researcher (`log_prediction.py`)
-flow into `bets.db` → straight onto the dashboard. Accumulators (multi-leg slips) go in the
-`accumulators` / `accumulator_legs` tables.
+- `Arsenal to win — 1.72`
+- `Chelsea or Draw — Double Chance — 1.31`
+- `Over 2.5 goals — 1.84`
+- `Arsenal +1.5 handicap — 1.40`
+- `Over 8.5 corners — 1.76`
+- `Player A over 4.5 rebounds — 1.90`
 
-## Learning loop (SabiAI gets sharper from its own results)
+Do not use American-facing terms in normal output. Do not expose internal modelling jargon unless explicitly asked.
 
-SabiAI is designed to **evolve from use** — every settled result feeds back into future picks.
-The chain:
-1. `value_bet_finder.py` logs picks to `bets.db`.
-2. `--auto-settle` (or the settle cron) marks each pick won/lost from real results.
-3. `sabiai_analyze.py` reads settled bets weekly → writes per-category corrections via `learn.py`
-   into the `learned_adjustments` table (win-rate, ROI, and a confidence recalibration multiplier).
-4. `value_bet_finder.py` reads those on every scan and **applies them automatically**:
-   - over-confident categories get their shown confidence pulled toward reality
-     (e.g. a market that says 80% but only wins 55% starts showing ~55%);
-   - chronically losing categories (ROI < -15% with enough samples) are **benched** (`avoid`)
-     until they recover. Run `--no-learn` to see raw, unadjusted model output.
+## V2 Tool Gateway
 
-See what SabiAI has learned so far:
+New V2 behavior must go through the Sabi domain gateway instead of giving every skill direct database access.
+
+Script:
+
 ```bash
-python3 ~/.openclaw/workspace/scripts/learn.py show
-python3 ~/.openclaw/workspace/scripts/sabiai_analyze.py --days 30   # re-learn now
+python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
 ```
 
-## Structured output for downstream tools
-`value_bet_finder.py --format json` emits clean pick objects (sport, match, market, plain_pick,
-odds, ev, confidence_pct, plain_rationale, learn_status). Kelly picks are the daily output.
-Chain is manual from the qualifying Kelly list. Weekly long-shot still runs automatically on
-Mondays from the same qualifying pool.
+Input/output is JSON.
 
-## Recording picks (Hendrix forwards real odds)
+### Current implemented tools
 
-Hendrix forwards his picks with the **real SportyBet/1xBet odds he sees**. When he says anything like:
-- "log: Belgium vs Tunisia Belgium 1.35 compound"
-- "record pick: England win 1.28"
-- "compound today: Arsenal vs Spurs Arsenal 1.32"
-- "kelly pick: Man City win over Villa 1.55 80%"
-- "longshot leg: Barcelona win 2.10"
-- "settle Belgium win"
-- "settle id 42 loss"
-- "pending picks" / "what's logged today"
+#### `system.health`
 
-…parse it and run `record_pick.py`. Do NOT ask for clarification on minor details — make reasonable guesses (sport = Football unless stated, market = 1X2 unless stated, confidence optional).
-
-### Script location
-```
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py <cmd> [args]
-```
-
-### Logging a pick
 ```bash
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py log \
-  --match "Belgium vs Tunisia" \
-  --pick "Belgium" \
-  --odds 1.35 \
-  --type compound \
-  --market "1X2" \
-  --sport "Football" \
-  --conf 73
+echo '{"tool":"system.health","args":{}}' | python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
 ```
-`--type` options: `compound` · `kelly` · `longshot` · `live`
 
-### Settling a result
+Returns V2 version/database health without exposing secrets.
+
+#### `market.interpret`
+
 ```bash
-# by match name (partial match, finds latest pending):
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py settle \
-  --match "Belgium" --result win
-
-# by DB id (more precise):
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py settle \
-  --id 42 --result loss
+echo '{"tool":"market.interpret","args":{"text":"X2","home":"Arsenal","away":"Chelsea"}}' \
+  | python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
 ```
 
-### Listing pending / today
+Example plain result: `Chelsea or Draw — Double Chance`.
+
+Use this whenever bookmaker wording/shorthand needs normalizing.
+
+#### `bookmaker.resolve`
+
 ```bash
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py pending
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py today
+echo '{"tool":"bookmaker.resolve","args":{"name":"Sporty Bet"}}' \
+  | python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
 ```
 
-### Removing a wrong entry
+Current canonical bookmaker registry includes SportyBet, Bet9ja, 1xBet and Stake. Capability flags stay conservative until each adapter proves what it can do.
+
+#### `ticket.split`
+
 ```bash
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py remove --id 42
+echo '{
+  "tool":"ticket.split",
+  "args":{
+    "bookmaker":"SportyBet",
+    "slips":2,
+    "legs":[
+      {"event_id":"a","home":"Arsenal","away":"Chelsea","market":"1","odds":"1.45"},
+      {"event_id":"b","home":"Inter","away":"Milan","market":"X2","odds":"1.38"},
+      {"event_id":"c","home":"PSG","away":"Lyon","market":"Over 2.5 goals","odds":"1.70"},
+      {"event_id":"d","home":"Ajax","away":"PSV","market":"Over 8.5 corners","odds":"1.62"}
+    ]
+  }
+}' | python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
 ```
 
-### Parsing guide
-| What Hendrix says | What you do |
-|---|---|
-| "Belgium vs Tunisia Belgium 1.35 compound" | log, match=Belgium vs Tunisia, pick=Belgium, odds=1.35, type=compound |
-| "Arsenal win 1.28" (no type stated) | log, type=kelly (default) |
-| "over 2.5 goals Man City vs Chelsea 1.90" | log, pick="Over 2.5 goals", market="Over/Under 2.5 Goals" |
-| "settle Belgium win" | settle --match Belgium --result win |
-| "Belgium lost" | settle --match Belgium --result loss |
-| "id 12 win" | settle --id 12 --result win |
-| "what's pending" | pending |
-| "remove 15" | remove --id 15 |
+Creates child ticket versions and keeps parent/child lineage.
 
-### After logging
-Always confirm back in plain English:
-> ✅ Logged — Belgium vs Tunisia, Belgium @ 1.35 (compound · Day 2/30)
+#### `ticket.trim`
 
-If settling a compound win, show the new stake:
-> ✅ Belgium won! Compound stake → ₦1,350. Day 2 complete.
-
-If settling a compound loss:
-> ❌ Belgium lost. Chain enters 7-day restrategy. Restarts at ₦1,000.
-## Recording picks (Hendrix forwards real odds)
-
-Hendrix forwards his picks with the **real SportyBet/1xBet odds he sees**. When he says anything like:
-- "log: Belgium vs Tunisia Belgium 1.35 compound"
-- "record pick: England win 1.28"
-- "compound today: Arsenal vs Spurs Arsenal 1.32"
-- "kelly pick: Man City win over Villa 1.55 80%"
-- "longshot leg: Barcelona win 2.10"
-- "settle Belgium win"
-- "settle id 42 loss"
-- "pending picks" / "what's logged today"
-
-…parse it and run `record_pick.py`. Do NOT ask for clarification on minor details — make reasonable guesses (sport = Football unless stated, market = 1X2 unless stated, confidence optional).
-
-### Script location
-```
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py <cmd> [args]
-```
-
-### Logging a pick
 ```bash
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py log \
-  --match "Belgium vs Tunisia" \
-  --pick "Belgium" \
-  --odds 1.35 \
-  --type compound \
-  --market "1X2" \
-  --sport "Football" \
-  --conf 73
+echo '{
+  "tool":"ticket.trim",
+  "args":{
+    "target_odds":"20.00",
+    "min_legs":3,
+    "legs":[...]
+  }
+}' | python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
 ```
-`--type` options: `compound` · `kelly` · `longshot` · `live`
 
-### Settling a result
+Finds a combination nearest the requested combined decimal odds. A leg with `"locked":true` must stay.
+
+### Database initialization
+
+V2 uses its own database during development so V1 remains untouched:
+
 ```bash
-# by match name (partial match, finds latest pending):
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py settle \
-  --match "Belgium" --result win
-
-# by DB id (more precise):
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py settle \
-  --id 42 --result loss
+python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py --init-db \
+  --request '{"tool":"system.health","args":{}}'
 ```
 
-### Listing pending / today
-```bash
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py pending
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py today
-```
+Default V2 DB: `~/.openclaw/workspace/data/sabiai_v2_core.db`.
 
-### Removing a wrong entry
-```bash
-python3 /PATH/TO/sabiai-engine/scripts/record_pick.py remove --id 42
-```
+## Broad-Sports Rule
 
-### Parsing guide
-| What Hendrix says | What you do |
-|---|---|
-| "Belgium vs Tunisia Belgium 1.35 compound" | log, match=Belgium vs Tunisia, pick=Belgium, odds=1.35, type=compound |
-| "Arsenal win 1.28" (no type stated) | log, type=kelly (default) |
-| "over 2.5 goals Man City vs Chelsea 1.90" | log, pick="Over 2.5 goals", market="Over/Under 2.5 Goals" |
-| "settle Belgium win" | settle --match Belgium --result win |
-| "Belgium lost" | settle --match Belgium --result loss |
-| "id 12 win" | settle --id 12 --result win |
-| "what's pending" | pending |
-| "remove 15" | remove --id 15 |
+Never assume football is the primary or only sport.
 
-### After logging
-Always confirm back in plain English:
-> ✅ Logged — Belgium vs Tunisia, Belgium @ 1.35 (compound · Day 2/30)
+When the request does not specify a sport, search broadly enough for the task. Coverage should grow across all useful bookmaker sports and competitions.
 
-If settling a compound win, show the new stake:
-> ✅ Belgium won! Compound stake → ₦1,350. Day 2 complete.
+If Sabi lacks a dedicated adapter for a sport or league, research and source discovery are the fallback—not “unsupported sport.”
 
-If settling a compound loss:
-> ❌ Belgium lost. Chain enters 7-day restrategy. Restarts at ₦1,000.
+## Free-First Research
+
+Use the cheapest reliable source path in this order:
+
+1. Sabi cache/local database;
+2. open/public dataset;
+3. official sport/league/team/tournament source;
+4. public endpoint;
+5. ordinary public webpage;
+6. OpenClaw browser;
+7. search/source discovery;
+8. another free source;
+9. paid API only after the free path is exhausted or when specifically needed for confirmation.
+
+Do not use a paid token just because it is convenient.
+
+Cache reusable results and avoid duplicate requests.
+
+## Match Research
+
+Research must follow the market.
+
+General checks can include form, home/away performance, H2H, injuries/availability, lineups/rosters, schedule/rest, competition context and relevant sport-specific information.
+
+Then add market-specific checks:
+
+- goals → scoring/conceding patterns and attacking availability;
+- corners → corner creation/concession, width, territory and game-state tendencies;
+- cards → disciplinary records, likely match intensity and referee information when available;
+- shots → expected minutes/role and shot volume;
+- basketball → points, rebounds, assists, threes, quarters/halves as relevant;
+- volleyball → match/set records, straight-set patterns, serving/receiving/blocks when available;
+- tennis/table tennis → surface/format, recent match/set form, serve/return where available;
+- cricket → format, venue, batting/bowling roles, weather/pitch where relevant;
+- golf → course fit, recent performance, weather/wave and matchup context;
+- esports → game title, patch/version, roster, map pool/veto and format where relevant.
+
+Never force the same football-style checklist onto every sport.
+
+## Ticket Inputs
+
+V2 target inputs:
+
+- booking code;
+- screenshot;
+- copied ticket text;
+- bookmaker share text;
+- X post/link;
+- plain instruction;
+- user plan.
+
+Current V2 implementation has the normalized ticket core plus split/trim. Importers, screenshot/X extraction, bookmaker conversion and booking-code creation are still being migrated/built. Do not pretend an unfinished adapter exists.
+
+## Ticket Editing Rules
+
+When editing a ticket:
+
+1. identify every event and selection;
+2. normalize confusing bookmaker wording;
+3. preserve anything the user locked;
+4. make requested changes;
+5. show what changed;
+6. retain ticket lineage for history.
+
+Supported V2 core operations currently include split, trim-to-target and remove at the domain layer.
+
+## Bookmaker Conversion Target
+
+Target flow:
+
+1. import source slip/code;
+2. resolve source events and markets;
+3. find equivalent target-book events;
+4. map equivalent target-book markets;
+5. compare current decimal odds;
+6. handle unavailable markets explicitly;
+7. build target slip;
+8. verify selections;
+9. return booking code where supported;
+10. store conversion lineage.
+
+Never assume two similarly named markets settle the same way.
+
+## Existing V1 Compatibility
+
+Until migration is complete, legacy scripts still contain historical production behavior.
+
+Important existing stores:
+
+- `~/.openclaw/workspace/data/bets.db`
+- legacy `sabiai_v2.db` match/upcoming data
+- accumulator/chain/long-shot/live tables in `bets.db`
+
+Do not delete, reset or silently rewrite them during V2 development.
+
+New V2 writes should target the V2 domain database unless a migration/compatibility path explicitly says otherwise.
+
+## Dashboard Rule
+
+Dashboard means **our records**, not today’s sports information.
+
+Allowed dashboard data includes:
+
+- history;
+- W/L/D/void/pending;
+- streaks;
+- bankroll and P/L;
+- by-sport/by-market/by-bookmaker/by-strategy performance;
+- ticket history and ticket killers;
+- original vs edited ticket history;
+- Sabi blog;
+- system health.
+
+General match stats, fixture discovery, injury searches and bookmaker browsing belong in Sabi/OpenClaw, not the dashboard.
+
+## Sabi Blog
+
+The blog is Sabi’s first-person record of observations and lessons. It should build continuity over time and can reference our own performance/history.
+
+Do not write generic sports-news filler.
+
+## AI Spine / Agent Coordination
+
+Follow `AGENTS.md` for AI Spine and Matrix rules.
+
+Use memory search before repeating expensive research. Ask Clawson/relevant agents when their context materially helps. Use temporary research workers when parallel work is useful, but Sabi owns the final answer.
+
+## Development Truth
+
+The V2 living task board is:
+
+`docs/SABIAI_V2_TASKS.md`
+
+Do not claim a capability complete merely because this skill describes its intended final behavior. Check the task board and actual tools first.
