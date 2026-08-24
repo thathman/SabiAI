@@ -1,3 +1,4 @@
+from .aliases import AliasResolver, normalize_name
 from .models import (
     Bookmaker,
     Competition,
@@ -20,6 +21,7 @@ from .types import (
 )
 
 __all__ = [
+    "AliasResolver",
     "Bookmaker",
     "Competition",
     "Event",
@@ -36,4 +38,5 @@ __all__ = [
     "Ticket",
     "TicketLeg",
     "TicketStatus",
+    "normalize_name",
 ]
