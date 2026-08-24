@@ -5,5 +5,15 @@ from .registry import (
     SourceKind,
     SourceRegistry,
 )
+from .service import SourceRequest, SourceResponse, SourceService
 
-__all__ = ["AccessDecision", "Source", "SourceCost", "SourceKind", "SourceRegistry"]
+__all__ = [
+    "AccessDecision",
+    "Source",
+    "SourceCost",
+    "SourceKind",
+    "SourceRegistry",
+    "SourceRequest",
+    "SourceResponse",
+    "SourceService",
+]
