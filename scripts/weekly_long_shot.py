@@ -16,8 +16,8 @@ or stays silent if no qualifying combo exists.
 import argparse, json, sqlite3, subprocess, sys, os
 from datetime import datetime, timezone, timedelta
 
-DB = "~.openclaw/workspace/data/bets.db"
-SCRIPTS = "~.openclaw/workspace/scripts"
+DB = "/home/hendrix/.openclaw/workspace/data/bets.db"
+SCRIPTS = "/home/hendrix/.openclaw/workspace/scripts"
 WEEKLY_TARGET_ODDS = 1000.0
 LONGSHOT_BOOKMAKER = "bet9ja"
 
@@ -540,10 +540,10 @@ def monitor_current():
     }
 
 
-def notify_whatsapp(text):
+def notify_telegram(text):
     try:
-        subprocess.run([os.path.expanduser("~/.npm-global/bin/openclaw"), "message", "send", "--channel", "whatsapp",
-                        "--target", "+234XXXXXXXXXX", "--message", text],
+        subprocess.run([os.path.expanduser("~/.npm-global/bin/openclaw"), "message", "send", "--channel", "telegram",
+                        "--target", "-1003892428943", "--thread-id", "188", "--message", text],
                        capture_output=True, text=True, timeout=15)
     except Exception as e:
         print(f"notify error: {e}", file=sys.stderr)
@@ -653,7 +653,7 @@ def main():
     else:
         final_msg = msg
 
-    notify_whatsapp(final_msg)
+    notify_telegram(final_msg)
     status_note = "partial" if is_partial else "full"
     print(f"Logged {status_note} long shot #{ls_id}: {len(legs)} legs, combined {combined:,.0f}")
 

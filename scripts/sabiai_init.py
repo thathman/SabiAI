@@ -7,7 +7,7 @@ Bankroll is initialised later by setup.py once the questionnaire is answered.
 import sqlite3, sys
 from datetime import datetime, timezone
 
-DB = "~.openclaw/workspace/data/bets.db"
+DB = "/home/hendrix/.openclaw/workspace/data/bets.db"
 
 def main(reset=True):
     c = sqlite3.connect(DB)

@@ -3,7 +3,7 @@
 import sqlite3, json, sys, os
 from datetime import datetime
 
-DB = "~.openclaw/workspace/data/bets.db"
+DB = "/home/hendrix/.openclaw/workspace/data/bets.db"
 
 # Import plain_render for live plain_pick generation
 sys.path.insert(0, os.path.dirname(__file__))
@@ -450,9 +450,18 @@ def continuous_bet_streak():
     start   = d.get("starting_stake") or 1000
     current = d.get("current_stake")  or start
     day     = d.get("streak_day")     or 0
-    db_wins = c.execute(
-        "SELECT COUNT(*) FROM bets WHERE bet_type='compound' AND outcome='win'"
-    ).fetchone()[0]
+    cycle_start = d.get("started_on")
+
+    # Count wins only from current cycle (after started_on)
+    if cycle_start:
+        db_wins = c.execute(
+            "SELECT COUNT(*) FROM bets WHERE bet_type='compound' AND outcome='win' AND created_at >= ?",
+            (cycle_start,)
+        ).fetchone()[0]
+    else:
+        db_wins = c.execute(
+            "SELECT COUNT(*) FROM bets WHERE bet_type='compound' AND outcome='win'"
+        ).fetchone()[0]
     wins = db_wins if db_wins > 0 else max(0, day - 1)
 
     # Deduct stake if there's a pending compound bet right now
@@ -460,6 +469,31 @@ def continuous_bet_streak():
         "SELECT COUNT(*) FROM bets WHERE bet_type='compound' AND outcome IS NULL"
     ).fetchone()[0]
     stake_in_play = current if pending else 0.0
+
+    # Compute longest streak and total cycles from all historical compound bets
+    all_compound = c.execute(
+        "SELECT outcome FROM bets WHERE bet_type='compound' AND outcome IS NOT NULL ORDER BY id ASC"
+    ).fetchall()
+    longest = 0
+    cur_run = 0
+    total_cycles = 0
+    in_cycle = False
+    for row in all_compound:
+        oc = row[0]
+        if oc == 'win':
+            cur_run += 1
+            in_cycle = True
+        else:
+            if in_cycle:
+                total_cycles += 1
+            if cur_run > longest:
+                longest = cur_run
+            cur_run = 0
+            in_cycle = False
+    if in_cycle or cur_run > 0:
+        total_cycles += 1
+    if cur_run > longest:
+        longest = cur_run
 
     c.close()
     amount_won = current - start
@@ -471,6 +505,8 @@ def continuous_bet_streak():
     d["cycle_progress_pct"]  = round(100 * day / 30, 1)
     d["stake_in_play"]   = stake_in_play
     d["pending_bet"]     = bool(pending)
+    d["longest_streak"]  = longest
+    d["total_cycles"]    = total_cycles
     return d
 
 def weekly_long_shot_latest():
@@ -483,17 +519,30 @@ def weekly_long_shot_latest():
 
 def betchain_history(limit=60):
     c = _c()
-    state = c.execute("SELECT starting_stake FROM continuous_bet_state WHERE id=1").fetchone()
+    state = c.execute("SELECT starting_stake, started_on FROM continuous_bet_state WHERE id=1").fetchone()
     start = float(state["starting_stake"] if state else 1000) or 1000
-    rows = [dict(r) for r in c.execute("""
-        SELECT id, scan_date, sport, match, market, pick, odds, confidence_pct,
-               plain_rationale, outcome, settled_at, notes, bet_type, bookmaker, kickoff
-        FROM bets
-        WHERE bet_type='compound'
-           OR bet_type='chain'
-           OR notes LIKE '%continuous bet%'
-           OR notes LIKE '%compound chain%'
-        ORDER BY id ASC LIMIT ?""", (limit,))]
+    cycle_start = state["started_on"] if state else None
+    # Filter to only current cycle bets (after cycle started_on)
+    if cycle_start:
+        rows = [dict(r) for r in c.execute("""
+            SELECT id, scan_date, sport, match, market, pick, odds, confidence_pct,
+                   plain_rationale, outcome, settled_at, notes, bet_type, bookmaker, kickoff
+            FROM bets
+            WHERE (bet_type='compound' OR bet_type='chain'
+                   OR notes LIKE '%continuous bet%'
+                   OR notes LIKE '%compound chain%')
+              AND created_at >= ?
+            ORDER BY id ASC LIMIT ?""", (cycle_start, limit))]
+    else:
+        rows = [dict(r) for r in c.execute("""
+            SELECT id, scan_date, sport, match, market, pick, odds, confidence_pct,
+                   plain_rationale, outcome, settled_at, notes, bet_type, bookmaker, kickoff
+            FROM bets
+            WHERE bet_type='compound'
+               OR bet_type='chain'
+               OR notes LIKE '%continuous bet%'
+               OR notes LIKE '%compound chain%'
+            ORDER BY id ASC LIMIT ?""", (limit,))]
     stake = start
     for i, r in enumerate(rows):
         r['chain_day'] = i + 1

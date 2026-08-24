@@ -450,7 +450,7 @@ _elo_cache      = {}
 _fdco_cache     = {}
 _datapoints_left = "?"
 
-SECRETS_FILE = "~.config/systemd/user/openclaw-gateway.service.d/20-secrets.conf"
+SECRETS_FILE = "/home/hendrix/.config/systemd/user/openclaw-gateway.service.d/20-secrets.conf"
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -486,9 +486,7 @@ def http_get(url, headers=None, timeout=10):
         return None
     try:
         req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
-            "Accept": "application/json",
-            "Accept-Language": "en-US,en;q=0.9",
+            "User-Agent": "Mozilla/5.0",
             **(headers or {})
         })
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -631,6 +629,8 @@ def rundown_events(sport_id, mon, sun):
     if not RUNDOWN_API_KEY:
         return []
 
+    hdr = {"X-Therundown-Key": RUNDOWN_API_KEY}
+
     # Skip the /dates discovery call (saves one API hit per sport, avoids rate limit).
     # Query today + tomorrow directly — the hide_no_markets=true param skips empty responses fast.
     from datetime import date as _dt
@@ -646,11 +646,10 @@ def rundown_events(sport_id, mon, sun):
             time.sleep(0.6)  # respect rate limit (~1 req/s)
         url = (
             f"{RUNDOWN_BASE}/sports/{sport_id}/events/{date_str}"
-            f"?key={RUNDOWN_API_KEY}"
-            f"&market_ids=1,2,3&affiliate_ids={RUNDOWN_AFFILIATE_IDS}"
+            f"?market_ids=1,2,3&affiliate_ids={RUNDOWN_AFFILIATE_IDS}"
             f"&main_line=true&hide_no_markets=true"
         )
-        data = http_get(url)
+        data = http_get(url, headers=hdr)
         rd_events = (data.get("events") if isinstance(data, dict) else None) or []
         for rd in rd_events:
             eid = rd.get("event_id", "")
@@ -1022,7 +1021,7 @@ def get_h2h(home, away):
         import importlib.util, sys as _sys
         spec = importlib.util.spec_from_file_location(
             "fetch_stats",
-            "~.openclaw/workspace/scripts/fetch_stats.py"
+            "/home/hendrix/.openclaw/workspace/scripts/fetch_stats.py"
         )
         mod = importlib.util.load_from_spec = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
@@ -1421,6 +1420,40 @@ def best_price(event, market_key):
                     best[n] = p
                     bk_name[n] = bk["title"]
     return best, bk_name
+
+
+def best_spread_offer(event, team_name, target_point=-1.0, max_point_diff=0.51):
+    """Best spread offer for a team near a target line, preserving the point."""
+    best = None
+    team_key = (team_name or "").lower().strip()
+    for bk in event.get("bookmakers", []):
+        for mkt in bk.get("markets", []):
+            if mkt.get("key") != "spreads":
+                continue
+            for o in mkt.get("outcomes", []):
+                name = (o.get("name") or "").strip()
+                if name.lower() != team_key:
+                    continue
+                try:
+                    price = float(o.get("price"))
+                    point = float(o.get("point"))
+                except (TypeError, ValueError):
+                    continue
+                diff = abs(point - target_point)
+                if diff > max_point_diff:
+                    continue
+                cand = {"price": price, "point": point, "bookmaker": bk.get("title", "?"), "diff": diff}
+                if (best is None or cand["diff"] < best["diff"]
+                        or (cand["diff"] == best["diff"] and cand["price"] > best["price"])):
+                    best = cand
+    return best
+
+
+def soccer_minus_one_prob(win_prob):
+    """Approximate chance a soccer favourite covers a -1 goal handicap."""
+    adjustment = 0.72 + max(0.0, win_prob - 0.60) * 0.5
+    adjustment = max(0.72, min(0.90, adjustment))
+    return max(0.0, min(0.95, win_prob * adjustment))
 
 
 def consensus_fair(event, market_key, prefer_sharp=True):
@@ -2016,9 +2049,9 @@ def scan_event_specials(sport_key, event_id, home, away, fdco_code, espn_league)
     if rd_sport_id and RUNDOWN_API_KEY and event_id:
         url = (
             f"{RUNDOWN_BASE}/sports/{rd_sport_id}/events/{event_id}"
-            f"?key={RUNDOWN_API_KEY}&market_ids=1,2,3,94&affiliate_ids={RUNDOWN_AFFILIATE_IDS}&main_line=true"
+            f"?market_ids=1,2,3,94&affiliate_ids={RUNDOWN_AFFILIATE_IDS}&main_line=true"
         )
-        raw = http_get(url)
+        raw = http_get(url, headers={"X-Therundown-Key": RUNDOWN_API_KEY})
         if raw and raw.get("event_id"):
             ev_data = rundown_to_event(raw)
     if ev_data and ev_data.get("bookmakers"):
@@ -2415,6 +2448,46 @@ def scan_sport(sport_key, min_ev, mon, sun):
                         pitcher_h_era=_mlb_pitcher_h_era, pitcher_a_era=_mlb_pitcher_a_era,
                     ))
 
+        # ── Double chance accumulator legs ───────────────────────────────────
+        # Dedicated safe-leg scan for 1xBet chains: any soccer side whose
+        # win-or-draw probability is high enough, with estimated DC odds in the
+        # 1.10-1.50 accumulator range. Kept separate from the older restrictive
+        # "shaky favourite" DC block below for backwards compatibility.
+        if is_soccer and has_odds and model_h2h and "Draw" in model_h2h:
+            draw_key = next((k for k in bp_h2h if k.lower() in ("draw", "x", "tie")), None)
+            if draw_key:
+                draw_price = bp_h2h.get(draw_key)
+                draw_prob = model_h2h.get("Draw", 0.0)
+                for team, team_prob in model_h2h.items():
+                    if team == "Draw" or team not in bp_h2h:
+                        continue
+                    dc_prob = team_prob + draw_prob
+                    if dc_prob < 0.75:
+                        continue
+                    win_price = bp_h2h[team]
+                    if not (win_price and draw_price and win_price > 1 and draw_price > 1):
+                        continue
+                    dc_odds = round(1.0 / (1.0 / win_price + 1.0 / draw_price), 4)
+                    if not (1.10 <= dc_odds <= 1.50):
+                        continue
+                    results.append(_bet(
+                        sport=label, match=f"{home} vs {away}", kick=kick,
+                        market="Double Chance", pick=f"{team} or Draw",
+                        odds=dc_odds, bk=bk_h2h.get(team, "?"),
+                        our_prob=dc_prob, fair_prob=dc_prob,
+                        ev_val=ev(dc_prob, dc_odds), model=model_src,
+                        has_sharp=has_sharp,
+                        form_h=form_home, form_a=form_away,
+                        ms_h=ms_home, ms_a=ms_away,
+                        injury=injury_text, home=home, away=away,
+                        ev_id=ev_id, sport_key=sport_key,
+                        fdco_code=fdco_code, espn_lg=espn_lg, h2h=h2h_text,
+                        n_books=n_books,
+                        xg_h=xg_h, xg_a=xg_a, elo_diff=elo_diff,
+                        pitcher_h=_mlb_pitcher_h, pitcher_a=_mlb_pitcher_a,
+                        pitcher_h_era=_mlb_pitcher_h_era, pitcher_a_era=_mlb_pitcher_a_era,
+                    ))
+
         # ── Double chance (safer play when a straight win is shaky) ────────────
         # Trigger: soccer favourite whose model win prob is in the 50–65% "shaky
         # win" zone. We offer "<favourite> or Draw" so SabiAI isn't forced to
@@ -2451,6 +2524,49 @@ def scan_sport(sport_key, min_ev, mon, sun):
                                 pitcher_h=_mlb_pitcher_h, pitcher_a=_mlb_pitcher_a,
                                 pitcher_h_era=_mlb_pitcher_h_era, pitcher_a_era=_mlb_pitcher_a_era,
                             ))
+
+        # ── Soccer -1 handicap accumulator legs ──────────────────────────────
+        # For strong soccer favourites, surface low-odds handicap legs suitable
+        # for chain accumulators. Prefer a real spread price near -1 from the API;
+        # when no spread market exists, fall back to an estimated fair price.
+        if is_soccer and model_h2h:
+            non_draw = {k: v for k, v in model_h2h.items() if k != "Draw"}
+            if non_draw:
+                fav = max(non_draw, key=non_draw.get)
+                fav_p = non_draw[fav]
+                if fav_p >= 0.60:
+                    hcap_prob = soccer_minus_one_prob(fav_p)
+                    spread_offer = best_spread_offer(event, fav, target_point=-1.0)
+                    hcap_odds = None
+                    hcap_book = "estimated - shop 1xBet"
+                    hcap_point = -1.0
+                    if spread_offer:
+                        hcap_odds = round(spread_offer["price"], 4)
+                        hcap_book = spread_offer["bookmaker"]
+                        hcap_point = spread_offer["point"]
+                    else:
+                        bp_sp_check, _ = best_price(event, "spreads")
+                        if not bp_sp_check and hcap_prob > 0:
+                            hcap_odds = round(1.0 / hcap_prob, 2)
+                    if hcap_odds and 1.10 <= hcap_odds <= 1.50:
+                        point_s = f"{hcap_point:+g}"
+                        results.append(_bet(
+                            sport=label, match=f"{home} vs {away}", kick=kick,
+                            market="Handicap", pick=f"{fav} {point_s}",
+                            odds=hcap_odds, bk=hcap_book,
+                            our_prob=hcap_prob, fair_prob=hcap_prob,
+                            ev_val=ev(hcap_prob, hcap_odds), model=f"{model_src} -1 goal",
+                            has_sharp=has_sharp,
+                            form_h=form_home, form_a=form_away,
+                            ms_h=ms_home, ms_a=ms_away,
+                            injury=injury_text, home=home, away=away,
+                            ev_id=ev_id, sport_key=sport_key,
+                            fdco_code=fdco_code, espn_lg=espn_lg, h2h=h2h_text,
+                            n_books=n_books,
+                            xg_h=xg_h, xg_a=xg_a, elo_diff=elo_diff,
+                            pitcher_h=_mlb_pitcher_h, pitcher_a=_mlb_pitcher_a,
+                            pitcher_h_era=_mlb_pitcher_h_era, pitcher_a_era=_mlb_pitcher_a_era,
+                        ))
 
         # ── Totals (Over/Under) ────────────────────────────────────────────────
         # Skip totals for combat sports — "O/U rounds" needs a dedicated model
@@ -2772,8 +2888,8 @@ def format_plain(bets, mon, sun, datapoints_left):
 
 # ── Results tracker ──────────────────────────────────────────────────────────
 
-RESULTS_FILE = "~.openclaw/workspace/data/value_bet_results.json"
-DB_PATH      = "~.openclaw/workspace/data/bets.db"
+RESULTS_FILE = "/home/hendrix/.openclaw/workspace/data/value_bet_results.json"
+DB_PATH      = "/home/hendrix/.openclaw/workspace/data/bets.db"
 
 
 def _get_db():
@@ -2800,9 +2916,35 @@ def _get_db():
             outcome     TEXT,
             settled_at  TEXT,
             notes       TEXT,
+            confidence_pct REAL,
+            plain_rationale TEXT,
+            scorecard   TEXT,
+            closing_odds REAL,
+            clv         REAL,
+            result_score TEXT,
+            data_completeness TEXT,
+            slip_code   TEXT,
+            bet_type    TEXT DEFAULT 'kelly',
+            selected    INTEGER DEFAULT 0,
             created_at  TEXT DEFAULT (datetime('now'))
         )
     """)
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(bets)")}
+    missing_cols = {
+        "confidence_pct": "REAL",
+        "plain_rationale": "TEXT",
+        "scorecard": "TEXT",
+        "closing_odds": "REAL",
+        "clv": "REAL",
+        "result_score": "TEXT",
+        "data_completeness": "TEXT",
+        "slip_code": "TEXT",
+        "bet_type": "TEXT DEFAULT 'kelly'",
+        "selected": "INTEGER DEFAULT 0",
+    }
+    for col, col_type in missing_cols.items():
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE bets ADD COLUMN {col} {col_type}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_week    ON bets(week)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_outcome ON bets(outcome)")
     conn.commit()
@@ -3323,8 +3465,8 @@ def _pick_won(bet, score):
         return None
 
     # Totals (O/U): "Over 2.5" / "Under 2.5"
-    if "over" in pick or "under" in pick:
-        import re as _re
+    import re as _re
+    if _re.match(r"^\s*(over|under)\b", pick):
         m = _re.search(r"(\d+(?:\.\d+)?)", pick)
         if not m:
             return None
@@ -3336,16 +3478,18 @@ def _pick_won(bet, score):
 
     # Handicap / Spread
     if "handicap" in market or "spread" in market or "+" in pick or "-" in pick:
-        import re as _re
-        m = _re.search(r"([+-]?\d+(?:\.\d+)?)", pick)
-        if not m:
+        lines = _re.findall(r"[+-]\d+(?:\.\d+)?", pick)
+        if not lines:
             return None
-        line = float(m.group(1))
+        line = float(lines[-1])
         # Apply home/away to the spread
         is_home = pick_norm in (home, "home") or home in pick_norm
         margin = (hs - aws) if is_home else (aws - hs)
         # Cover: margin + line > 0 (in bookie's frame)
-        return (margin + line) > 0
+        cover = margin + line
+        if cover == 0:
+            return None
+        return cover > 0
 
     return None
 
@@ -3358,6 +3502,10 @@ def _decide_outcome(bet, home_score, away_score):
     home   = bet.get("home", "")
     away   = bet.get("away", "")
     hs, aws = home_score, away_score
+
+    if "double chance" in market or " or draw" in pick:
+        won = _pick_won(bet, {"home_score": hs, "away_score": aws})
+        return None if won is None else ("win" if won else "loss")
 
     if "1x2" in market or "h2h" in market or "moneyline" in market or "match winner" in market or not market:
         winner = _normalize_name(home) if hs > aws else (_normalize_name(away) if aws > hs else "draw")
@@ -3372,13 +3520,17 @@ def _decide_outcome(bet, home_score, away_score):
             return "loss"
         return None
 
-    if "over" in pick or "under" in pick:
+    if _re.match(r"^\s*(over|under)\b", pick):
         m = _re.search(r"(\d+\.?\d*)", market + " " + pick)
         if m:
             line = float(m.group(1))
             total = hs + aws
             if "over" in pick: return "win" if total > line else "loss"
             else: return "win" if total < line else "loss"
+
+    if "handicap" in market or "spread" in market or "+" in pick or "-" in pick:
+        won = _pick_won(bet, {"home_score": hs, "away_score": aws})
+        return None if won is None else ("win" if won else "loss")
 
     if "btts" in market or "both teams" in market:
         both = (hs > 0 and aws > 0)
@@ -3892,11 +4044,11 @@ def main():
     if args.band:
         try:
             lo, hi = [float(x) for x in args.band.split("-")]
-            # Double Chance is a deliberately low-odds safety play (~1.10–1.25) —
-            # exempt it from the band so the safer alternative still surfaces.
+            # Low-odds chain legs sit below the normal singles band; keep them
+            # visible for accumulator recipes.
             all_bets = [b for b in all_bets
                         if b.get("odds") is None
-                        or b.get("market") == "Double Chance"
+                        or b.get("market") in ("Double Chance", "Handicap")
                         or lo <= b["odds"] <= hi]
         except Exception:
             print(f"[warn] bad --band '{args.band}', ignoring")

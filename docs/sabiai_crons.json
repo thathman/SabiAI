@@ -1,0 +1,55 @@
+[
+  {
+    "id": "f4a92c11-7e3d-4b58-9d12-value-bet-weekly",
+    "agentId": "main",
+    "name": "Weekly Value Bet Scanner",
+    "enabled": true,
+    "createdAtMs": 1780000000000,
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 7 * * 1",
+      "tz": "Africa/Lagos"
+    },
+    "sessionTarget": "isolated",
+    "wakeMode": "now",
+    "payload": {
+      "kind": "agentTurn",
+      "message": "Run the weekly value bet scan and send picks to Hendrix on WhatsApp.\n\nStep 1 \u2014 Run the scanner and save output:\n```\npython3 /home/hendrix/.openclaw/workspace/scripts/value_bet_finder.py --format telegram --min-ev 0.05 > /tmp/weekly_picks.txt 2>&1\n```\n\nStep 2 \u2014 Send the full output to WhatsApp (+2349036001164):\n```\nOPENCLAW_GATEWAY_TOKEN=YOUR_TOKEN_HERE openclaw message send --channel whatsapp --target +2349036001164 --message \"$(cat /tmp/weekly_picks.txt)\"\n```\n\nStep 3 \u2014 Also send to Telegram channel -1003892428943 for the record:\n```\nOPENCLAW_GATEWAY_TOKEN=YOUR_TOKEN_HERE openclaw message send --channel telegram --target -1003892428943 --message \"$(cat /tmp/weekly_picks.txt)\"\n```\n\nStep 4 \u2014 If the scanner output is empty or says no picks, send: '\ud83d\udcca Value Bet Scan: No qualifying picks this week.'\n\nIMPORTANT: RUNDOWN_API_KEY and EXA_API_KEY are in the service environment.",
+      "model": "minimax/MiniMax-M2.7",
+      "fallbacks": [
+        "openai/gpt-4o-mini",
+        "groq/llama-3.3-70b-versatile"
+      ]
+    },
+    "delivery": {
+      "mode": "announce",
+      "channel": "telegram",
+      "to": "6705989673"
+    },
+    "state": {}
+  },
+  {
+    "id": "93fb39ed-adcb-4086-915a-36821346913c",
+    "agentId": "main",
+    "name": "Daily Sports Value Picks",
+    "enabled": true,
+    "createdAtMs": 1780482358008,
+    "schedule": {
+      "expr": "0 8 * * *",
+      "kind": "cron",
+      "tz": "Africa/Lagos"
+    },
+    "sessionTarget": "isolated",
+    "wakeMode": "now",
+    "payload": {
+      "kind": "agentTurn",
+      "message": "You are Clawson, Hendrix's sports betting assistant. Search the web for EVERY sport happening today \u2014 football, soccer, tennis, basketball, baseball, hockey, cricket, rugby, boxing, MMA, golf, motorsport, athletics, cycling, darts, snooker, volleyball, handball, esports, and ANYTHING else with matches or events.\n\nFind value bets across ALL of them. Focus on:\n- Underdogs with genuine edge (H2H history, current form, injuries, location)\n- Any market where the odds look wrong compared to actual probability\n- Use decimal odds only. Plain English only.\n\nSearch comprehensively \u2014 check multiple sources (pickdawgz, covers, dimers, sportytrader, olbg, oddschecker, flashscore).\n\nReply in plain English, no betting jargon. Format: sport \u2192 match \u2192 pick \u2192 odds \u2192 one-line why. Keep it scannable. If there's nothing worth betting in a sport, skip it. Send the full list to the user via WhatsApp. After sending, log the sent time to memory/daily/YYYY-MM-DD.md."
+    },
+    "delivery": {
+      "channel": "whatsapp",
+      "mode": "announce",
+      "to": "+2349036001164"
+    },
+    "state": {}
+  }
+]

@@ -1,0 +1,14 @@
+[Unit]
+Description=SabiAI Dashboard (performance, history, diary, finance)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hendrix/.openclaw/workspace/dashboard
+Environment=DASHBOARD_FINANCE_PW=airix-finance
+ExecStart=/usr/bin/python3 -m uvicorn app:app --host 127.0.0.1 --port 8090
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

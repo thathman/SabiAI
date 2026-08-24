@@ -18,7 +18,7 @@ import learn
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 
-DB = "~.openclaw/workspace/data/bets.db"
+DB = "/home/hendrix/.openclaw/workspace/data/bets.db"
 
 
 def analyze(period_days=30):
