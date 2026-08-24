@@ -1,0 +1,36 @@
+{
+  "id": "sabiai-v2",
+  "name": "SabiAI V2",
+  "description": "Native OpenClaw tools for Sabi sports research, markets, bookmakers and ticket work.",
+  "version": "0.1.0",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "sabiai_system_health",
+      "sabiai_sports_list",
+      "sabiai_sports_describe",
+      "sabiai_research_plan",
+      "sabiai_market_interpret",
+      "sabiai_market_arbitrage",
+      "sabiai_bookmaker_resolve",
+      "sabiai_ticket_split",
+      "sabiai_ticket_trim"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "rootDirectory": {
+        "type": "string",
+        "description": "Optional SabiAI repository/workspace root. Defaults to SABIAI_ROOT or the plugin parent directory."
+      },
+      "pythonExecutable": {
+        "type": "string",
+        "description": "Python executable used for the SabiAI V2 domain gateway. Defaults to python3."
+      }
+    }
+  }
+}
