@@ -372,3 +372,24 @@ systemctl --user enable --now sabiai-dashboard
 - `/live` — Live bets
 
 **Write auth:** POST endpoints require `X-SabiAI-Key` header. Token is generated at `data/.dashboard_token`. Frontend exchanges PIN via `GET /api/write-key?pin=`.
+
+## Dashboard
+
+The SabiAI dashboard is a FastAPI app served at `localhost:8090` (or `picks.hendrix.com.ng`).
+
+**Location:** `dashboard/app.py`  
+**Service:** `systemd/sabiai-dashboard.service`
+
+**Setup:**
+```bash
+cp systemd/sabiai-dashboard.service ~/.config/systemd/user/
+# Edit WorkingDirectory to point to your sabiai-engine/dashboard/ path
+systemctl --user daemon-reload
+systemctl --user enable --now sabiai-dashboard
+```
+
+**Env:** `DASHBOARD_FINANCE_PW` — PIN for finance view
+
+**Endpoints:** `/` overview, `/picks`, `/betchain`, `/longshot`, `/history`, `/finance` (PIN), `/diary`, `/strategies`, `/live`
+
+**Auth:** POST endpoints need `X-SabiAI-Key` header. Token at `data/.dashboard_token`. PIN exchange: `GET /api/write-key?pin=`.

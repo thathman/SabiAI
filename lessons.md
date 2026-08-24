@@ -224,10 +224,10 @@ Bug: `python3 record_pick.py settle --id N --result w` followed by `--result l` 
 ## 2026-06-11 — `openclaw message send --media` + `MEDIA:` directive = double send
 
 - **Symptom**: Hendrix got the TikTok video twice on WhatsApp. The 720p pigeon video showed up as two separate messages, 21 seconds apart.
-- **Root cause**: I delivered the file via `exec openclaw message send --channel whatsapp --target YOUR_PHONE_NUMBER --media /path/to/file.mp4` (sent once, message ID 3EB00B5EF2EBBC2AFDB6AF at 15:04:20), then ended my visible reply with `MEDIA:/path/to/file.mp4` on its own line. The runtime processed the directive and sent a SECOND media reply at 15:04:41 ("Sent media reply to +YOUR_PHONE_NUMBER (0.47MB)") — the file was delivered by two different code paths.
+- **Root cause**: I delivered the file via `exec openclaw message send --channel whatsapp --target YOUR_PHONE --media /path/to/file.mp4` (sent once, message ID 3EB00B5EF2EBBC2AFDB6AF at 15:04:20), then ended my visible reply with `MEDIA:/path/to/file.mp4` on its own line. The runtime processed the directive and sent a SECOND media reply at 15:04:41 ("Sent media reply to YOUR_PHONE (0.47MB)") — the file was delivered by two different code paths.
 - **Gateway log proves it**:
   - 15:04:20 — `[whatsapp] Sent message 3EB00B5EF2EBBC2AFDB6AF -> sha256:f07f0928fe15 (media) (4560ms)` (the exec call)
-  - 15:04:41 — `[whatsapp] Sent media reply to +YOUR_PHONE_NUMBER (0.47MB)` (the MEDIA: directive)
+  - 15:04:41 — `[whatsapp] Sent media reply to YOUR_PHONE (0.47MB)` (the MEDIA: directive)
 - **Fix in code**: pick ONE path. Never both.
   - **Path A — `message` tool with `action=send` and `media=...`**: clean. The runtime owns the delivery. If you go this route, the visible reply MUST be `NO_REPLY` (per system prompt — the message tool already delivered, so a text reply would create a second outbound).
   - **Path B — `exec` calling `openclaw message send --media ...`**: also clean, but the text reply must NOT contain a `MEDIA:` directive. The CLI call is the delivery. End the reply normally (no media tag).
