@@ -135,6 +135,7 @@ class TicketLeg:
     market: Market
     selection: Selection
     odds: Decimal
+    event_label: str | None = None
     bookmaker_id: str | None = None
     locked: bool = False
     outcome: Outcome = Outcome.PENDING
