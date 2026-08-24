@@ -1,0 +1,15 @@
+*.db
+*.db.backup_*
+__pycache__/
+*.pyc
+.env
+*.key
+node_modules/
+.openclaw/
+media/tmp/
+data/backups/
+data/sabiai/screenshots/
+MEMORY.md
+USER.md
+.venv/
+venv/

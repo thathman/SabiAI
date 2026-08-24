@@ -1,0 +1,74 @@
+{
+  "name": "Weekly Long Shot #6",
+  "created_at": "2026-07-13T05:00:00Z",
+  "week_start": "2026-07-13",
+  "week_end": "2026-07-19",
+  "bookmaker": "SportyBet",
+  "booking_code": null,
+  "stake_suggestion_ngn": 1000,
+  "combined_odds": 31.4,
+  "combined_odds_display": "31.4x",
+  "legs_count": 6,
+  "status": "insufficient_games",
+  "database_log_id": null,
+  "telegram_sent": true,
+  "telegram_message_id": "2016",
+  "source_weekly_long_shot_id": null,
+  "source_accumulator_id": null,
+  "scanner_command": "cd /PATH/TO/scripts && python3 value_bet_finder.py --format plain --min-ev 0.03",
+  "scanner_qualifying_picks": 4,
+  "builder_command": "manual build from DB + ESPN",
+  "auto_booking_status": "skipped",
+  "auto_booking_note": "Only 6 qualifying games with odds this week. Need 20+ legs and 1000x+ combined odds. MLB All-Star break + between World Cup rounds creates a lean week.",
+  "failure_reason": "Insufficient games with odds this week (MLB All-Star break, between World Cup rounds, off-season for NBA/NHL/NFL). Only 6 qualifying events found. Need 20-35 legs for 1000x target.",
+  "legs": [
+    {
+      "match": "Minnesota Lynx vs Phoenix Mercury",
+      "pick": "Minnesota Lynx",
+      "odds": 1.125,
+      "confidence": 88.9,
+      "sport": "WNBA",
+      "kickoff": "2026-07-14 01:00 UTC"
+    },
+    {
+      "match": "Atlanta Dream vs Los Angeles Sparks",
+      "pick": "Atlanta Dream",
+      "odds": 1.29,
+      "confidence": 77.5,
+      "sport": "WNBA",
+      "kickoff": "2026-07-13 23:00 UTC"
+    },
+    {
+      "match": "Toronto Tempo vs Washington Mystics",
+      "pick": "Washington Mystics",
+      "odds": 1.87,
+      "confidence": 53.5,
+      "sport": "WNBA",
+      "kickoff": "2026-07-14 23:00 UTC"
+    },
+    {
+      "match": "Connecticut Sun vs Portland Fire",
+      "pick": "Connecticut Sun",
+      "odds": 1.893,
+      "confidence": 52.8,
+      "sport": "WNBA",
+      "kickoff": "2026-07-14 15:00 UTC"
+    },
+    {
+      "match": "France vs Spain",
+      "pick": "France",
+      "odds": 2.35,
+      "confidence": 42.6,
+      "sport": "World Cup Semifinal",
+      "kickoff": "2026-07-14 19:00 UTC"
+    },
+    {
+      "match": "England vs Argentina",
+      "pick": "England",
+      "odds": 2.6,
+      "confidence": 38.5,
+      "sport": "World Cup Semifinal",
+      "kickoff": "2026-07-15 19:00 UTC"
+    }
+  ]
+}
