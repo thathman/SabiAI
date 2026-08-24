@@ -6,73 +6,73 @@
 ## Status key
 
 - [ ] Not started
-- [~] In progress
-- [x] Complete
+- [~] In progress / implementation exists but its phase gate has not passed
+- [x] Complete at task level
 - [!] Blocked / decision needed
 
 ---
 
 # Phase 0 — Audit / Preserve V1
 
-- [ ] Inventory scripts
-- [ ] Inventory OpenClaw skills/tools
-- [ ] Inventory cron/systemd jobs
-- [ ] Inventory DBs/tables
-- [ ] Inventory dashboard routes/APIs
-- [ ] Inventory data sources
-- [ ] Inventory bookmaker integrations
-- [ ] Inventory strategies
-- [ ] Inventory secrets/config
-- [ ] Map V1 -> V2 schema
-- [ ] Backup all V1 data
+- [x] Inventory scripts
+- [x] Inventory OpenClaw skills/tools
+- [x] Inventory repository cron/systemd definitions
+- [x] Inventory repository DBs/tables
+- [x] Inventory dashboard routes/APIs
+- [x] Inventory repository data sources
+- [x] Inventory repository bookmaker integrations
+- [x] Inventory strategies/history surfaces
+- [~] Inventory live secrets/config — repository policy mapped; actual Dell environment still requires secret-free runtime inventory
+- [~] Map V1 -> V2 schema — top-level mapping documented; field-level migration mapping remains
+- [~] Backup all V1 data — verified snapshot tooling implemented; live Dell snapshot not yet executed
 - [ ] Create migration fixture
-- [ ] Document rollback
+- [x] Document rollback
 
 # Phase 1 — Core Domain
 
-- [ ] Create V2 package layout
-- [ ] Shared configuration
-- [ ] Canonical sport model
-- [ ] Competition model
-- [ ] Team/player/participant model
-- [ ] Alias resolution
-- [ ] Canonical event model
-- [ ] Canonical market/selection model
-- [ ] Bookmaker registry
-- [ ] Pick model
-- [ ] Ticket model
-- [ ] Ticket leg model
-- [ ] Bankroll ledger service
-- [ ] Shared repository/data layer
-- [ ] V2 schema
-- [ ] Migration framework
-- [ ] Core tests
+- [x] Create V2 package layout
+- [x] Shared configuration
+- [x] Canonical sport model
+- [x] Competition model
+- [x] Team/player/participant model
+- [x] Alias resolution
+- [x] Canonical event model
+- [x] Canonical market/selection model
+- [x] Bookmaker registry
+- [x] Pick model
+- [x] Ticket model
+- [x] Ticket leg model
+- [ ] Bankroll ledger service — schema exists; service behavior/reconciliation still required
+- [~] Shared repository/data layer — V2 SQLite repository started
+- [x] V2 schema
+- [~] Migration framework — preservation/rollback foundation exists; data migration not implemented
+- [~] Core tests — test suite committed; full execution on controlled runtime remains a gate
 
 # Phase 2 — OpenClaw Native Sabi
 
-- [ ] Rewrite Sabi V2 skill
-- [ ] Plain-language doctrine
-- [ ] Decimal odds doctrine
-- [ ] Explicit team/selection wording
-- [ ] Free-first doctrine
-- [ ] Broad-sports doctrine
-- [ ] Read-only dashboard boundary
+- [x] Rewrite Sabi V2 skill
+- [x] Plain-language doctrine
+- [x] Decimal odds doctrine
+- [x] Explicit team/selection wording
+- [x] Free-first doctrine
+- [x] Broad-sports doctrine
+- [x] Read-only dashboard boundary
 - [ ] Native `sports.*` tools
 - [ ] Native `research.*` tools
-- [ ] Native `bookmaker.*` tools
-- [ ] Native `market.*` tools
-- [ ] Native `ticket.*` tools
+- [~] Native `bookmaker.*` tools — canonical bookmaker resolution implemented
+- [~] Native `market.*` tools — market interpreter implemented; wider market coverage remains
+- [~] Native `ticket.*` tools — split/trim gateway implemented; full workshop remains
 - [ ] Native `record.*` / `history.*` tools
 - [ ] Native `blog.*` tools
-- [ ] Native `system.*` tools
-- [ ] AI Spine memory integration
+- [~] Native `system.*` tools — V2 system/database health implemented
+- [~] AI Spine memory integration — existing agent integration retained; V2 research-memory conventions added to runtime doctrine
 - [ ] Temporary specialist-worker pattern
 - [ ] Skeptic/reviewer worker
-- [ ] Heartbeat/scheduler review
+- [~] Heartbeat/scheduler review — V2 heartbeat doctrine written; legacy schedules still require live review/migration
 
 # Phase 3 — Free-First Sources
 
-- [ ] Source Registry
+- [x] Source Registry core
 - [ ] Cache/freshness engine
 - [ ] Official-source adapters
 - [ ] Public endpoint adapters
@@ -81,60 +81,60 @@
 - [ ] Search fallback
 - [ ] Source discovery
 - [ ] Source health
-- [ ] Paid API gate
-- [ ] Paid usage log
+- [x] Paid API gate core
+- [~] Paid usage log — schema exists; request service still required
 - [ ] Duplicate-request prevention
-- [ ] Source fallback tests
+- [~] Source fallback tests — test cases committed; controlled-runtime execution remains
 
 # Phase 4 — Sports Framework
 
 ## First wave
-- [ ] Football
-- [ ] Basketball
-- [ ] Volleyball
-- [ ] Tennis
-- [ ] Table tennis
-- [ ] Baseball
-- [ ] Ice hockey
-- [ ] Cricket
-- [ ] Esports
-- [ ] Golf
+- [~] Football — generic canonical sport support only; dedicated research adapter not complete
+- [~] Basketball — generic canonical sport support only
+- [~] Volleyball — generic canonical sport support only
+- [~] Tennis — generic canonical sport support only
+- [~] Table tennis — generic canonical sport support only
+- [~] Baseball — generic canonical sport support only
+- [~] Ice hockey — generic canonical sport support only
+- [~] Cricket — generic canonical sport support only
+- [~] Esports — generic canonical sport support only
+- [~] Golf — generic canonical sport support only
 
 ## Second wave
-- [ ] Handball
-- [ ] Rugby
-- [ ] Darts
-- [ ] Snooker
-- [ ] Badminton
-- [ ] MMA
-- [ ] Boxing
-- [ ] Motorsport
-- [ ] Cycling
-- [ ] Futsal
-- [ ] Water polo
-- [ ] Beach volleyball
-- [ ] Padel
-- [ ] Floorball
-- [ ] Aussie rules
+- [~] Handball — generic canonical sport support only
+- [~] Rugby — generic canonical sport support only
+- [~] Darts — generic canonical sport support only
+- [~] Snooker — generic canonical sport support only
+- [~] Badminton — generic canonical sport support only
+- [~] MMA — generic canonical sport support only
+- [~] Boxing — generic canonical sport support only
+- [~] Motorsport — generic canonical sport support only
+- [~] Cycling — generic canonical sport support only
+- [~] Futsal — generic canonical sport support only
+- [~] Water polo — generic canonical sport support only
+- [~] Beach volleyball — generic canonical sport support only
+- [~] Padel — generic canonical sport support only
+- [~] Floorball — generic canonical sport support only
+- [~] Aussie rules — generic canonical sport support only
 
 # Phase 5 — Market Interpreter
 
-- [ ] Match win/draw/loss
-- [ ] Double chance
-- [ ] Handicap
-- [ ] Totals
+- [~] Match win/draw/loss — common 1/2/X parsing implemented; broader bookmaker fixtures remain
+- [x] Double chance core
+- [~] Handicap — explicit-team generic parsing implemented; bookmaker variants remain
+- [~] Totals — generic over/under counts implemented
 - [ ] Team totals
 - [ ] Set/frame/map markets
-- [ ] Corners
-- [ ] Cards
-- [ ] Shots / shots on target
+- [~] Corners — generic total/count recognition only
+- [~] Cards — generic total/count recognition only
+- [~] Shots / shots on target — generic total/count recognition only
 - [ ] Player markets
-- [ ] General count markets
+- [~] General count markets — generic metric recognition started
 - [ ] Race/field markets
-- [ ] Period/scope support
+- [~] Period/scope support — domain field exists; parser coverage remains
 - [ ] Overtime/extra-time rules
 - [ ] Bookmaker label mappings
-- [ ] Ambiguity detection
+- [x] Ambiguity detection core — unresolved markets return explicit reason instead of silent guessing
 - [ ] Real market-name test corpus
 
 # Phase 6 — Research V2
@@ -150,7 +150,7 @@
 - [ ] Schedule/rest
 - [ ] Match/competition context
 - [ ] Market-specific stats
-- [ ] Evidence persistence
+- [~] Evidence persistence — V2 schema exists; service not yet implemented
 - [ ] Evidence reuse
 - [ ] Conflicting source handling
 - [ ] Plain-language summaries
@@ -159,7 +159,7 @@
 # Phase 7 — Bookmakers
 
 - [ ] Bookmaker adapter base
-- [ ] Capability flags
+- [~] Capability flags — conservative capability field exists; no adapter should claim unsupported features
 - [ ] SportyBet adapter
 - [ ] Bet9ja adapter
 - [ ] 1xBet adapter
@@ -182,42 +182,42 @@
 - [ ] Copied text
 - [ ] Bookmaker share text
 - [ ] X post
-- [ ] Plain instruction
+- [~] Plain instruction — normalized JSON/tool instruction path exists; natural-language extraction still required
 
 ## Normalize
-- [ ] Resolve bookmaker
+- [x] Resolve bookmaker name/alias core
 - [ ] Resolve events
-- [ ] Resolve home/away
-- [ ] Normalize markets
-- [ ] Normalize odds
+- [~] Resolve home/away — explicit names accepted by interpreter; event identity resolution remains
+- [~] Normalize markets — initial interpreter implemented
+- [x] Normalize decimal odds core
 - [ ] Resolve duplicate legs
-- [ ] Flag unresolved legs
+- [~] Flag unresolved legs — interpreter identifies ambiguity; ticket import pipeline not yet wired
 
 ## Edit
-- [ ] Remove games
+- [x] Remove games domain operation
 - [ ] Replace games
 - [ ] Change markets
-- [ ] Preserve locked picks
+- [x] Preserve locked picks in trim/remove operations
 - [ ] Keep strongest N
 - [ ] Lower-risk version
 - [ ] Higher-odds version
 
 ## Split
-- [ ] Split by number of slips
+- [x] Split by number of slips
 - [ ] Split by game count
-- [ ] Distribute stronger picks
+- [~] Distribute stronger picks — current balancing uses odds/product, not research strength yet
 - [ ] Preserve groups
 
 ## Target odds
-- [ ] Trim toward requested odds
-- [ ] Minimum-game constraint
-- [ ] Locked-pick constraint
-- [ ] Compare candidate versions
+- [x] Trim toward requested odds core
+- [x] Minimum-game constraint
+- [x] Locked-pick constraint
+- [ ] Compare candidate versions in user-facing explanation
 
 ## Lineage
-- [ ] Ticket versions
-- [ ] Parent/child split tracking
-- [ ] Original vs edited tracking
+- [~] Ticket versions — parent/source fields and V2 persistence schema exist; version service remains
+- [x] Parent/child split tracking core
+- [~] Original vs edited tracking — parent lineage exists; history/reports remain
 - [ ] Sabi recommendation notes
 
 # Phase 9 — Convert / Rebuild / Booking Codes
@@ -235,8 +235,8 @@
 
 # Phase 10 — Odds Comparison / Arbitrage
 
-- [ ] Odds snapshots
-- [ ] Price timestamps
+- [~] Odds snapshots — V2 schema exists; ingestion not implemented
+- [~] Price timestamps — V2 schema exists; ingestion not implemented
 - [ ] Best price comparison
 - [ ] Stale-price detection
 - [ ] Two-outcome calculation
@@ -252,10 +252,10 @@
 
 - [ ] Unified settlement service
 - [ ] Sport-aware result mapping
-- [ ] Won/Lost/Draw/Void/Pending
+- [~] Won/Lost/Draw/Void/Pending — canonical outcome vocabulary exists; settlement service remains
 - [ ] Ticket settlement
 - [ ] Postponed/cancelled handling
-- [ ] Manual correction + audit
+- [~] Manual correction + audit — audit schema exists; service remains
 - [ ] Backlog monitoring
 - [ ] Duplicate settlement protection
 - [ ] Bankroll reconciliation
@@ -312,7 +312,7 @@
 
 # Phase 14 — Sabi Blog
 
-- [ ] Blog schema
+- [~] Blog schema — V2 table exists; service/UI not implemented
 - [ ] Diary migration
 - [ ] Categories/tags
 - [ ] Publication service
@@ -328,18 +328,18 @@
 
 # Phase 15 — Reliability / Security / Operations
 
-- [ ] Job registry
+- [~] Job registry — V2 schema exists; runtime service remains
 - [ ] Retry/failure tracking
 - [ ] Settlement backlog health
 - [ ] Source freshness health
 - [ ] Backup freshness
-- [ ] DB integrity checks
+- [~] DB integrity checks — V1 preservation tool checks snapshots; V2 periodic health remains
 - [ ] Remove default PIN
 - [ ] Remove PIN-in-GET flow
 - [ ] Remove browser localStorage write key
-- [ ] Protect internal writes
-- [ ] Server-side secrets only
-- [ ] Automated backups
+- [~] Protect internal writes — OpenClaw gateway boundary established; authentication/permissions remain
+- [x] Server-side secrets only for new V2 code
+- [~] Automated backups — preservation tool exists; scheduler not configured
 - [ ] Restore test
 - [ ] Source health metrics
 - [ ] Bookmaker adapter health
@@ -365,3 +365,13 @@
 - [ ] Release notes complete
 - [ ] Final V2 acceptance review
 - [ ] Promote `v2` to `main`
+
+---
+
+## Build log
+
+- `479ae37` — V2 core domain, decimal-odds validation, bookmaker registry, market interpreter, free-first source registry, initial tests.
+- `dddd4e8` — V2 canonical SQLite schema, alias resolution and repository layer.
+- `be17779` — OpenClaw JSON gateway plus Ticket Workshop split/trim core.
+- `05c9d62` — V2 OpenClaw runtime doctrine, rewritten Sabi skill, heartbeat rules and tool contract.
+- `4393cb3` — V1 repository audit, verified preservation snapshot tool and rollback runbook.
