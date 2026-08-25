@@ -8,6 +8,7 @@ from sabiai.blog import BlogService
 from sabiai.config import Settings
 from sabiai.sources import SourceHealthService
 from sabiai.storage import (
+    AdvancedAnalytics,
     DashboardReadService,
     HistoryService,
     PerformanceAnalytics,
@@ -38,6 +39,9 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
 
     def analytics() -> PerformanceAnalytics:
         return PerformanceAnalytics(db())
+
+    def advanced() -> AdvancedAnalytics:
+        return AdvancedAnalytics(db())
 
     def reads() -> DashboardReadService:
         return DashboardReadService(db())
@@ -154,6 +158,18 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
     @router.get("/tickets/killers")
     def ticket_killers(limit: int = Query(25, ge=1, le=250)):
         return {"rows": analytics().ticket_killers(limit)}
+
+    @router.get("/tickets/version-outcomes")
+    def ticket_version_outcomes(limit: int = Query(250, ge=1, le=1000)):
+        return advanced().ticket_version_outcomes(limit)
+
+    @router.get("/bookmakers/price-history")
+    def bookmaker_price_history(limit: int = Query(100, ge=1, le=1000)):
+        return {"rows": advanced().bookmaker_price_history(limit)}
+
+    @router.get("/bookmakers/price-disagreements")
+    def bookmaker_price_disagreements(limit: int = Query(50, ge=1, le=500)):
+        return {"rows": advanced().latest_price_disagreements(limit)}
 
     @router.get("/series/outcomes")
     def outcome_series(days: int = Query(90, ge=1, le=730)):
