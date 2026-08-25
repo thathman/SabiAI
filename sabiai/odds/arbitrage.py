@@ -9,16 +9,33 @@ from sabiai.domain.models import decimal_odds
 
 @dataclass(frozen=True, slots=True)
 class SettlementRules:
-    """The minimum rule fingerprint needed before prices can be treated as equivalent."""
+    """Rule fingerprint required before prices can be treated as equivalent.
+
+    Unknown/bookmaker-specific values deliberately remain explicit strings/None. Two prices
+    are compatible only when the complete fingerprint matches; this prevents Sabi Boy from
+    combining superficially similar markets with different retirement, dead-heat or format
+    handling.
+    """
 
     period: str = "full_event"
     includes_overtime: bool | None = None
     void_rule: str = "standard"
     line_key: str | None = None
+    retirement_rule: str | None = None
+    dead_heat_rule: str | None = None
+    format_rule: str | None = None
 
     @property
     def key(self) -> tuple:
-        return (self.period, self.includes_overtime, self.void_rule, self.line_key)
+        return (
+            self.period,
+            self.includes_overtime,
+            self.void_rule,
+            self.line_key,
+            self.retirement_rule,
+            self.dead_heat_rule,
+            self.format_rule,
+        )
 
 
 @dataclass(frozen=True, slots=True)
