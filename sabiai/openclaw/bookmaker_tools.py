@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from sabiai.bookmakers import BookmakerBrowserProfiles, BookmakerOfferService, TargetOffer
+from sabiai.storage import OfferObservationStore
 from sabiai.system import SystemReadinessService
 from sabiai.tickets import RestoredSlipService
 
@@ -23,6 +24,7 @@ class BookmakerTools:
             "bookmaker.browser.playbook": self.browser_playbook,
             "bookmaker.market_search.playbook": self.market_search_playbook,
             "bookmaker.market_search.ingest": self.market_search_ingest,
+            "bookmaker.market_search.recent": self.market_search_recent,
             "bookmaker.booking_code.import_plan": self.booking_code_import_plan,
             "bookmaker.booking_code.restore": self.booking_code_restore,
             "bookmaker.search.plan": self.search_plan,
@@ -123,8 +125,30 @@ class BookmakerTools:
             target_bookmaker=target,
             rows=rows,
             source=str(args.get("source") or "openclaw_browser"),
+            require_fresh=bool(args.get("require_fresh", False)),
+            max_age_seconds=int(args.get("max_age_seconds", 180)),
         )
-        return self._offer_batch(batch)
+        observations = self._persist_offer_batch(
+            batch,
+            source_draft_id=self._source_draft_id(args),
+        ) if bool(args.get("persist", True)) else []
+        data = self._offer_batch(batch)
+        data["observations"] = observations
+        return data
+
+    def market_search_recent(self, args: dict) -> dict:
+        bookmaker = str(args.get("bookmaker") or "").strip()
+        slug = None
+        if bookmaker:
+            resolved = self.app.bookmakers.resolve(bookmaker)
+            if resolved is None:
+                raise ValueError(f"Unknown bookmaker: {bookmaker}")
+            slug = resolved.slug
+        rows = OfferObservationStore(self.app._db(initialize=True)).recent(
+            bookmaker_slug=slug,
+            limit=int(args.get("limit", 100)),
+        )
+        return {"offers": [json_value(row) for row in rows]}
 
     def booking_code_import_plan(self, args: dict) -> dict:
         plan = self.app.bookmaker_execution.import_booking_code(
@@ -229,18 +253,26 @@ class BookmakerTools:
             raise ValueError("bookmaker.convert.from_search needs target_bookmaker.")
         if not isinstance(rows, list):
             raise ValueError("bookmaker.convert.from_search needs offers as a list.")
+
+        source_draft_id = self._source_draft_id(args)
+        max_age_seconds = int(args.get("max_age_seconds", 180))
         batch = self.offer_service.normalize(
             target_bookmaker=target_name,
             rows=rows,
             source=str(args.get("source") or "openclaw_browser"),
+            require_fresh=True,
+            max_age_seconds=max_age_seconds,
         )
+        observations = self._persist_offer_batch(batch, source_draft_id=source_draft_id)
         search = self._offer_batch(batch)
+        search["observations"] = observations
         if not batch.offers:
             return {
                 "ready": False,
                 "search": search,
                 "conversion": None,
-                "reason": "No valid target-bookmaker offers survived browser-result validation.",
+                "draft": None,
+                "reason": "No fresh valid target-bookmaker offers survived browser-result validation.",
             }
         conversion = self._convert_ticket(
             source_ticket,
@@ -248,10 +280,34 @@ class BookmakerTools:
             offers=self.offer_service.as_conversion_offers(batch),
             source_bookmaker=args.get("bookmaker"),
         )
+
+        draft = None
+        if conversion.get("ready") and bool(args.get("save_draft", True)):
+            target = self.app.bookmakers.resolve(target_name)
+            source_book = bookmaker_slug(self.app, str(args.get("bookmaker") or "")) if args.get("bookmaker") else None
+            payload = {
+                "ticket": conversion.get("target_ticket"),
+                "conversion": conversion,
+                "price_observations": observations,
+                "price_max_age_seconds": max_age_seconds,
+            }
+            draft_obj = self.app._draft_store().create(
+                payload,
+                source_type="conversion",
+                source_reference=source_draft_id or source_ticket.source_reference or source_ticket.id,
+                source_bookmaker_slug=source_book,
+                target_bookmaker_slug=target.slug if target else target_name,
+                status="converted",
+                issues=search.get("issues", []),
+                parent_draft_id=source_draft_id,
+            )
+            draft = draft_to_dict(draft_obj)
+
         return {
             "ready": bool(conversion.get("ready")),
             "search": search,
             "conversion": conversion,
+            "draft": draft,
         }
 
     def _convert_ticket(
@@ -306,11 +362,46 @@ class BookmakerTools:
             "result": json_value(result),
         }
 
+    def _persist_offer_batch(self, batch, *, source_draft_id: str | None) -> list[dict]:
+        store = OfferObservationStore(self.app._db(initialize=True))
+        observations = []
+        for item in batch.offers:
+            if not item.observed_at:
+                continue
+            offer = item.offer
+            row = store.save(
+                target_bookmaker_slug=batch.target_bookmaker_slug,
+                sport=offer.sport,
+                event=offer.event,
+                home=offer.home,
+                away=offer.away,
+                event_ref=offer.event_ref,
+                market=offer.market,
+                market_ref=offer.market_ref,
+                decimal_odds=str(offer.odds),
+                observed_at=item.observed_at,
+                source=item.source,
+                source_draft_id=source_draft_id,
+                raw=item.raw,
+            )
+            observations.append(json_value(row))
+        return observations
+
+    def _source_draft_id(self, args: dict) -> str | None:
+        draft_id = str(args.get("source_draft_id") or args.get("draft_id") or "").strip()
+        if not draft_id:
+            return None
+        if self.app._draft_store().get(draft_id) is None:
+            raise ValueError(f"Unknown source ticket draft: {draft_id}")
+        return draft_id
+
     @staticmethod
     def _offer_batch(batch) -> dict:
         return {
             "usable": batch.usable,
             "target_bookmaker_slug": batch.target_bookmaker_slug,
+            "freshness_required": batch.freshness_required,
+            "max_age_seconds": batch.max_age_seconds,
             "offers": [
                 {
                     "event": item.offer.event,
@@ -323,6 +414,8 @@ class BookmakerTools:
                     "away": item.offer.away,
                     "sport": item.offer.sport,
                     "observed_at": item.observed_at,
+                    "age_seconds": item.age_seconds,
+                    "fresh": item.fresh,
                     "source": item.source,
                 }
                 for item in batch.offers
