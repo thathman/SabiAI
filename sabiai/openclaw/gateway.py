@@ -15,6 +15,7 @@ from sabiai.sports import ResearchPlanner, default_sports
 from sabiai.storage import SabiDatabase, TicketDraftStore
 from sabiai.tickets import TicketNormalizer, TicketTextImporter, TicketWorkshop
 
+from .blog_tools import BlogTools
 from .bookmaker_tools import BookmakerTools
 from .market_tools import MarketTools
 from .record_tools import RecordTools
@@ -67,6 +68,7 @@ class SabiToolGateway:
             BookmakerTools(self),
             TicketTools(self),
             RecordTools(self),
+            BlogTools(self),
         )
         self._handlers: dict[str, callable] = {}
         for group in groups:
