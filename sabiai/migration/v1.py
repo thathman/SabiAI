@@ -660,7 +660,7 @@ class V1Migrator:
         text = str(kind or "").casefold()
         if "refund" in text or "void" in text:
             return "refund"
-        if "deposit" in text or "opening" in text or "start" in text:
+        if "deposit" in text or "opening" in text or "start" in text or "initial" in text:
             return "deposit" if "deposit" in text else "opening_balance"
         if "withdraw" in text:
             return "withdrawal"

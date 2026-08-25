@@ -1,7 +1,7 @@
 import sqlite3
 
 from sabiai.migration import V1Migrator
-from sabiai.storage import SabiDatabase
+from sabiai.storage import PerformanceAnalytics, SabiDatabase
 
 
 def _legacy_db(path):
@@ -127,3 +127,29 @@ def test_v1_migration_is_repeatable_without_duplicate_history(tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM tickets WHERE source_type='v1_accumulator'").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM bankroll_ledger WHERE legacy_bet_id LIKE 'v1-ledger:%'").fetchone()[0] == 2
         assert conn.execute("SELECT COUNT(*) FROM blog_posts WHERE category='V1 Diary'").fetchone()[0] == 1
+
+
+def test_v1_initial_bankroll_is_opening_funding_not_betting_profit(tmp_path):
+    source = tmp_path / 'bets.db'
+    target = tmp_path / 'sabi_v2.db'
+    _legacy_db(source)
+    with sqlite3.connect(source) as conn:
+        conn.execute("UPDATE bankroll SET kind='initial', note='Fresh season opening' WHERE id=1")
+
+    report = V1Migrator(source, target).migrate()
+    assert report.ready is True
+
+    db = SabiDatabase(target)
+    with db.connect() as conn:
+        opening = conn.execute(
+            "SELECT kind,amount,balance_after FROM bankroll_ledger WHERE legacy_bet_id='v1-ledger:1'"
+        ).fetchone()
+    assert dict(opening) == {
+        'kind': 'opening_balance',
+        'amount': '100.00',
+        'balance_after': '100.00',
+    }
+    profit_loss = PerformanceAnalytics(db).profit_loss()
+    assert profit_loss['funding']['deposits_and_opening'] == '100.00'
+    assert profit_loss['betting']['payouts'] == '8.00'
+    assert profit_loss['betting']['profit_loss'] == '8.00'
