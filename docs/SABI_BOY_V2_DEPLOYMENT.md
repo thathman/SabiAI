@@ -40,6 +40,13 @@ V2 dashboard service:
 - app: `dashboard.v2_app:app`
 - dashboard/API: read-only
 
+Verified backup schedule:
+
+- service: `sabi-boy-backup.service`
+- timer: `sabi-boy-backup.timer`
+- backup engine: verified SQLite backup/checksum/integrity tooling
+- retention: conservative pruning of recognized Sabi Boy backup sets only
+
 Legacy V1 dashboard is intentionally not reused as the V2 process.
 
 Human-facing identity: **Sabi Boy**. The technical OpenClaw/AI Spine agent id remains `sabi-ai` unless a later deliberate compatibility migration changes it.
@@ -79,7 +86,7 @@ This:
 - creates the secret-free environment template if needed;
 - initializes the V2 schema;
 - registers the source catalog;
-- renders the systemd user unit to the actual checkout path;
+- renders the dashboard and verified-backup systemd user units to the actual checkout path;
 - reloads user systemd.
 
 It does **not**:
@@ -87,6 +94,7 @@ It does **not**:
 - migrate V1 history;
 - stop V1;
 - start V2;
+- treat the backup timer as runtime-accepted merely because the unit is installed;
 - change the OpenClaw agent;
 - install OpenClaw scheduled jobs;
 - change Cloudflare routing.
@@ -105,11 +113,12 @@ The stage command performs the release-critical order:
 2. V1 → V2 deterministic migration;
 3. migration reconciliation;
 4. full release acceptance;
-5. backup/restore drill;
+5. backup/restore acceptance;
 6. start/restart `sabi-boy-dashboard.service`;
 7. verify `http://127.0.0.1:8091/health`;
 8. verify `/api/v2/overview`;
-9. write commit-pinned staging state.
+9. enable the V2 backup timer only after the required V2 acceptance gates succeed;
+10. write commit-pinned staging state.
 
 State/report locations:
 
@@ -126,6 +135,7 @@ Before touching OpenClaw identity/jobs or external routing:
 
 ```bash
 systemctl --user status sabi-boy-dashboard.service --no-pager
+systemctl --user status sabi-boy-backup.timer --no-pager
 curl -fsS http://127.0.0.1:8091/health
 curl -fsS http://127.0.0.1:8091/api/v2/overview
 ```
@@ -138,8 +148,10 @@ Also inspect:
 - bankroll;
 - streaks;
 - performance breakdowns;
+- advanced ticket parent→child history;
+- recorded bookmaker price movement/disagreement;
 - migrated diary/blog posts;
-- system/source state.
+- system/source/job state.
 
 Compare key values to V1. Do not proceed when history or bankroll differs unexpectedly.
 
@@ -172,7 +184,7 @@ The guarded activation command:
 5. **refuses to silently retarget** an existing same-id agent that points somewhere else;
 6. verifies the agent workspace through `openclaw agents list --json`;
 7. verifies required Sabi Boy skills through the OpenClaw skills CLI;
-8. verifies the V2 gateway exposes required sports/research/ticket/bookmaker/blog/system tools;
+8. verifies the final V2 gateway surface, including durable research cases, source learning, verified ticket variants, settlement profiles, bookmaker browser health, advanced history and Blog triggers;
 9. applies the human-visible Sabi Boy identity from `IDENTITY.md` while retaining the machine id;
 10. installs/updates the daily and weekly Sabi Boy reflection automations;
 11. reruns OpenClaw acceptance and records it in staging state.
@@ -207,16 +219,24 @@ At minimum validate:
 
 - plain-language and decimal-odds output;
 - unknown-sport discovery behavior;
+- persistent research case create/attach/resume/summary;
+- durable learned-source discover/verify/reuse behavior;
 - form/H2H/injury/match snapshot research;
 - Research Scout + Skeptic + Ticket Engineer worker flows;
+- market settlement profiles for retirement/dead-heat/overtime-style cases;
 - booking-code restoration where supported;
 - fresh multi-book price comparison;
+- verified ticket candidate/higher-odds variants;
 - strict conversion with no line/period substitutions;
 - SportyBet/Bet9ja rich booking-code browser plan in the controlled environment;
 - reload and `bookmaker.build.verify` on at least one end-to-end rebuilt code;
+- bookmaker browser-health observations after real tests;
 - settlement duplicate/correction behavior;
+- job success/failure/readiness behavior;
+- `blog.triggers` plus reflection automation behavior;
 - Blog create/publish/display path;
-- dashboard desktop/mobile display against migrated data.
+- dashboard desktop/mobile display against migrated data, including advanced History panels;
+- backup timer and safe restore drill.
 
 Do not mark the release gate complete from mocked/unit behavior alone.
 
@@ -282,6 +302,7 @@ Then:
 This:
 
 - stops `sabi-boy-dashboard.service`;
+- restores the pre-stage V2 backup-timer posture;
 - restarts `sabiai-dashboard.service` if it had been active before staging;
 - records rollback state.
 
@@ -328,7 +349,7 @@ OpenClaw acceptance checks include:
 - exact repo root and agent workspace;
 - required current-format skill packages;
 - required skill visibility to the selected agent;
-- required V2 tool surface;
+- final required V2 tool surface;
 - runtime readiness;
 - optionally automation installation after all checks pass.
 
@@ -342,4 +363,6 @@ Promotion requires Phase 16 release gates in `docs/SABIAI_V2_TASKS.md`, includin
 
 Once V2 is accepted in production, `v2` can be promoted/merged to `main` according to the project's Forgejo-first release workflow.
 
-Only after the V2 acceptance/promotion state is genuinely ready should the final one-shot OpenClaw upgrade/setup prompt be issued to the user.
+For the installation/testing execution brief, use `docs/SABI_BOY_V2_WORK_HANDOFF.md`.
+
+Only after the V2 acceptance/promotion state is genuinely ready should the final production OpenClaw/cutover instruction be issued.
