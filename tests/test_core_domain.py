@@ -55,6 +55,45 @@ class MarketTests(unittest.TestCase):
         parsed = self.interpreter.interpret("Chelsea handicap +1.5", home="Arsenal", away="Chelsea")
         self.assertEqual(parsed.plain_label, "Chelsea +1.5 handicap")
 
+    def test_spread_alias_normalizes_to_handicap(self):
+        parsed = self.interpreter.interpret("Chelsea spread +4.5", home="Arsenal", away="Chelsea")
+        self.assertEqual(parsed.kind, MarketKind.HANDICAP)
+        self.assertEqual(parsed.plain_label, "Chelsea +4.5 handicap")
+
+    def test_draw_no_bet_is_explicit(self):
+        parsed = self.interpreter.interpret("Arsenal Draw No Bet", home="Arsenal", away="Chelsea")
+        self.assertEqual(parsed.kind, MarketKind.HANDICAP)
+        self.assertEqual(parsed.metric, "draw_no_bet")
+        self.assertEqual(parsed.line, Decimal("0"))
+        self.assertEqual(parsed.plain_label, "Arsenal — Draw No Bet")
+
+    def test_race_winner_is_race_field_market(self):
+        parsed = self.interpreter.interpret("Max Verstappen — Race Winner")
+        self.assertEqual(parsed.kind, MarketKind.RACE_FIELD)
+        self.assertEqual(parsed.participant, "Max Verstappen")
+        self.assertEqual(parsed.metric, "outright_winner")
+        self.assertEqual(parsed.plain_label, "Max Verstappen to win")
+
+    def test_top_three_finish_is_explicit(self):
+        parsed = self.interpreter.interpret("Top 3 Finish — Rory McIlroy")
+        self.assertEqual(parsed.kind, MarketKind.RACE_FIELD)
+        self.assertEqual(parsed.participant, "Rory McIlroy")
+        self.assertEqual(parsed.line, Decimal("3"))
+        self.assertEqual(parsed.plain_label, "Rory McIlroy — Top 3 finish")
+
+    def test_podium_finish_is_explicit(self):
+        parsed = self.interpreter.interpret("Lewis Hamilton Podium Finish")
+        self.assertEqual(parsed.kind, MarketKind.RACE_FIELD)
+        self.assertEqual(parsed.line, Decimal("3"))
+        self.assertEqual(parsed.plain_label, "Lewis Hamilton — Podium finish")
+
+    def test_make_the_cut_is_explicit(self):
+        parsed = self.interpreter.interpret("Rory McIlroy to make the cut")
+        self.assertEqual(parsed.kind, MarketKind.RACE_FIELD)
+        self.assertEqual(parsed.metric, "make_cut")
+        self.assertEqual(parsed.side, "yes")
+        self.assertEqual(parsed.plain_label, "Rory McIlroy — Make the cut")
+
 
 class SourceTests(unittest.TestCase):
     def test_free_source_always_wins_before_paid(self):
