@@ -6,6 +6,7 @@ from .adapters import (
     legacy_command_adapters,
 )
 from .browser_profiles import (
+    BrowserBuildPlaybook,
     BrowserPlaybook,
     BookmakerBrowserProfiles,
     MarketSearchPlaybook,
@@ -37,6 +38,7 @@ __all__ = [
     "BookmakerSearchPlan",
     "BookmakerSearchTask",
     "BookingCodeImportPlan",
+    "BrowserBuildPlaybook",
     "BrowserPlaybook",
     "BuildExecutionPlan",
     "BuildExecutionResult",
