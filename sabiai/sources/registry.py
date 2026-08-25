@@ -43,10 +43,12 @@ class Source:
     enabled: bool = True
     health: str = "unknown"
     notes: str | None = None
+    priority_bias: int = 0
 
     @property
     def priority(self) -> int:
-        return FREE_FIRST_ORDER[self.kind]
+        """Lower runs first while preserving the overall free-first source-kind order."""
+        return FREE_FIRST_ORDER[self.kind] + int(self.priority_bias)
 
 
 @dataclass(slots=True)
