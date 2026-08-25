@@ -78,9 +78,15 @@ if ! command -v "$OPENCLAW_BIN" >/dev/null 2>&1; then
   exit 11
 fi
 
-# First prove that the existing technical agent already points at this exact V2 workspace and
-# can actually see the current-format Sabi Boy skills/tools. We intentionally do not retarget
-# an agent automatically here.
+# Preserve an existing technical agent when it already owns this workspace. If the agent is
+# missing, create it non-interactively at this exact workspace. If the same ID points elsewhere,
+# fail closed instead of hijacking/repointing it.
+"$VENV/bin/python" "$ROOT/scripts/sabi_v2_ensure_openclaw_agent.py" \
+  --env-file "$ENV_FILE" \
+  --report "$RELEASE_DIR/openclaw-agent-latest.json"
+
+# Prove the technical agent points at this exact V2 workspace and can actually see the
+# current-format Sabi Boy skills/tools before changing its visible identity or jobs.
 "$VENV/bin/python" "$ROOT/scripts/sabi_v2_openclaw_acceptance.py" \
   --env-file "$ENV_FILE" \
   --report "$RELEASE_DIR/openclaw-pre-activation.json"
