@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse, Response
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from sabiai.dashboard import create_v2_dashboard_router
+
+ASSET_DIR = Path(__file__).with_name("v2")
+
+app = FastAPI(
+    title="Sabi Boy",
+    description="Read-only dashboard for our Sabi Boy history, performance and journal.",
+    docs_url=None,
+    redoc_url=None,
+)
+app.include_router(create_v2_dashboard_router())
+
+
+@app.get("/health")
+def health():
+    return {"ok": True, "product": "Sabi Boy", "dashboard": "v2", "read_only": True}
+
+
+@app.get("/manifest.json")
+def manifest():
+    return {
+        "name": "Sabi Boy",
+        "short_name": "Sabi Boy",
+        "description": "Our sports intelligence history, performance and journal.",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait-primary",
+        "background_color": "#0b0b0d",
+        "theme_color": "#111216",
+        "categories": ["sports", "finance"],
+        "icons": [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}],
+    }
+
+
+@app.get("/icon.svg")
+def icon():
+    svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'>
+<rect width='192' height='192' rx='42' fill='#111216'/>
+<circle cx='96' cy='96' r='61' fill='none' stroke='#e6b252' stroke-width='7'/>
+<text x='96' y='121' font-family='Georgia,serif' font-size='72' font-weight='700' fill='#f5f0e8' text-anchor='middle'>SB</text>
+</svg>"""
+    return Response(svg, media_type="image/svg+xml")
+
+
+@app.get("/assets/{name}")
+def asset(name: str):
+    safe = Path(name).name
+    path = ASSET_DIR / safe
+    if not path.is_file():
+        return Response(status_code=404)
+    media = {
+        ".css": "text/css; charset=utf-8",
+        ".js": "text/javascript; charset=utf-8",
+        ".svg": "image/svg+xml",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media)
+
+
+@app.get("/")
+@app.get("/{page:path}")
+def shell(page: str = ""):
+    # API/static/health routes match before this catch-all. All UI routes share one shell.
+    index = ASSET_DIR / "index.html"
+    if not index.is_file():
+        return HTMLResponse("<h1>Sabi Boy V2</h1><p>Dashboard assets are missing.</p>", status_code=503)
+    return FileResponse(index, media_type="text/html; charset=utf-8")
