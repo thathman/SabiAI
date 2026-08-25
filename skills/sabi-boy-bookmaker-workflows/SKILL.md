@@ -17,6 +17,10 @@ Use for bookmaker search, booking-code restore, cross-book conversion, best-pric
 - Never silently substitute another line/period/event.
 - Booking-code creation is different from wager placement; this workflow only builds reusable codes.
 
+Use `bookmaker.browser_health` when deciding whether a browser playbook is merely configured or has actually been exercised recently. An unexercised path must not be described as live-proven.
+
+Use `market.settlement.profile` before treating uncertain cross-book markets as equivalent. When it says bookmaker verification is required, confirm the listed rule topics on each book before comparison/conversion.
+
 ## Restore a booking code
 
 1. `bookmaker.resolve`
@@ -39,7 +43,7 @@ Old ticket odds are context, not automatically current.
 
 ## Convert a ticket
 
-1. Start from normalized/restored source ticket or draft.
+1. Start from normalized/restored source ticket or `draft_id`.
 2. `bookmaker.search.plan` for target book.
 3. Search exact target offers.
 4. `bookmaker.convert.from_search` with fresh timestamps.
@@ -61,10 +65,10 @@ Preferred rich path when available:
 
 Current rich-code creation truth:
 
-- SportyBet — verified V2 browser build playbook.
-- Bet9ja — verified V2 browser build playbook.
+- SportyBet — V2 browser build playbook exists; runtime acceptance must still prove the live page.
+- Bet9ja — V2 browser build playbook exists; runtime acceptance must still prove the live page.
 - Stake — restoration/search may work, code creation not yet claimed.
-- 1xBet — regional flow still requires verification.
+- 1xBet — regional restore/search/build flow still requires live verification before being claimed.
 
 Legacy `bookmaker.build.plan` / `bookmaker.build.execute` are compatibility paths only and must obey their declared sport/market limits.
 
@@ -78,6 +82,10 @@ Legacy `bookmaker.build.plan` / `bookmaker.build.execute` are compatibility path
 - extra/missing leg.
 
 Price movement is not the same as rebuilding the wrong ticket.
+
+## History
+
+Use `history.bookmaker_prices` and `history.price_disagreements` for historical observations. They are not substitutes for current-price search; fresh comparison tools remain authoritative for a build/conversion.
 
 ## Lineage
 
