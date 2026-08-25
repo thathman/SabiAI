@@ -17,6 +17,7 @@ from sabiai.storage import SabiDatabase, TicketDraftStore
 from sabiai.tickets import TicketNormalizer, TicketTextImporter, TicketWorkshop
 
 from .blog_tools import BlogTools
+from .bookmaker_compare_tools import BookmakerCompareTools
 from .bookmaker_tools import BookmakerTools
 from .market_tools import MarketTools
 from .record_tools import RecordTools
@@ -74,6 +75,7 @@ class SabiToolGateway:
             ResearchTools(self),
             MarketTools(self),
             BookmakerTools(self),
+            BookmakerCompareTools(self),
             TicketTools(self),
             TicketResearchTools(self),
             RecordTools(self),
