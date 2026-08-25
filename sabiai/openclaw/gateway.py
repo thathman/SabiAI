@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from sabiai import __version__
 from sabiai.bookmakers import (
+    BookmakerCommandRunner,
     BookmakerExecutionPlanner,
     TargetOffer,
     TicketConversionService,
@@ -32,6 +33,7 @@ class SabiToolGateway:
             bookmakers=self.bookmakers,
             adapters=self.bookmaker_adapters,
         )
+        self.bookmaker_runner = BookmakerCommandRunner()
         self.ticket_converter = TicketConversionService(
             bookmakers=self.bookmakers,
             interpreter=self.market_interpreter,
@@ -59,6 +61,7 @@ class SabiToolGateway:
             "bookmaker.booking_code.import_plan": self.bookmaker_booking_code_import_plan,
             "bookmaker.convert.plan": self.bookmaker_convert_plan,
             "bookmaker.build.plan": self.bookmaker_build_plan,
+            "bookmaker.build.execute": self.bookmaker_build_execute,
             "ticket.normalize": self.ticket_normalize,
             "ticket.from_text": self.ticket_from_text,
             "ticket.split": self.ticket_split,
@@ -321,6 +324,21 @@ class SabiToolGateway:
         ticket = self._ticket_from_args(args)
         target = str(args.get("target_bookmaker") or args.get("bookmaker") or "")
         return asdict(self.bookmaker_execution.build(ticket, bookmaker=target))
+
+    def bookmaker_build_execute(self, args: dict) -> dict:
+        ticket = self._ticket_from_args(args)
+        target = str(args.get("target_bookmaker") or args.get("bookmaker") or "")
+        plan = self.bookmaker_execution.build(ticket, bookmaker=target)
+        result = self.bookmaker_runner.execute(
+            plan,
+            repo_root=self.settings.repo_root,
+            dry_run=bool(args.get("dry_run", False)),
+            timeout_seconds=int(args.get("timeout_seconds", 120)),
+        )
+        return {
+            "plan": asdict(plan),
+            "result": asdict(result),
+        }
 
     def ticket_normalize(self, args: dict) -> dict:
         result = self.ticket_normalizer.normalize(
