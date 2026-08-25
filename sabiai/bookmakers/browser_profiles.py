@@ -31,6 +31,21 @@ class MarketSearchPlaybook:
     verification_note: str
 
 
+@dataclass(frozen=True, slots=True)
+class BrowserBuildPlaybook:
+    bookmaker_slug: str
+    entry_url: str | None
+    ready: bool
+    build_mode: str
+    event_navigation: str
+    selection_action: str
+    booking_action: str | None
+    booking_code_field: str | None
+    verification_tool: str
+    verified_on: str | None
+    verification_note: str
+
+
 DEFAULT_EXTRACTION_FIELDS = (
     "sport",
     "event",
@@ -62,8 +77,9 @@ class BookmakerBrowserProfiles:
     """Human-readable browser playbooks for OpenClaw.
 
     These are intentionally not brittle DOM selectors. OpenClaw/browser should locate the
-    visible controls described here, restore/read/search the sportsbook, and hand structured
-    output to Sabi Boy's canonical validators. No profile authorizes wager placement.
+    visible controls described here, restore/read/search/build the sportsbook, and hand
+    structured output to Sabi Boy's canonical validators. Build profiles authorize creating
+    a reusable booking code only; they do not authorize wager placement or payment.
     """
 
     def __init__(self):
@@ -145,7 +161,7 @@ class BookmakerBrowserProfiles:
                 extraction_fields=MARKET_SEARCH_FIELDS,
                 verified_on="2026-08-25",
                 verification_note=(
-                    "SportyBet NG public Lite sportsbook currently exposes event rows, 1/X/2 decimal prices and links to many additional markets. "
+                    "SportyBet NG public Lite sportsbook currently exposes event rows, decimal prices and links to additional markets. "
                     "Market availability and prices are live data and must be re-read at search time."
                 ),
             ),
@@ -181,8 +197,7 @@ class BookmakerBrowserProfiles:
                 extraction_fields=MARKET_SEARCH_FIELDS,
                 verified_on="2026-08-25",
                 verification_note=(
-                    "Stake's current official sportsbook describes a search bar plus live/upcoming event browsing and supports decimal odds. "
-                    "Availability is region/account dependent and must be verified at runtime."
+                    "Stake's current official sportsbook exposes sports browsing/search and a bet slip; availability is region/account dependent and must be verified at runtime."
                 ),
             ),
             "1xbet": MarketSearchPlaybook(
@@ -201,6 +216,78 @@ class BookmakerBrowserProfiles:
             ),
         }
 
+        self._build_profiles = {
+            "sportybet": BrowserBuildPlaybook(
+                bookmaker_slug="sportybet",
+                entry_url="https://www.sportybet.com/ng/lite",
+                ready=True,
+                build_mode="public_booking_code",
+                event_navigation=(
+                    "For each verified leg, navigate to the exact sport/event and reopen the exact market/line/period from the fresh-price search."
+                ),
+                selection_action=(
+                    "Click only the exact verified selection and confirm the betslip text/decimal price after every addition. "
+                    "SportyBet also documents Football Bet Builder for supported same-event combinations; use it only when the requested ticket actually requires that structure."
+                ),
+                booking_action="Use the visible Book bet / booking-code action after every planned leg is present. Do not place the wager.",
+                booking_code_field="Capture the generated SportyBet booking code and immediately reload it for verification.",
+                verification_tool="bookmaker.build.verify",
+                verified_on="2026-08-25",
+                verification_note=(
+                    "SportyBet's current public help documents selecting sportsbook outcomes into the betslip and generating a booking code with Book bet. "
+                    "The public betslip warns that odds/availability can change, so reload the generated code and verify it before returning it."
+                ),
+            ),
+            "bet9ja": BrowserBuildPlaybook(
+                bookmaker_slug="bet9ja",
+                entry_url="https://sports.bet9ja.com/",
+                ready=True,
+                build_mode="public_booking_number",
+                event_navigation=(
+                    "While logged out, navigate/search to each exact event and open the requested market. Match both participants and the exact line/period before adding a selection."
+                ),
+                selection_action=(
+                    "Add only the exact verified selection to the Bet9ja betslip and confirm the visible selection text and decimal price after every addition."
+                ),
+                booking_action="Use Bet9ja's Book Bet / booking-number flow while logged out. Do not continue to payment or wager placement.",
+                booking_code_field="Capture the generated Bet9ja booking number and immediately load it again for verification.",
+                verification_tool="bookmaker.build.verify",
+                verified_on="2026-08-25",
+                verification_note=(
+                    "Bet9ja's current official help documents logged-out market selection followed by Book Bet/booking-number creation. "
+                    "Odds may change, so the generated booking number must be reloaded and structurally verified."
+                ),
+            ),
+            "stake": BrowserBuildPlaybook(
+                bookmaker_slug="stake",
+                entry_url="https://stake.com/sports/home",
+                ready=False,
+                build_mode="discover_share_or_bet_code_creation",
+                event_navigation="Use the verified market-search playbook only after regional/account availability is confirmed.",
+                selection_action="Do not claim ticket-code creation until the current account/region visibly exposes a supported copy/share/bet-code creation action.",
+                booking_action=None,
+                booking_code_field=None,
+                verification_tool="bookmaker.build.verify",
+                verified_on="2026-08-25",
+                verification_note=(
+                    "Stake currently exposes Use Bet Code for restoration, but Sabi Boy has not yet verified a public unauthenticated code-creation flow suitable for the V2 builder."
+                ),
+            ),
+            "1xbet": BrowserBuildPlaybook(
+                bookmaker_slug="1xbet",
+                entry_url=None,
+                ready=False,
+                build_mode="discover_current_flow",
+                event_navigation="Not yet verified for the configured region.",
+                selection_action="Do not automate building until the configured regional market and code-generation flow is verified.",
+                booking_action=None,
+                booking_code_field=None,
+                verification_tool="bookmaker.build.verify",
+                verified_on=None,
+                verification_note="No verified V2 rich browser builder exists for the configured 1xBet region yet.",
+            ),
+        }
+
     def get(self, bookmaker_slug: str) -> BrowserPlaybook | None:
         return self._profiles.get((bookmaker_slug or "").casefold().strip())
 
@@ -212,3 +299,9 @@ class BookmakerBrowserProfiles:
 
     def all_market_search(self) -> tuple[MarketSearchPlaybook, ...]:
         return tuple(self._search_profiles[key] for key in sorted(self._search_profiles))
+
+    def browser_build(self, bookmaker_slug: str) -> BrowserBuildPlaybook | None:
+        return self._build_profiles.get((bookmaker_slug or "").casefold().strip())
+
+    def all_browser_build(self) -> tuple[BrowserBuildPlaybook, ...]:
+        return tuple(self._build_profiles[key] for key in sorted(self._build_profiles))
