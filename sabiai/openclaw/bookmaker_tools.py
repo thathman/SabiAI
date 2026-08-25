@@ -5,7 +5,7 @@ from dataclasses import asdict
 from sabiai.bookmakers import BookmakerBrowserProfiles, BookmakerOfferService, TargetOffer
 from sabiai.storage import OfferObservationStore
 from sabiai.system import SystemReadinessService
-from sabiai.tickets import RestoredSlipService
+from sabiai.tickets import RebuiltTicketVerificationService, RestoredSlipService
 
 from .helpers import bookmaker_slug, ticket_from_args
 from .serializers import conversion_to_dict, draft_to_dict, json_value, ticket_to_dict
@@ -16,6 +16,7 @@ class BookmakerTools:
         self.app = app
         self.browser_profiles = BookmakerBrowserProfiles()
         self.offer_service = BookmakerOfferService(app.bookmakers)
+        self.rebuilt_verifier = RebuiltTicketVerificationService()
 
     def handlers(self) -> dict:
         return {
@@ -32,6 +33,7 @@ class BookmakerTools:
             "bookmaker.convert.from_search": self.convert_from_search,
             "bookmaker.build.plan": self.build_plan,
             "bookmaker.build.execute": self.build_execute,
+            "bookmaker.build.verify": self.build_verify,
         }
 
     def resolve(self, args: dict) -> dict:
@@ -360,6 +362,79 @@ class BookmakerTools:
             "executed": True,
             "plan": json_value(plan),
             "result": json_value(result),
+        }
+
+    def build_verify(self, args: dict) -> dict:
+        bookmaker = str(args.get("bookmaker") or args.get("target_bookmaker") or "").strip()
+        booking_code = str(args.get("booking_code") or "").strip()
+        payload = args.get("payload")
+        if not bookmaker or not booking_code:
+            raise ValueError("bookmaker.build.verify needs bookmaker and booking_code.")
+        if not isinstance(payload, dict):
+            raise ValueError("bookmaker.build.verify needs the structured browser-restored payload for the newly built booking code.")
+
+        expected_draft_id = str(args.get("expected_draft_id") or args.get("draft_id") or "").strip()
+        expected_payload = None
+        expected_draft = None
+        if expected_draft_id:
+            expected_draft = self.app._draft_store().get(expected_draft_id)
+            if expected_draft is None:
+                raise ValueError(f"Unknown expected conversion draft: {expected_draft_id}")
+            expected_payload = expected_draft.payload.get("ticket") if isinstance(expected_draft.payload, dict) else None
+            if expected_payload is None and isinstance(expected_draft.payload, dict):
+                expected_payload = expected_draft.payload
+        if expected_payload is None:
+            expected_payload = {"legs": args.get("expected_legs") or args.get("legs") or []}
+
+        expected_legs = expected_payload.get("legs") if isinstance(expected_payload, dict) else None
+        if not isinstance(expected_legs, list) or not expected_legs:
+            raise ValueError("Expected converted ticket has no legs to verify.")
+        expected_norm = self.app.ticket_normalizer.normalize(
+            expected_legs,
+            bookmaker=bookmaker,
+            source_type="build_plan",
+            source_reference=expected_draft_id or None,
+        )
+        expected_errors = [issue.message for issue in expected_norm.issues if issue.level == "error"]
+        if expected_errors:
+            raise ValueError("Expected ticket cannot be normalized: " + "; ".join(expected_errors))
+
+        restored = RestoredSlipService(self.app.ticket_normalizer).normalize(
+            bookmaker=bookmaker,
+            booking_code=booking_code,
+            payload=payload,
+        )
+        verification = self.rebuilt_verifier.verify(expected_norm.ticket, restored.ticket)
+        data = json_value(verification)
+        data["booking_code"] = booking_code
+        data["bookmaker"] = bookmaker
+        data["restored_issues"] = [asdict(issue) for issue in restored.issues]
+        data["restored_combined_odds"] = str(restored.computed_combined_odds)
+        data["reported_combined_odds"] = (
+            str(restored.reported_combined_odds) if restored.reported_combined_odds is not None else None
+        )
+
+        verified_draft = None
+        if verification.structure_verified and expected_draft is not None and bool(args.get("save_draft", True)):
+            revised_payload = dict(expected_draft.payload)
+            revised_payload["booking_code"] = booking_code
+            revised_payload["verification"] = data
+            revised_payload["restored_ticket"] = ticket_to_dict(restored.ticket)
+            draft_obj = self.app._draft_store().revise(
+                expected_draft.id,
+                revised_payload,
+                issues=[asdict(issue) for issue in restored.issues],
+                status="verified_built",
+                target_bookmaker_slug=bookmaker_slug(self.app, bookmaker),
+            )
+            verified_draft = draft_to_dict(draft_obj)
+
+        return {
+            "verified": verification.structure_verified,
+            "ready_to_return_code": verification.ready_to_return_code,
+            "prices_changed": verification.prices_changed,
+            "verification": data,
+            "draft": verified_draft,
         }
 
     def _persist_offer_batch(self, batch, *, source_draft_id: str | None) -> list[dict]:
