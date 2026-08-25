@@ -5,6 +5,7 @@ from .comparison import (
     PriceComparisonService,
     SelectionPriceComparison,
 )
+from .settlement import SettlementProfile, SettlementRuleLibrary
 
 __all__ = [
     "ArbitrageEngine",
@@ -14,6 +15,8 @@ __all__ = [
     "PriceComparisonService",
     "PriceQuote",
     "SelectionPriceComparison",
+    "SettlementProfile",
+    "SettlementRuleLibrary",
     "SettlementRules",
     "StakeAllocation",
 ]
