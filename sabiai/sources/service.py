@@ -44,6 +44,10 @@ class SourceService:
     Network details live in source adapters/fetchers. This service owns selection,
     cache reuse, paid escalation and usage logging so those rules cannot be bypassed
     accidentally by every caller.
+
+    A caller may set metadata.require_complete=true. In that mode a source can be healthy
+    and useful yet still be too partial for the request; Sabi Boy records that fetch and
+    continues to the next free source instead of treating partial coverage as complete.
     """
 
     def __init__(self, database: SabiDatabase, registry: SourceRegistry):
@@ -60,8 +64,9 @@ class SourceService:
         now: datetime | None = None,
     ) -> SourceResponse:
         now = now or datetime.now(timezone.utc)
+        require_complete = bool((request.metadata or {}).get("require_complete", False))
         cached = self.database.get_cache(request.request_key, now=now)
-        if cached is not None:
+        if cached is not None and not (require_complete and self._is_partial(cached.get("payload"))):
             source = self._source_by_name(cached["source_name"])
             paid = bool(source and source.cost is SourceCost.PAID)
             self.database.log_source_fetch(
@@ -120,6 +125,21 @@ class SourceService:
                 )
                 continue
 
+            if require_complete and self._is_partial(payload):
+                reason = f"{source.name}: response is useful but partial; complete coverage requested"
+                failures.append(reason)
+                self.database.log_source_fetch(
+                    source_name=source.name,
+                    sport=request.sport,
+                    capability=request.capability,
+                    request_key=request.request_key,
+                    cache_hit=False,
+                    success=True,
+                    paid=source.cost is SourceCost.PAID,
+                    reason="Source responded successfully, but partial coverage was insufficient for this complete-coverage request.",
+                )
+                continue
+
             expires_at = now + timedelta(seconds=request.ttl_seconds)
             self.database.put_cache(
                 cache_key=request.request_key,
@@ -153,6 +173,15 @@ class SourceService:
         raise RuntimeError(
             "No source could satisfy the request. " + ("; ".join(failures) if failures else "No matching sources registered.")
         )
+
+    @staticmethod
+    def _is_partial(payload: object) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        if payload.get("partial") is True:
+            return True
+        raw = payload.get("raw")
+        return bool(isinstance(raw, dict) and raw.get("partial") is True)
 
     def _source_by_name(self, name: str) -> Source | None:
         target = name.casefold()
