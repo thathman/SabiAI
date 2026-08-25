@@ -21,6 +21,9 @@ class AdapterStatus:
     enabled: bool = True
     health: str = "unknown"
     notes: str | None = None
+    supported_sports: tuple[str, ...] = ()
+    supported_market_kinds: tuple[str, ...] = ()
+    supported_periods: tuple[str, ...] = ()
 
 
 class BookmakerAdapter(Protocol):
@@ -62,13 +65,17 @@ class AdapterRegistry:
 class CommandBookmakerAdapter:
     """Describe an existing browser/command integration without executing it here.
 
-    OpenClaw can invoke the command in its controlled runtime. This wrapper lets V2
-    advertise only the capabilities the legacy browser integration has actually proven.
+    The allow-lists below are deliberately narrow. A legacy builder may technically click
+    other text, but V2 only sends it sports/markets/periods that have been explicitly judged
+    safe enough for that implementation. Everything else stays in planning/browser mode.
     """
 
     bookmaker_slug: str
     command: str
     proven_capabilities: set[BookmakerCapability] = field(default_factory=set)
+    supported_sports: set[str] = field(default_factory=set)
+    supported_market_kinds: set[str] = field(default_factory=set)
+    supported_periods: set[str] = field(default_factory=lambda: {"full_event"})
     enabled: bool = True
     health: str = "unknown"
     notes: str | None = None
@@ -83,13 +90,17 @@ class CommandBookmakerAdapter:
             enabled=self.enabled,
             health=self.health,
             notes=self.notes,
+            supported_sports=tuple(sorted(self.supported_sports)),
+            supported_market_kinds=tuple(sorted(self.supported_market_kinds)),
+            supported_periods=tuple(sorted(self.supported_periods)),
         )
 
 
 def legacy_command_adapters() -> AdapterRegistry:
     """Register only capabilities demonstrated by existing V1 browser scripts.
 
-    Import/conversion/search capabilities are deliberately not claimed yet.
+    Import/conversion/search capabilities are deliberately not claimed yet. Market scope is
+    intentionally narrower than the long-term V2 Ticket Workshop.
     """
 
     registry = AdapterRegistry()
@@ -101,7 +112,12 @@ def legacy_command_adapters() -> AdapterRegistry:
                 BookmakerCapability.TICKET_BUILD,
                 BookmakerCapability.BOOKING_CODE_CREATE,
             },
-            notes="V1 Playwright builder; must be revalidated on the controlled OpenClaw runtime before V2 release.",
+            supported_market_kinds={"win_draw_lose", "winner"},
+            supported_periods={"full_event"},
+            notes=(
+                "V1 Playwright text-search builder. V2 currently permits only full-event match-winner/1X2 selections; "
+                "broader markets require a new verified adapter."
+            ),
         )
     )
     registry.register(
@@ -112,7 +128,13 @@ def legacy_command_adapters() -> AdapterRegistry:
                 BookmakerCapability.TICKET_BUILD,
                 BookmakerCapability.BOOKING_CODE_CREATE,
             },
-            notes="V1 Playwright builder; must be revalidated on the controlled OpenClaw runtime before V2 release.",
+            supported_sports={"football", "soccer"},
+            supported_market_kinds={"win_draw_lose"},
+            supported_periods={"full_event"},
+            notes=(
+                "V1 Playwright builder clicks Bet9ja's 1X2 market id. V2 restricts it to full-event football 1X2 until "
+                "new market-aware selectors are implemented and validated."
+            ),
         )
     )
     return registry
