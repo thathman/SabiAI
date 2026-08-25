@@ -68,18 +68,41 @@ class BookmakerExecutionPlanner:
 
         missing: list[str] = []
         legs: list[dict] = []
+        supported_sports = {value.casefold() for value in getattr(adapter, "supported_sports", set())}
+        supported_markets = {value.casefold() for value in getattr(adapter, "supported_market_kinds", set())}
+        supported_periods = {value.casefold() for value in getattr(adapter, "supported_periods", set())}
+
         for index, leg in enumerate(ticket.legs, start=1):
+            sport_key = (leg.sport or "").strip().casefold()
+            market_key = leg.market.kind.value.casefold()
+            period_key = (leg.market.period or "full_event").strip().casefold()
+
             if not leg.event_label:
                 missing.append(f"Leg {index}: event name")
             if not leg.selection.label:
                 missing.append(f"Leg {index}: selection")
             if not leg.sport:
                 missing.append(f"Leg {index}: sport")
+            if supported_sports and sport_key not in supported_sports:
+                missing.append(
+                    f"Leg {index}: {target.name} legacy builder is not proven for sport '{leg.sport}'."
+                )
+            if supported_markets and market_key not in supported_markets:
+                missing.append(
+                    f"Leg {index}: {target.name} legacy builder is not proven for market '{leg.market.label}' ({market_key})."
+                )
+            if supported_periods and period_key not in supported_periods:
+                missing.append(
+                    f"Leg {index}: {target.name} legacy builder is not proven for period '{leg.market.period}'."
+                )
+
             legs.append(
                 {
                     "match": leg.event_label or leg.event_id,
                     "pick": leg.selection.label,
                     "market": leg.market.label,
+                    "market_kind": leg.market.kind.value,
+                    "period": leg.market.period,
                     "sport": leg.sport,
                     "decimal_odds": str(leg.odds),
                     "target_market_ref": leg.market.metadata.get("target_market_ref"),
@@ -90,7 +113,10 @@ class BookmakerExecutionPlanner:
             return BuildExecutionPlan(
                 target.slug,
                 False,
-                "The ticket is understood but is missing context required for safe bookmaker rebuilding.",
+                (
+                    "The ticket is understood, but the registered legacy builder is missing context or is not proven "
+                    "for every requested sport/market/period. Use bookmaker search/browser planning instead of executing it."
+                ),
                 command=getattr(adapter, "command", None),
                 legs=tuple(legs),
                 expects_booking_code=BookmakerCapability.BOOKING_CODE_CREATE in adapter.capabilities(),
@@ -100,7 +126,7 @@ class BookmakerExecutionPlanner:
         return BuildExecutionPlan(
             target.slug,
             True,
-            "Ticket has the event, sport and explicit selection context required by the registered builder.",
+            "Every leg is inside the explicitly proven scope of the registered builder.",
             command=getattr(adapter, "command", None),
             legs=tuple(legs),
             expects_booking_code=BookmakerCapability.BOOKING_CODE_CREATE in adapter.capabilities(),
@@ -137,7 +163,6 @@ class BookmakerExecutionPlanner:
                 "Use the registered bookmaker importer, then normalize the returned legs.",
             )
 
-        # Until a proven direct importer exists, OpenClaw/browser is the honest fallback.
         return BookingCodeImportPlan(
             target.slug,
             code,
