@@ -7,7 +7,12 @@ from fastapi import APIRouter, HTTPException, Query
 from sabiai.blog import BlogService
 from sabiai.config import Settings
 from sabiai.sources import SourceHealthService
-from sabiai.storage import HistoryService, PerformanceAnalytics, SabiDatabase
+from sabiai.storage import (
+    DashboardReadService,
+    HistoryService,
+    PerformanceAnalytics,
+    SabiDatabase,
+)
 from sabiai.system import SystemReadinessService
 
 
@@ -34,15 +39,21 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
     def analytics() -> PerformanceAnalytics:
         return PerformanceAnalytics(db())
 
+    def reads() -> DashboardReadService:
+        return DashboardReadService(db())
+
     @router.get("/overview")
     def overview():
         database = db()
         readiness = SystemReadinessService(database).assess()
+        read_service = DashboardReadService(database)
         return {
             "product": "Sabi Boy",
             "summary": HistoryService(database).summary(),
             "streaks": PerformanceAnalytics(database).streaks(),
             "profit_loss": PerformanceAnalytics(database).profit_loss(),
+            "recent_picks": read_service.picks(limit=8),
+            "recent_tickets": read_service.tickets(limit=5),
             "readiness": {
                 "state": readiness.label,
                 "database_ok": readiness.database_ok,
@@ -57,6 +68,51 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
                     for issue in readiness.issues
                 ],
             },
+        }
+
+    @router.get("/picks")
+    def picks(
+        limit: int = Query(100, ge=1, le=1000),
+        outcome: str | None = None,
+        sport: str | None = None,
+        strategy: str | None = None,
+    ):
+        return {
+            "rows": reads().picks(
+                limit=limit,
+                outcome=outcome,
+                sport=sport,
+                strategy=strategy,
+            )
+        }
+
+    @router.get("/tickets")
+    def tickets(
+        limit: int = Query(100, ge=1, le=1000),
+        status: str | None = None,
+        source_type: str | None = None,
+    ):
+        return {
+            "rows": reads().tickets(
+                limit=limit,
+                status=status,
+                source_type=source_type,
+            )
+        }
+
+    @router.get("/tickets/{ticket_id}")
+    def ticket_detail(ticket_id: str):
+        row = reads().ticket(ticket_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Ticket not found.")
+        return row
+
+    @router.get("/filters")
+    def filters():
+        service = reads()
+        return {
+            "sports": service.sports(),
+            "strategies": service.strategies(),
         }
 
     @router.get("/performance/sports")
