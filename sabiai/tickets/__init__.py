@@ -1,8 +1,14 @@
+from .candidates import (
+    TicketCandidateSummary,
+    VariantChange,
+    VerifiedReplacement,
+    VerifiedVariantService,
+)
 from .normalize import TicketIssue, TicketNormalization, TicketNormalizer
 from .research import TicketLegResearchPlan, TicketResearchPlan, TicketResearchPlanner
 from .restored_slip import RestoredSlipNormalization, RestoredSlipService
 from .text_import import ExtractedTextLeg, TextTicketExtraction, TicketTextImporter
-from .variants import TicketVariantPlan, TicketVariantService, VariantSuggestion
+from .variants import MarketChangeSuggestion, RankedLeg, TicketVariantPlanner
 from .verification import (
     RebuiltLegVerification,
     RebuiltTicketVerification,
@@ -12,12 +18,15 @@ from .workshop import TicketWorkshop, TicketWorkshopError
 
 __all__ = [
     "ExtractedTextLeg",
+    "MarketChangeSuggestion",
+    "RankedLeg",
     "RebuiltLegVerification",
     "RebuiltTicketVerification",
     "RebuiltTicketVerificationService",
     "RestoredSlipNormalization",
     "RestoredSlipService",
     "TextTicketExtraction",
+    "TicketCandidateSummary",
     "TicketIssue",
     "TicketLegResearchPlan",
     "TicketNormalization",
@@ -25,9 +34,10 @@ __all__ = [
     "TicketResearchPlan",
     "TicketResearchPlanner",
     "TicketTextImporter",
-    "TicketVariantPlan",
-    "TicketVariantService",
+    "TicketVariantPlanner",
     "TicketWorkshop",
     "TicketWorkshopError",
-    "VariantSuggestion",
+    "VariantChange",
+    "VerifiedReplacement",
+    "VerifiedVariantService",
 ]
