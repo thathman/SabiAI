@@ -5,6 +5,7 @@ from .adapters import (
     CommandBookmakerAdapter,
     legacy_command_adapters,
 )
+from .browser_profiles import BrowserPlaybook, BookmakerBrowserProfiles
 from .conversion import ConversionLeg, ConversionPlan, TargetOffer, TicketConversionService
 from .discovery import BookmakerDiscoveryPlanner, BookmakerSearchPlan, BookmakerSearchTask
 from .execution import BookingCodeImportPlan, BookmakerExecutionPlanner, BuildExecutionPlan
@@ -14,6 +15,7 @@ from .runner import BookmakerCommandRunner, BuildExecutionResult
 __all__ = [
     "AdapterRegistry",
     "AdapterStatus",
+    "BookmakerBrowserProfiles",
     "BookmakerCapability",
     "BookmakerCommandRunner",
     "BookmakerDiscoveryPlanner",
@@ -22,6 +24,7 @@ __all__ = [
     "BookmakerSearchPlan",
     "BookmakerSearchTask",
     "BookingCodeImportPlan",
+    "BrowserPlaybook",
     "BuildExecutionPlan",
     "BuildExecutionResult",
     "CommandBookmakerAdapter",
