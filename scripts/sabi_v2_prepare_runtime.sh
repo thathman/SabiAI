@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VENV="${ROOT}/.venv"
+CONFIG_DIR="${HOME}/.config/sabi-boy"
+ENV_FILE="${CONFIG_DIR}/sabi-boy.env"
+UNIT_DIR="${HOME}/.config/systemd/user"
+INSTALL_BROWSER=1
+
+for arg in "$@"; do
+  case "$arg" in
+    --no-browser) INSTALL_BROWSER=0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
+
+cd "$ROOT"
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+if [[ "$branch" != "v2" ]]; then
+  echo "Refusing runtime preparation from branch '$branch'. Check out v2 first." >&2
+  exit 3
+fi
+
+python3 -m venv "$VENV"
+"$VENV/bin/python" -m pip install --upgrade pip wheel
+"$VENV/bin/python" -m pip install -r "$ROOT/requirements-v2.txt"
+
+if [[ "$INSTALL_BROWSER" -eq 1 ]]; then
+  "$VENV/bin/python" -m playwright install chromium
+fi
+
+mkdir -p "$CONFIG_DIR" "$UNIT_DIR" "$ROOT/data"
+if [[ ! -f "$ENV_FILE" ]]; then
+  sed \
+    -e "s#/home/hendrix#${HOME}#g" \
+    -e "s#${HOME}/.openclaw/workspace#${ROOT}#g" \
+    "$ROOT/config/sabi-boy.env.example" > "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "Created $ENV_FILE"
+else
+  echo "Keeping existing $ENV_FILE"
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+"$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" --init-db --request '{"tool":"system.health"}' >/dev/null
+printf '%s\n' '{"tool":"source.catalog","args":{}}' | "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" >/dev/null
+
+cp "$ROOT/systemd/sabi-boy-dashboard.service" "$UNIT_DIR/sabi-boy-dashboard.service"
+systemctl --user daemon-reload
+
+cat <<EOF
+Sabi Boy V2 runtime prepared.
+
+Repository:  $ROOT
+Branch:      $branch
+Virtualenv:  $VENV
+Environment: $ENV_FILE
+V2 service:  sabi-boy-dashboard.service (installed, not started)
+
+No V1 service was stopped and no V1 data was migrated by this preparation step.
+EOF
