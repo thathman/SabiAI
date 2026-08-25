@@ -29,7 +29,7 @@ def test_thesportsdb_fixtures_uses_documented_free_endpoint_and_sport_mapping():
     assert calls[0][0].endswith("/123/eventsday.php")
     assert calls[0][1] == {"d": "2026-08-25", "s": "Soccer"}
     assert result["raw"]["events"][0]["strEvent"] == "Arsenal vs Chelsea"
-    assert "result limit" in result["raw"]["coverage_note"]
+    assert "result limits" in result["raw"]["coverage_note"]
 
 
 def test_thesportsdb_event_search_returns_plain_finding():
@@ -54,6 +54,61 @@ def test_thesportsdb_event_search_returns_plain_finding():
     )
     assert result["subject"] == "Arsenal vs Chelsea"
     assert "Premier League" in result["summary"]
+
+
+def test_thesportsdb_team_search_can_resolve_team_id_for_followup_queries():
+    calls = []
+
+    def fake_get(url, *, params=None, headers=None):
+        calls.append((url, params))
+        return {"teams": [{"idTeam": "133604", "strTeam": "Arsenal"}]}
+
+    result = TheSportsDBAdapter(http_get=fake_get).fetch(
+        SourceRequest(
+            request_key="team:test",
+            capability="team_search",
+            sport="football",
+            metadata={"team": "Arsenal"},
+        )
+    )
+    assert calls[0][0].endswith("/123/searchteams.php")
+    assert calls[0][1] == {"t": "Arsenal"}
+    assert result["raw"]["teams"][0]["idTeam"] == "133604"
+
+
+def test_thesportsdb_form_marks_free_previous_schedule_as_partial():
+    def fake_get(url, *, params=None, headers=None):
+        assert url.endswith("/123/eventslast.php")
+        assert params == {"id": "133604"}
+        return {"results": [{"strEvent": "Arsenal vs Leeds", "intHomeScore": "2", "intAwayScore": "0"}]}
+
+    result = TheSportsDBAdapter(http_get=fake_get).fetch(
+        SourceRequest(
+            request_key="form:test",
+            capability="form",
+            sport="football",
+            metadata={"team_id": "133604"},
+        )
+    )
+    assert result["raw"]["partial"] is True
+    assert "must not be treated as complete recent form" in result["summary"]
+
+
+def test_thesportsdb_lineup_does_not_claim_complete_injury_coverage():
+    def fake_get(url, *, params=None, headers=None):
+        assert url.endswith("/123/lookuplineup.php")
+        return {"lineup": [{"strPlayer": "Player A", "strPosition": "Forward"}]}
+
+    result = TheSportsDBAdapter(http_get=fake_get).fetch(
+        SourceRequest(
+            request_key="lineup:test",
+            capability="availability",
+            sport="football",
+            metadata={"event_id": "1032723"},
+        )
+    )
+    assert result["raw"]["lineup"][0]["strPlayer"] == "Player A"
+    assert "not a complete injury/availability feed" in result["summary"]
 
 
 def test_football_data_adapter_sends_token_and_is_lower_priority_than_unmetered_source():
