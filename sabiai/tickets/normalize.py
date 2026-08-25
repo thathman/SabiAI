@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Iterable
 
 from sabiai.bookmakers import BookmakerRegistry, default_bookmakers
-from sabiai.domain.models import Market, Selection, Ticket, TicketLeg
+from sabiai.domain.models import Market, Selection, Ticket, TicketLeg, decimal_odds
 from sabiai.markets import MarketInterpreter
 
 
@@ -75,6 +75,7 @@ class TicketNormalizer:
         for index, raw in enumerate(legs, start=1):
             home = self._text(raw.get("home"))
             away = self._text(raw.get("away"))
+            sport = self._text(raw.get("sport"))
             event_label = self._text(raw.get("event") or raw.get("match"))
             if not event_label and home and away:
                 event_label = f"{home} vs {away}"
@@ -112,16 +113,14 @@ class TicketNormalizer:
                 )
 
             try:
-                odds = Decimal(str(raw["odds"]))
-                if odds <= Decimal("1"):
-                    raise ValueError("odds must be greater than 1.00")
+                odds = decimal_odds(raw["odds"])
             except Exception:
                 issues.append(
                     TicketIssue(
                         leg_no=index,
                         level="error",
                         event=event_label,
-                        message="Decimal odds must be a number greater than 1.00.",
+                        message="Decimal odds are missing or invalid.",
                     )
                 )
                 continue
@@ -141,6 +140,7 @@ class TicketNormalizer:
             leg = TicketLeg(
                 event_id=str(raw.get("event_id") or f"draft_event_{index}"),
                 event_label=event_label,
+                sport=sport,
                 market=market,
                 selection=selection,
                 odds=odds,
