@@ -2,6 +2,7 @@ from pathlib import Path
 
 from sabiai.config import Settings
 from sabiai.sources import (
+    EspnPublicAdapter,
     FootballDataAdapter,
     SourceRequest,
     TheSportsDBAdapter,
@@ -111,6 +112,85 @@ def test_thesportsdb_lineup_does_not_claim_complete_injury_coverage():
     assert "not a complete injury/availability feed" in result["summary"]
 
 
+def test_espn_team_search_returns_provider_team_id():
+    calls = []
+
+    def fake_get(url, *, params=None, headers=None):
+        calls.append((url, params))
+        return {
+            "sports": [
+                {
+                    "leagues": [
+                        {
+                            "teams": [
+                                {"team": {"id": "359", "displayName": "Arsenal"}},
+                                {"team": {"id": "363", "displayName": "Chelsea"}},
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+    result = EspnPublicAdapter(http_get=fake_get).fetch(
+        SourceRequest(
+            request_key="espn-team:test",
+            capability="team_search",
+            sport="football",
+            metadata={"team": "Arsenal", "league": "eng.1"},
+        )
+    )
+    assert calls[0][0].endswith("/soccer/eng.1/teams")
+    assert result["raw"]["teams"][0]["id"] == "359"
+
+
+def test_espn_form_returns_recent_completed_events_not_future_games():
+    def fake_get(url, *, params=None, headers=None):
+        assert url.endswith("/soccer/eng.1/teams/359/schedule")
+        return {
+            "events": [
+                {
+                    "id": "future",
+                    "date": "2026-08-30T15:00Z",
+                    "status": {"type": {"completed": False}},
+                },
+                {
+                    "id": "recent",
+                    "date": "2026-08-20T15:00Z",
+                    "status": {"type": {"completed": True}},
+                },
+            ]
+        }
+
+    result = EspnPublicAdapter(http_get=fake_get).fetch(
+        SourceRequest(
+            request_key="espn-form:test",
+            capability="form",
+            sport="football",
+            metadata={"team_id": "359", "league": "eng.1", "limit": 10},
+        )
+    )
+    assert [event["id"] for event in result["raw"]["events"]] == ["recent"]
+    assert result["raw"]["partial"] is False
+
+
+def test_espn_injuries_keeps_coverage_warning():
+    def fake_get(url, *, params=None, headers=None):
+        assert url.endswith("/basketball/nba/teams/13/injuries")
+        return {"injuries": [{"athlete": {"displayName": "Player A"}, "status": "Out"}]}
+
+    result = EspnPublicAdapter(http_get=fake_get).fetch(
+        SourceRequest(
+            request_key="espn-injury:test",
+            capability="injuries",
+            sport="basketball",
+            metadata={"team_id": "13"},
+        )
+    )
+    assert len(result["raw"]["injuries"]) == 1
+    assert "official team/league confirmation" in result["raw"]["coverage_note"]
+
+
 def test_football_data_adapter_sends_token_and_is_lower_priority_than_unmetered_source():
     calls = []
 
@@ -147,7 +227,9 @@ def test_default_source_bundle_requires_no_private_token(tmp_path: Path):
     bundle = default_source_bundle(settings)
     names = [source.name for source in bundle.registry.all()]
     assert "TheSportsDB" in names
+    assert "ESPN Public Data" in names
     assert "football-data.org" not in names
     assert "OpenClaw Browser" in names
     assert "OpenClaw Search" in names
     assert "TheSportsDB" in bundle.fetchers
+    assert "ESPN Public Data" in bundle.fetchers
