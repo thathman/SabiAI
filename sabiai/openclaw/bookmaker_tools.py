@@ -4,9 +4,10 @@ from dataclasses import asdict
 
 from sabiai.bookmakers import TargetOffer
 from sabiai.system import SystemReadinessService
+from sabiai.tickets import RestoredSlipService
 
-from .helpers import ticket_from_args
-from .serializers import conversion_to_dict, json_value
+from .helpers import bookmaker_slug, ticket_from_args
+from .serializers import conversion_to_dict, draft_to_dict, json_value, ticket_to_dict
 
 
 class BookmakerTools:
@@ -18,6 +19,7 @@ class BookmakerTools:
             "bookmaker.resolve": self.resolve,
             "bookmaker.capabilities": self.capabilities,
             "bookmaker.booking_code.import_plan": self.booking_code_import_plan,
+            "bookmaker.booking_code.restore": self.booking_code_restore,
             "bookmaker.search.plan": self.search_plan,
             "bookmaker.convert.plan": self.convert_plan,
             "bookmaker.build.plan": self.build_plan,
@@ -61,6 +63,46 @@ class BookmakerTools:
             booking_code=str(args.get("booking_code", "")),
         )
         return json_value(plan)
+
+    def booking_code_restore(self, args: dict) -> dict:
+        bookmaker = str(args.get("bookmaker") or "").strip()
+        booking_code = str(args.get("booking_code") or "").strip()
+        payload = args.get("payload")
+        if not bookmaker:
+            raise ValueError("bookmaker.booking_code.restore needs bookmaker.")
+        if not isinstance(payload, dict):
+            raise ValueError("bookmaker.booking_code.restore needs the structured browser-restored payload.")
+
+        result = RestoredSlipService(self.app.ticket_normalizer).normalize(
+            bookmaker=bookmaker,
+            booking_code=booking_code,
+            payload=payload,
+        )
+        issues = [asdict(issue) for issue in result.issues]
+        draft = None
+        if result.usable and bool(args.get("save_draft", True)):
+            draft_obj = self.app._draft_store().create(
+                ticket_to_dict(result.ticket),
+                source_type="booking_code",
+                source_reference=f"{bookmaker}:{booking_code}",
+                source_bookmaker_slug=bookmaker_slug(self.app, bookmaker),
+                status="restored",
+                issues=issues,
+            )
+            draft = draft_to_dict(draft_obj)
+
+        return {
+            "usable": result.usable,
+            "bookmaker": result.bookmaker,
+            "booking_code": result.booking_code,
+            "ticket": ticket_to_dict(result.ticket),
+            "issues": issues,
+            "reported_leg_count": result.reported_leg_count,
+            "reported_combined_odds": str(result.reported_combined_odds) if result.reported_combined_odds is not None else None,
+            "computed_combined_odds": str(result.computed_combined_odds),
+            "combined_odds_match": result.combined_odds_match,
+            "draft": draft,
+        }
 
     def search_plan(self, args: dict) -> dict:
         ticket = ticket_from_args(self.app, args)
