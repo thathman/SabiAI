@@ -1,62 +1,70 @@
-# Betting Record Skill
+# Betting Record — Sabi Boy V2 Compatibility Skill
 
-## Overview
-Tracks Hendrix's sports betting picks, records stakes, outcomes, and calculates profit/loss over time.
+This filename is retained for older OpenClaw references. V2 records live in the canonical Sabi Boy database and services, not a separate JSON expense-tracker file.
 
-## How It Works
-1. Every morning at 8am Lagos → I send value bets (already set up)
-2. Hendrix picks his choices and places the bet
-3. Next day (or whenever) → Hendrix shares his picks and results
-4. I record them here
+## Purpose
 
-## When Hendrix Shares Picks/Results
-Use the `add_bet` action.
+Use this skill when the user reports:
 
-Format to expect from Hendrix:
-```
-Bet: [sport] | [match] | [pick] | odds [decimal] | stake [NGN amount]
-Result: W or L
-```
+- a pick/ticket they actually used;
+- stake or payout information;
+- a Win / Lose / Draw / Void result;
+- a correction to a previous result;
+- a bankroll deposit/withdrawal/adjustment;
+- a request for our history, streaks or performance.
 
-Example:
-```
-Bet: Tennis | Sabalenka vs Shnaider | Sabalenka to win | odds 1.15 | stake 5000
-Result: W
-```
+## Rules
 
-Or simpler — just tell me the key info and I'll fill in the rest:
-```
-Placed on Sabalenka at 1.15, 5k. Won/Won
-```
+- decimal odds only;
+- preserve the explicit event and selection;
+- preserve bookmaker and strategy where known;
+- do not duplicate records when the same result is reported twice;
+- settlement corrections require a reason and audit trail;
+- bankroll changes go through the V2 ledger;
+- ticket outcomes derive from leg outcomes;
+- the dashboard only reads these records; it does not write them.
 
-## Commands
+## V2 tools
 
-### `add_bet [sport] [pick] [odds] [stake] [W/L]`
-Records a bet result.
+Query `system.tools` for current capability truth.
 
-### `bet record` or `betting record`
-Shows current betting stats — total picks, win rate, profit/loss, ROI.
+Relevant namespaces include:
 
-### `bet stats`
-Detailed breakdown by sport and by bookmaker.
+- `record.*`
+- `history.*`
+- `settlement.*`
+- `ticket.draft.*`
 
-## Data File
-`~/.openclaw/workspace/expense-tracker/data/betting_record.json`
+Use the unified settlement service rather than directly editing outcome fields.
 
-## Metrics Tracked
-- Total picks sent vs bets placed
-- Win/Loss record
-- Total stake (NGN)
-- Total payout (NGN)
-- Net profit/loss
-- ROI (Return on Investment)
-- Breakdown by sport
-- Breakdown by bookmaker (if provided)
+## Outcome vocabulary
 
-## ROI Calculation
-ROI = (Total Payout - Total Stake) / Total Stake × 100
+Use:
 
-Positive ROI = profit. Negative ROI = loss.
+- Won
+- Lost
+- Draw
+- Void
+- Pending
 
-## Bookmaker
-Hendrix uses **1xBet** as primary bookmaker.
+Translate old `win/loss` data into the canonical V2 values internally while keeping user-facing wording simple.
+
+## History
+
+Our history can be viewed by:
+
+- overall record;
+- sport;
+- competition;
+- market;
+- bookmaker;
+- strategy;
+- decimal-odds range;
+- ticket size;
+- combined-odds range;
+- streak;
+- ticket source;
+- ticket killers;
+- bankroll and betting P/L.
+
+Do not present generic sports statistics from this skill. These are **our records**.
