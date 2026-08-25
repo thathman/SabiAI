@@ -4,19 +4,21 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sabiai.odds import PriceComparisonService, PriceQuote, SettlementRules
+from sabiai.odds import PriceComparisonService, PriceQuote, SettlementRuleLibrary, SettlementRules
 
-from .serializers import arbitrage_to_dict
+from .serializers import arbitrage_to_dict, json_value
 
 
 class MarketTools:
     def __init__(self, app):
         self.app = app
         self.comparison = PriceComparisonService()
+        self.settlement_rules = SettlementRuleLibrary()
 
     def handlers(self) -> dict:
         return {
             "market.interpret": self.interpret,
+            "market.settlement.profile": self.settlement_profile,
             "market.compare": self.compare,
             "market.arbitrage": self.arbitrage,
         }
@@ -30,6 +32,31 @@ class MarketTools:
         data = asdict(parsed)
         data["kind"] = parsed.kind.value
         data["line"] = str(parsed.line) if parsed.line is not None else None
+        return data
+
+    def settlement_profile(self, args: dict) -> dict:
+        sport = str(args.get("sport") or "").strip()
+        market = str(args.get("market") or args.get("market_kind") or "").strip()
+        if not sport or not market:
+            raise ValueError("market.settlement.profile needs sport and market/market_kind.")
+        parsed = self.app.market_interpreter.interpret(
+            market,
+            home=args.get("home"),
+            away=args.get("away"),
+        )
+        market_kind = parsed.kind if parsed.understood else market
+        profile = self.settlement_rules.profile(
+            sport,
+            market_kind,
+            period=str(args.get("period") or parsed.period or "full_event"),
+            line_key=(str(args.get("line_key")) if args.get("line_key") is not None else (
+                str(parsed.line) if parsed.line is not None else None
+            )),
+        )
+        data = json_value(profile)
+        data["rules"]["key"] = list(profile.rules.key)
+        if profile.verification_required:
+            data["next_step"] = "Verify the listed settlement topics against each bookmaker's current rules before treating cross-book prices as equivalent."
         return data
 
     def compare(self, args: dict) -> dict:
@@ -104,6 +131,9 @@ class MarketTools:
                         includes_overtime=rule_data.get("includes_overtime"),
                         void_rule=str(rule_data.get("void_rule", "standard")),
                         line_key=rule_data.get("line_key"),
+                        retirement_rule=rule_data.get("retirement_rule"),
+                        dead_heat_rule=rule_data.get("dead_heat_rule"),
+                        format_rule=rule_data.get("format_rule"),
                     ),
                 )
             )
