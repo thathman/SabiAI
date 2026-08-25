@@ -113,13 +113,15 @@ class TicketNormalizer:
 
             try:
                 odds = Decimal(str(raw["odds"]))
+                if odds <= Decimal("1"):
+                    raise ValueError("odds must be greater than 1.00")
             except Exception:
                 issues.append(
                     TicketIssue(
                         leg_no=index,
                         level="error",
                         event=event_label,
-                        message="Decimal odds are missing or invalid.",
+                        message="Decimal odds must be a number greater than 1.00.",
                     )
                 )
                 continue
