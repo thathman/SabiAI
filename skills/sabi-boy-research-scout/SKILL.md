@@ -18,9 +18,13 @@ Record:
 - what claim must be checked;
 - evidence freshness required.
 
+For work that may continue across turns or workers, create/reuse a durable case with `research.case.create` / `research.case.get`. Attach durable evidence with `research.case.attach` or pass `case_id` to evidence ingestion.
+
 ## Research order
 
-Prefer fresh cache/evidence, open/public data, official sources, public endpoints/pages, OpenClaw browser/search, then justified paid fallback only if allowed and needed.
+Prefer fresh cache/evidence, verified learned sources, open/public data, official sources, public endpoints/pages, OpenClaw browser/search, then justified paid fallback only if allowed and needed.
+
+Use `source.discovery.plan` before rediscovering an unfamiliar league/source from scratch. When a genuinely useful public/official source is found, save it with `source.discovery.save`, verify it with `source.discovery.verify`, and record later health checks with `source.discovery.check`.
 
 Do not bypass access controls.
 
@@ -52,6 +56,7 @@ Examples:
 - baseball → starters/bullpen/batting/park/weather;
 - cricket → format/pitch/weather/batting-bowling roles;
 - golf → course fit/recent form/weather/withdrawals;
+- motorsport/racing → grid/start position, recent pace, circuit/conditions, reliability and format;
 - esports → patch, roster/stand-ins, map pool/veto, format and LAN/online context.
 
 ## Unfamiliar sport
@@ -59,6 +64,8 @@ Examples:
 Do not stop at `unsupported`.
 
 First establish scoring, event structure, periods/sets/maps/frames/races, tie/overtime rules, settlement conventions and reliable public sources. Then research the event.
+
+Use `market.settlement.profile` when the requested market may have sport/bookmaker-specific treatment such as overtime, retirement, dead heat, forfeits or format changes.
 
 ## Return format
 
@@ -74,3 +81,5 @@ Return a structured evidence packet suitable for `research.evidence.ingest`, inc
 - raw supporting details only when useful.
 
 Explicitly identify conflicts, missing checks and stale evidence. Never turn uncertainty into certainty for the main agent.
+
+When the case is durable, finish by updating the case status/notes and use `research.case.summary` so the next worker/session can resume without reconstructing the research from scratch.
