@@ -4,6 +4,7 @@ from dataclasses import asdict
 from decimal import Decimal
 
 from sabiai.domain.models import Market, Selection
+from sabiai.tickets import TicketVariantPlanner
 
 from .helpers import bookmaker_slug, find_leg, target_leg_ids, ticket_from_args
 from .serializers import draft_to_dict, ticket_to_dict
@@ -12,6 +13,7 @@ from .serializers import draft_to_dict, ticket_to_dict
 class TicketTools:
     def __init__(self, app):
         self.app = app
+        self.variant_planner = TicketVariantPlanner(app.ticket_workshop)
 
     def handlers(self) -> dict:
         return {
@@ -27,6 +29,8 @@ class TicketTools:
             "ticket.trim": self.trim,
             "ticket.remove": self.remove,
             "ticket.keep": self.keep,
+            "ticket.strongest": self.strongest,
+            "ticket.lower_risk.plan": self.lower_risk_plan,
             "ticket.change_market": self.change_market,
             "ticket.replace": self.replace,
         }
@@ -177,6 +181,29 @@ class TicketTools:
             "ticket": ticket_to_dict(child),
         }
 
+    def strongest(self, args: dict) -> dict:
+        ticket = ticket_from_args(self.app, args)
+        scores = self._strength_scores(args.get("scores"))
+        child, ranking = self.variant_planner.strongest(
+            ticket,
+            scores,
+            count=int(args["count"]),
+        )
+        return {
+            "original_odds": str(ticket.combined_odds),
+            "ticket": ticket_to_dict(child),
+            "ranking": [asdict(item) for item in ranking],
+        }
+
+    def lower_risk_plan(self, args: dict) -> dict:
+        ticket = ticket_from_args(self.app, args)
+        suggestions = self.variant_planner.lower_risk_plan(ticket)
+        return {
+            "original_odds": str(ticket.combined_odds),
+            "suggestions": [asdict(item) for item in suggestions],
+            "next_step": "Research the suggested changes and verify the exact markets/current decimal odds at the target bookmaker before applying them.",
+        }
+
     def change_market(self, args: dict) -> dict:
         ticket = ticket_from_args(self.app, args)
         target = find_leg(ticket, args.get("leg_id"), args.get("event"))
@@ -241,3 +268,32 @@ class TicketTools:
             "ticket": ticket_to_dict(child),
             "issues": [asdict(issue) for issue in normalized.issues],
         }
+
+    @staticmethod
+    def _strength_scores(raw) -> dict[str, tuple[float, str | None]]:
+        if raw is None:
+            raise ValueError("ticket.strongest needs research scores for every leg.")
+        result: dict[str, tuple[float, str | None]] = {}
+        if isinstance(raw, dict):
+            for key, value in raw.items():
+                if isinstance(value, dict):
+                    score = float(value["score"])
+                    reason = value.get("reason")
+                else:
+                    score = float(value)
+                    reason = None
+                result[str(key)] = (score, str(reason) if reason else None)
+                result[str(key).strip().casefold()] = (score, str(reason) if reason else None)
+            return result
+        if isinstance(raw, list):
+            for row in raw:
+                if not isinstance(row, dict):
+                    raise ValueError("Each strength score must be an object.")
+                key = row.get("leg_id") or row.get("event")
+                if not key:
+                    raise ValueError("Each strength score needs leg_id or event.")
+                value = (float(row["score"]), str(row["reason"]) if row.get("reason") else None)
+                result[str(key)] = value
+                result[str(key).strip().casefold()] = value
+            return result
+        raise ValueError("scores must be an object or list.")
