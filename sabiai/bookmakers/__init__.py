@@ -5,7 +5,11 @@ from .adapters import (
     CommandBookmakerAdapter,
     legacy_command_adapters,
 )
-from .browser_profiles import BrowserPlaybook, BookmakerBrowserProfiles
+from .browser_profiles import (
+    BrowserPlaybook,
+    BookmakerBrowserProfiles,
+    MarketSearchPlaybook,
+)
 from .conversion import ConversionLeg, ConversionPlan, TargetOffer, TicketConversionService
 from .discovery import BookmakerDiscoveryPlanner, BookmakerSearchPlan, BookmakerSearchTask
 from .execution import BookingCodeImportPlan, BookmakerExecutionPlanner, BuildExecutionPlan
@@ -30,6 +34,7 @@ __all__ = [
     "CommandBookmakerAdapter",
     "ConversionLeg",
     "ConversionPlan",
+    "MarketSearchPlaybook",
     "TargetOffer",
     "TicketConversionService",
     "default_bookmakers",
