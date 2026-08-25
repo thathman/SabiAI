@@ -10,7 +10,8 @@ class BookmakerRegistry:
     """Canonical bookmaker names and aliases.
 
     Capabilities are deliberately conservative: an adapter must prove a capability before it
-    is enabled here.
+    is enabled here. Canonical bookmakers use stable IDs so saved history remains consistent
+    across processes and deployments.
     """
 
     _items: dict[str, Bookmaker] = field(default_factory=dict)
@@ -35,8 +36,35 @@ class BookmakerRegistry:
 
 def default_bookmakers() -> BookmakerRegistry:
     registry = BookmakerRegistry()
-    registry.register(Bookmaker(name="SportyBet", slug="sportybet", aliases={"Sporty Bet"}))
-    registry.register(Bookmaker(name="Bet9ja", slug="bet9ja", aliases={"Bet 9ja"}))
-    registry.register(Bookmaker(name="1xBet", slug="1xbet", aliases={"1 x bet", "1X Bet"}))
-    registry.register(Bookmaker(name="Stake", slug="stake"))
+    registry.register(
+        Bookmaker(
+            id="bookmaker_sportybet",
+            name="SportyBet",
+            slug="sportybet",
+            aliases={"Sporty Bet"},
+        )
+    )
+    registry.register(
+        Bookmaker(
+            id="bookmaker_bet9ja",
+            name="Bet9ja",
+            slug="bet9ja",
+            aliases={"Bet 9ja"},
+        )
+    )
+    registry.register(
+        Bookmaker(
+            id="bookmaker_1xbet",
+            name="1xBet",
+            slug="1xbet",
+            aliases={"1 x bet", "1X Bet"},
+        )
+    )
+    registry.register(
+        Bookmaker(
+            id="bookmaker_stake",
+            name="Stake",
+            slug="stake",
+        )
+    )
     return registry
