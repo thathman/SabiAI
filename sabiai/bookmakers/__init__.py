@@ -15,6 +15,7 @@ from .discovery import BookmakerDiscoveryPlanner, BookmakerSearchPlan, Bookmaker
 from .execution import BookingCodeImportPlan, BookmakerExecutionPlanner, BuildExecutionPlan
 from .registry import BookmakerRegistry, default_bookmakers
 from .runner import BookmakerCommandRunner, BuildExecutionResult
+from .search_results import BookmakerOfferService, OfferBatch, OfferIssue, VerifiedOffer
 
 __all__ = [
     "AdapterRegistry",
@@ -24,6 +25,7 @@ __all__ = [
     "BookmakerCommandRunner",
     "BookmakerDiscoveryPlanner",
     "BookmakerExecutionPlanner",
+    "BookmakerOfferService",
     "BookmakerRegistry",
     "BookmakerSearchPlan",
     "BookmakerSearchTask",
@@ -35,8 +37,11 @@ __all__ = [
     "ConversionLeg",
     "ConversionPlan",
     "MarketSearchPlaybook",
+    "OfferBatch",
+    "OfferIssue",
     "TargetOffer",
     "TicketConversionService",
+    "VerifiedOffer",
     "default_bookmakers",
     "legacy_command_adapters",
 ]
