@@ -96,3 +96,40 @@ def test_unverified_stake_code_creation_does_not_claim_ready(tmp_path: Path):
     assert result["ok"] is True
     assert result["data"]["ready"] is False
     assert any("verified rich browser build profile" in reason for reason in result["data"]["reasons_not_ready"])
+
+
+def test_browser_build_infers_target_from_converted_draft_and_blocks_mismatch(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    saved = gateway.dispatch(
+        "ticket.draft.save",
+        {
+            "source_type": "conversion",
+            "target_bookmaker": "SportyBet",
+            "status": "converted",
+            "legs": [
+                {
+                    "sport": "Football",
+                    "event": "Arsenal vs Chelsea",
+                    "market": "Over 2.5 goals",
+                    "odds": "1.82",
+                }
+            ],
+        },
+    )
+    assert saved["ok"] is True
+    draft_id = saved["data"]["id"]
+
+    inferred = gateway.dispatch(
+        "bookmaker.browser_build.plan",
+        {"draft_id": draft_id},
+    )
+    assert inferred["ok"] is True
+    assert inferred["data"]["slug"] == "sportybet"
+    assert inferred["data"]["expected_draft_id"] == draft_id
+
+    mismatch = gateway.dispatch(
+        "bookmaker.browser_build.plan",
+        {"draft_id": draft_id, "target_bookmaker": "Bet9ja"},
+    )
+    assert mismatch["ok"] is False
+    assert "refusing to build it on Bet9ja" in mismatch["error"]
