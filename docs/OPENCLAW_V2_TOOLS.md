@@ -1,10 +1,12 @@
-# SabiAI V2 — OpenClaw Tool Contract
+# Sabi Boy V2 — OpenClaw Tool Contract
 
-This document defines the boundary between OpenClaw and the SabiAI V2 domain code.
+This document defines the boundary between OpenClaw and the Sabi Boy V2 domain code.
+
+`SabiAI`/`sabiai` remain compatibility identifiers in filenames, package names and environment variables during the V2 migration. The human-facing agent is **Sabi Boy**.
 
 ## Rule
 
-OpenClaw calls a stable Sabi tool contract. Skills orchestrate Sabi; they do not duplicate market, ticket, bankroll, history, source-selection or storage rules and they do not query V2 SQLite directly.
+OpenClaw calls a stable Sabi Boy tool contract. Skills orchestrate Sabi Boy; they do not duplicate market, ticket, bankroll, history, source-selection or storage rules and they do not query V2 SQLite directly.
 
 Current bridge:
 
@@ -26,13 +28,14 @@ Response:
 
 ## Language contract
 
-Tool output that can reach the user must follow the Sabi language rules:
+Tool output that can reach the user must follow Sabi Boy's language rules:
 
 - decimal odds only;
 - explicit team/player names where context exists;
+- explicit sport/event context where ambiguity is possible;
 - plain selections such as `Arsenal to win`, `Chelsea or Draw — Double Chance`, `Over 2.5 goals`, `Arsenal +1.5 handicap`;
-- no American-facing betting vocabulary in user-facing wording;
-- internal technical details stay internal unless explicitly needed for maintenance.
+- no American-facing betting vocabulary in normal replies;
+- internal implementation/model terminology stays internal unless explicitly needed for maintenance.
 
 ## Implemented tools
 
@@ -56,20 +59,58 @@ Research source access is governed separately by the V2 `SourceService`: cache f
 
 ### Markets and prices
 
-- `market.interpret` — normalize bookmaker/user market wording into explicit Sabi language.
+- `market.interpret` — normalize bookmaker/user market wording into explicit Sabi Boy language.
 - `market.arbitrage` — compare a complete set of fresh prices after verifying event, market and settlement-rule compatibility; supports two, three or more outcomes and optional stake allocation.
 
 ### Bookmakers
 
-- `bookmaker.resolve` — resolve supported bookmaker aliases to stable canonical bookmaker identities.
+- `bookmaker.resolve` — resolve bookmaker aliases to stable canonical identities.
 - `bookmaker.capabilities` — report only capabilities currently proven by a registered integration.
+- `bookmaker.booking_code.import_plan` — validate a booking-code request and return the correct import route. Until a direct importer is proven, the route is the controlled OpenClaw browser: load the public slip, extract every leg, do not place a wager, then call `ticket.normalize`.
+- `bookmaker.convert.plan` — map a normalized source ticket against target-book offers. Conversion is ready only when every leg has an exact verified equivalent event/market/line/period/side.
+- `bookmaker.build.plan` — turn a normalized target ticket into the structured payload expected by a proven bookmaker builder.
+- `bookmaker.build.execute` — execute only the allow-listed SportyBet/Bet9ja ticket-builder command from `SABIAI_REPO_ROOT`, capture its result and return the booking code when verified.
 
-The current compatibility layer recognizes the existing SportyBet and Bet9ja browser builders as ticket-build/booking-code-create integrations only. Import/search/conversion capabilities are not claimed until those paths are implemented and revalidated.
+The compatibility layer currently recognizes the existing SportyBet and Bet9ja browser builders as ticket-build/booking-code-create integrations. Stake and 1xBet remain known bookmakers but do not falsely advertise builder capabilities until a verified adapter exists.
+
+### Booking-code flow
+
+A booking code is not treated as magic text. The workflow is explicit:
+
+```text
+booking code + bookmaker
+        ↓
+bookmaker.booking_code.import_plan
+        ↓
+OpenClaw/browser restores the public slip
+        ↓
+extract sport + event + home/away + market + selection + decimal odds
+        ↓
+ticket.normalize
+        ↓
+research / edit / split / trim if requested
+        ↓
+find target-book offers
+        ↓
+bookmaker.convert.plan
+        ↓
+exact equivalents only
+        ↓
+bookmaker.build.plan
+        ↓
+bookmaker.build.execute (where proven)
+        ↓
+verified booking code
+```
+
+A similarly named market is not enough. Different line, period, participant, overtime treatment or settlement meaning must remain unresolved until explicitly handled.
 
 ### Ticket intake and normalization
 
 - `ticket.normalize` — normalize already-extracted legs and report ambiguity/duplicate/price issues.
 - `ticket.from_text` — import common copied/share text. It is also the deterministic path for text OpenClaw extracts from an X post or screenshot.
+
+Ticket legs retain sport context as well as visible event names so cross-sport bookmaker rebuilding does not depend on guesswork.
 
 `ticket.from_text` never silently discards lines it cannot parse; it returns them in `unparsed_lines` for OpenClaw to resolve.
 
@@ -84,6 +125,21 @@ The current compatibility layer recognizes the existing SportyBet and Bet9ja bro
 - `ticket.replace` — replace one game/selection with another normalized leg.
 
 Ticket responses retain visible event labels such as `Arsenal vs Chelsea`; OpenClaw should not expose draft/internal event IDs as the primary match description.
+
+### Unresolved ticket drafts
+
+V2 has a separate `ticket_drafts` store for imported/edited/conversion work that is not yet resolved into canonical events. This avoids inserting fake event IDs into the canonical ticket history.
+
+Drafts preserve:
+
+- original source type/reference;
+- source bookmaker;
+- target bookmaker when converting;
+- normalized payload;
+- issues/unresolved legs;
+- parent/child revision lineage.
+
+Once event identity and settlement data are canonical, final records can move into the normal ticket/history model.
 
 ### Our records/history
 
@@ -107,27 +163,39 @@ OpenClaw reads/extracts visible content
         ↓
 ticket.from_text OR ticket.normalize
         ↓
-Canonical explicit ticket
+Canonical explicit ticket/draft
         ↓
 research.plan / research evidence
         ↓
 Ticket Workshop edits
         ↓
-Bookmaker adapter / booking code when supported
+conversion / bookmaker build when requested
 ```
 
 This keeps vision/browser changes outside ticket rules and avoids building one parser per input surface.
 
+## Bookmaker builder isolation
+
+`bookmaker.build.execute` is deliberately narrow:
+
+- no shell execution;
+- only explicitly allow-listed scripts;
+- only from the configured repository root;
+- structured leg JSON only;
+- no stake/payment submission;
+- builder result must contain a verifiable booking code before success is claimed;
+- dry-run placeholders are never treated as real codes.
+
 ## Namespaces still to grow behind this same boundary
 
 - `sports.*` — discovery/fixture/event helpers as free-source adapters arrive.
-- `research.*` — source orchestration, form, H2H, injuries, lineups, context and reviewer pass.
-- `bookmaker.*` — event/market search, booking-code import/build and conversion adapters.
+- `research.*` — source orchestration, form, H2H, injuries, lineups, context, synthesis and reviewer pass.
+- `bookmaker.*` — direct booking-code import, event/market discovery and additional verified bookmaker adapters.
 - `market.*` — broader market mappings, price comparison and movement history.
-- `ticket.*` — booking-code import, stronger/lower-risk variants, grouping rules and bookmaker conversion.
+- `ticket.*` — strength-ranked variants, grouping rules and richer conversion alternatives.
 - `record.*` — picks/tickets/settlement recording.
 - `history.*` — streaks, P/L, strategy and ticket-analysis summaries.
-- `blog.*` — Sabi blog publication and retrieval.
+- `blog.*` — Sabi Boy blog publication and retrieval.
 - `system.*` — job/source/backup/settlement health.
 
 The namespace list is a contract direction, not a claim that every tool already exists.
@@ -138,7 +206,8 @@ The namespace list is a contract direction, not a claim that every tool already 
 - one place to enforce decimal odds and explicit wording;
 - one place to apply free-first source policy;
 - one place to protect V2 writes;
-- one place to keep dashboard reads separate from active Sabi work;
+- one place to keep dashboard reads separate from active Sabi Boy work;
+- one place to prevent unsafe/silent bookmaker market substitutions;
 - easier local testing;
 - easier future MCP exposure;
 - OpenClaw can change orchestration without changing domain rules.
