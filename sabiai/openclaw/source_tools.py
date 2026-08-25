@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 
-from sabiai.sources import SourceRequest, SourceService
+from sabiai.sources import SourceLearningService, SourceRequest, SourceService
+
+from .serializers import json_value
 
 
 class SourceTools:
@@ -13,7 +15,15 @@ class SourceTools:
         return {
             "source.catalog": self.catalog,
             "source.query": self.query,
+            "source.discovery.plan": self.discovery_plan,
+            "source.discovery.save": self.discovery_save,
+            "source.discovery.verify": self.discovery_verify,
+            "source.discovery.check": self.discovery_check,
+            "source.discovery.list": self.discovery_list,
         }
+
+    def _learning(self) -> SourceLearningService:
+        return SourceLearningService(self.app._db(initialize=True))
 
     def catalog(self, args: dict) -> dict:
         db = self.app._db(initialize=True)
@@ -32,7 +42,12 @@ class SourceTools:
                     "notes": source.notes,
                 }
             )
-        return {"sources": sources}
+        learned = self._learning().list(status="verified", limit=int(args.get("learned_limit", 100)))
+        return {
+            "sources": sources,
+            "learned_verified_sources": [json_value(item) for item in learned],
+            "note": "Learned sources may require OpenClaw Browser/Search unless a direct Python adapter is explicitly registered.",
+        }
 
     def query(self, args: dict) -> dict:
         capability = str(args.get("capability") or "").strip()
@@ -69,6 +84,69 @@ class SourceTools:
             "failures_before_success": list(response.failures),
             "payload": response.payload,
         }
+
+    def discovery_plan(self, args: dict) -> dict:
+        sport = str(args.get("sport") or "").strip()
+        if not sport:
+            raise ValueError("source.discovery.plan needs sport.")
+        capability = str(args.get("capability") or "").strip() or None
+        existing = self._learning().best(sport=sport, capability=capability, limit=int(args.get("limit", 20)))
+        return {
+            "sport": sport,
+            "capability": capability,
+            "verified_sources": [json_value(item) for item in existing],
+            "needs_discovery": not bool(existing),
+            "questions": SourceLearningService.discovery_questions(sport, capability),
+            "next_step": (
+                "Use verified learned sources first. If coverage is still insufficient, use OpenClaw Search/Browser to discover official/public sources and save candidates with source.discovery.save."
+            ),
+        }
+
+    def discovery_save(self, args: dict) -> dict:
+        source = self._learning().discover(
+            name=str(args.get("name") or ""),
+            url=str(args.get("url") or ""),
+            kind=str(args.get("kind") or "official"),
+            sports=args.get("sports") or ([args["sport"]] if args.get("sport") else []),
+            capabilities=args.get("capabilities") or ([args["capability"]] if args.get("capability") else []),
+            reliability=str(args.get("reliability") or "unknown"),
+            notes=args.get("notes"),
+        )
+        return json_value(source)
+
+    def discovery_verify(self, args: dict) -> dict:
+        source_id = str(args.get("source_id") or "").strip()
+        if not source_id:
+            raise ValueError("source.discovery.verify needs source_id.")
+        return json_value(
+            self._learning().verify(
+                source_id,
+                status=str(args.get("status") or "verified"),
+                reliability=args.get("reliability"),
+                notes=args.get("notes"),
+            )
+        )
+
+    def discovery_check(self, args: dict) -> dict:
+        source_id = str(args.get("source_id") or "").strip()
+        if not source_id:
+            raise ValueError("source.discovery.check needs source_id.")
+        return json_value(
+            self._learning().record_check(
+                source_id,
+                ok=bool(args.get("ok", False)),
+                error=args.get("error"),
+            )
+        )
+
+    def discovery_list(self, args: dict) -> dict:
+        rows = self._learning().list(
+            status=args.get("status"),
+            sport=args.get("sport"),
+            capability=args.get("capability"),
+            limit=int(args.get("limit", 100)),
+        )
+        return {"sources": [json_value(item) for item in rows]}
 
     @staticmethod
     def _source_names(args: dict) -> tuple[str, ...]:
