@@ -84,7 +84,9 @@ def main() -> int:
 
     # Local process must still be healthy.
     try:
-        local_status, local = fetch_json("http://127.0.0.1:8091/health")
+        local_host = str(state.get("v2_host") or "127.0.0.1")
+        local_port = int(state.get("v2_port") or 8091)
+        local_status, local = fetch_json(f"http://{local_host}:{local_port}/health")
     except Exception as exc:
         print(f"Local Sabi Boy health failed: {exc}", file=sys.stderr)
         return 9

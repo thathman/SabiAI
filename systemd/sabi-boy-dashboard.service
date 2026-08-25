@@ -6,8 +6,10 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/.openclaw/workspace
+Environment=SABIAI_DASHBOARD_HOST=127.0.0.1
+Environment=SABIAI_DASHBOARD_PORT=8091
 EnvironmentFile=-%h/.config/sabi-boy/sabi-boy.env
-ExecStart=%h/.openclaw/workspace/.venv/bin/python -m uvicorn dashboard.v2_app:app --host 127.0.0.1 --port 8091 --workers 1
+ExecStart=%h/.openclaw/workspace/.venv/bin/python -m uvicorn dashboard.v2_app:app --host ${SABIAI_DASHBOARD_HOST} --port ${SABIAI_DASHBOARD_PORT} --workers 1
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=20

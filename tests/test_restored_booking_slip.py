@@ -34,9 +34,12 @@ def test_restored_slip_preserves_code_and_checks_combined_odds():
     )
     assert result.usable is True
     assert result.booking_code == "ABC123"
-    assert str(result.computed_combined_odds) == "2.4000"
+    assert str(result.computed_combined_odds) == "2.40"
     assert result.combined_odds_match is True
     assert result.ticket.source_type == "booking_code"
+    assert result.ticket.legs[0].selection.label == "Arsenal to win"
+    assert str(result.ticket.legs[0].odds) == "1.50"
+    assert result.ticket.legs[1].selection.label == "Inter to win"
 
 
 def test_restored_slip_blocks_incomplete_leg_extraction():

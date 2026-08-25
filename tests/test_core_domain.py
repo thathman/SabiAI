@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from sabiai.bookmakers import default_bookmakers
 from sabiai.domain import Event, Participant, Sport, Ticket, TicketLeg
-from sabiai.domain.models import Market, Selection
+from sabiai.domain.models import Market, Selection, decimal_odds
 from sabiai.domain.types import MarketKind
 from sabiai.markets import MarketInterpreter
 from sabiai.sources import Source, SourceCost, SourceKind, SourceRegistry
@@ -27,6 +27,11 @@ class DomainTests(unittest.TestCase):
         ticket.add_leg(TicketLeg(self.event.id, market, selection, Decimal("1.50")))
         ticket.add_leg(TicketLeg(self.event.id, market, selection, Decimal("2.00")))
         self.assertEqual(ticket.combined_odds, Decimal("3.00"))
+
+    def test_decimal_odds_do_not_expose_quantization_padding(self):
+        self.assertEqual(str(decimal_odds("1.820")), "1.82")
+        self.assertEqual(str(decimal_odds("1.825")), "1.825")
+        self.assertEqual(str(decimal_odds("10.000")), "10.00")
 
     def test_bookmaker_aliases(self):
         registry = default_bookmakers()

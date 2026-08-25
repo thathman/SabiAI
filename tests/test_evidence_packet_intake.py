@@ -77,3 +77,22 @@ def test_persisted_packet_requires_canonical_event_id(tmp_path: Path):
         assert "canonical event_id" in str(exc)
     else:
         raise AssertionError("Expected canonical event_id requirement.")
+
+
+def test_case_scoped_packet_can_persist_before_canonical_event_resolution(tmp_path: Path):
+    db = SabiDatabase(tmp_path / "v2.db")
+    db.initialize()
+    service = EvidencePacketService(EvidenceStore(db))
+    result = service.ingest(
+        [
+            {
+                "type": "form",
+                "finding": "Arsenal's recent form was checked.",
+                "source_name": "Official source",
+            }
+        ],
+        persist=True,
+        case_scoped=True,
+    )
+    assert result.usable is True
+    assert len(result.persisted_ids) == 1

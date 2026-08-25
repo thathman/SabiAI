@@ -47,6 +47,8 @@ set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
+: "${SABIAI_DASHBOARD_HOST:=127.0.0.1}"
+: "${SABIAI_DASHBOARD_PORT:=8091}"
 
 "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" --init-db --request '{"tool":"system.health"}' >/dev/null
 printf '%s\n' '{"tool":"source.catalog","args":{}}' | "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" >/dev/null
@@ -68,7 +70,7 @@ Repository:    $ROOT
 Branch:        $branch
 Virtualenv:    $VENV
 Environment:   $ENV_FILE
-V2 dashboard:  sabi-boy-dashboard.service (installed, not started)
+V2 dashboard:  sabi-boy-dashboard.service (${SABIAI_DASHBOARD_HOST}:${SABIAI_DASHBOARD_PORT}, installed, not started)
 Backup service:sabi-boy-backup.service (installed, not started)
 Backup timer:  sabi-boy-backup.timer (installed, not enabled)
 

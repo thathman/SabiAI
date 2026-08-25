@@ -26,7 +26,9 @@ def decimal_odds(value: Decimal | float | int | str) -> Decimal:
         raise ValueError("Decimal odds must be a number.") from exc
     if odds <= Decimal("1"):
         raise ValueError("Decimal odds must be greater than 1.00.")
-    return odds.quantize(Decimal("0.001"))
+    rounded = odds.quantize(Decimal("0.001"))
+    rounded_to_cents = rounded.quantize(Decimal("0.01"))
+    return rounded_to_cents if rounded == rounded_to_cents else rounded
 
 
 @dataclass(slots=True)

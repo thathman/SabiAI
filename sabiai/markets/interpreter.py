@@ -67,7 +67,19 @@ class MarketInterpreter:
                 period=period,
             )
 
-        if low in {"1x", "home or draw"} and home:
+        double_chance = re.sub(
+            r"\s*(?:—|-|:)?\s*double\s+chance\s*$",
+            "",
+            low,
+        ).strip(" -—:")
+        home_name = home.casefold() if home else None
+        away_name = away.casefold() if away else None
+        if home and double_chance in {
+            "1x",
+            "home or draw",
+            f"{home_name} or draw",
+            f"draw or {home_name}",
+        }:
             return InterpretedMarket(
                 MarketKind.DOUBLE_CHANCE,
                 self._with_period(f"{home} or Draw — Double Chance", period),
@@ -75,7 +87,12 @@ class MarketInterpreter:
                 participant=home,
                 period=period,
             )
-        if low in {"x2", "draw or away"} and away:
+        if away and double_chance in {
+            "x2",
+            "draw or away",
+            f"{away_name} or draw",
+            f"draw or {away_name}",
+        }:
             return InterpretedMarket(
                 MarketKind.DOUBLE_CHANCE,
                 self._with_period(f"{away} or Draw — Double Chance", period),
@@ -83,7 +100,7 @@ class MarketInterpreter:
                 participant=away,
                 period=period,
             )
-        if low in {"12", "home or away", "either team to win"}:
+        if double_chance in {"12", "home or away", "either team to win"}:
             return InterpretedMarket(
                 MarketKind.DOUBLE_CHANCE,
                 self._with_period("Either team to win — Double Chance", period),

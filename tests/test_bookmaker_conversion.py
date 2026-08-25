@@ -197,7 +197,7 @@ class ExecutionPlanTests(unittest.TestCase):
         )
         self.assertTrue(plan.ready)
         self.assertEqual(plan.method, "openclaw_browser")
-        self.assertEqual(plan.next_tool, "ticket.normalize")
+        self.assertEqual(plan.next_tool, "bookmaker.booking_code.restore")
 
 
 if __name__ == "__main__":

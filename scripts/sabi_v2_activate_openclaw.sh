@@ -26,6 +26,7 @@ source "$ENV_FILE"
 set +a
 
 AGENT_ID="${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}"
+export SABIAI_DASHBOARD_BASE_URL="http://${SABIAI_DASHBOARD_HOST:-127.0.0.1}:${SABIAI_DASHBOARD_PORT:-8091}"
 mkdir -p "$RELEASE_DIR"
 
 # OpenClaw activation is intentionally post-staging. Do not attach jobs/identity to a V2
@@ -60,13 +61,14 @@ PY
 
 # Confirm the staged V2 dashboard is still the real process we accepted.
 "$VENV/bin/python" - <<'PY'
-import json, urllib.request
-for url in ('http://127.0.0.1:8091/health', 'http://127.0.0.1:8091/api/v2/overview'):
+import json, os, urllib.request
+base_url = os.environ['SABIAI_DASHBOARD_BASE_URL']
+for url in (base_url + '/health', base_url + '/api/v2/overview'):
     with urllib.request.urlopen(url, timeout=5) as response:
         payload = json.loads(response.read().decode())
     if response.status != 200 or payload.get('product') != 'Sabi Boy':
         raise SystemExit(f'Unexpected V2 response from {url}: {payload}')
-health_url = 'http://127.0.0.1:8091/health'
+health_url = base_url + '/health'
 with urllib.request.urlopen(health_url, timeout=5) as response:
     payload = json.loads(response.read().decode())
 if payload.get('read_only') is not True:
@@ -131,7 +133,7 @@ Sabi Boy V2 OpenClaw activation passed.
 Agent id:             $AGENT_ID
 Human identity:       Sabi Boy
 OpenClaw acceptance:  $REPORT
-V2 remains staged on: 127.0.0.1:8091
+V2 remains staged on: ${SABIAI_DASHBOARD_BASE_URL#http://}
 V1/external routing:  unchanged
 
 External cutover is still a separate release step.

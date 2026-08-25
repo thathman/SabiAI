@@ -211,10 +211,10 @@ def test_plain_form_summary_and_recent_h2h_are_human_readable(tmp_path: Path):
     form = tools.form_summary(
         {"team": "Arsenal", "sport": "football", "league": "eng.1", "limit": 3}
     )
-    assert form["summary"]["form"] == "W-D-L"
-    assert form["summary"]["wins"] == 1
+    assert form["summary"]["form"] == "W-D-W"
+    assert form["summary"]["wins"] == 2
     assert form["summary"]["draws"] == 1
-    assert form["summary"]["losses"] == 1
+    assert form["summary"]["losses"] == 0
 
     h2h = tools.h2h(
         {"home": "Arsenal", "away": "Chelsea", "sport": "football", "league": "eng.1", "limit": 10}

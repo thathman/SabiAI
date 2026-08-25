@@ -29,6 +29,9 @@ set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
+DASHBOARD_HOST="${SABIAI_DASHBOARD_HOST:-127.0.0.1}"
+DASHBOARD_PORT="${SABIAI_DASHBOARD_PORT:-8091}"
+export SABIAI_DASHBOARD_BASE_URL="http://${DASHBOARD_HOST}:${DASHBOARD_PORT}"
 mkdir -p "$RELEASE_DIR" "$BACKUP_DIR"
 
 commit="$(git rev-parse HEAD)"
@@ -62,8 +65,8 @@ systemctl --user restart "$SERVICE"
 
 # 5) Verify the real process over HTTP. Do not trust systemctl active alone.
 if ! "$VENV/bin/python" - <<'PY'
-import json, time, urllib.request
-url='http://127.0.0.1:8091/health'
+import json, os, time, urllib.request
+url=os.environ['SABIAI_DASHBOARD_BASE_URL'] + '/health'
 last=None
 for _ in range(30):
     try:
@@ -87,8 +90,8 @@ fi
 
 # Verify the main read model too.
 if ! "$VENV/bin/python" - <<'PY'
-import json, urllib.request
-with urllib.request.urlopen('http://127.0.0.1:8091/api/v2/overview', timeout=5) as r:
+import json, os, urllib.request
+with urllib.request.urlopen(os.environ['SABIAI_DASHBOARD_BASE_URL'] + '/api/v2/overview', timeout=5) as r:
     data=json.loads(r.read().decode())
 if r.status != 200 or data.get('product') != 'Sabi Boy':
     raise SystemExit(1)
@@ -108,10 +111,10 @@ if ! systemctl --user enable --now "$BACKUP_TIMER"; then
 fi
 backup_timer_enabled=true
 
-"$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" <<'PY'
+"$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$DASHBOARD_HOST" "$DASHBOARD_PORT" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" <<'PY'
 from datetime import datetime, timezone
 import json, pathlib, sys
-path, manifest, commit, v1_active, backup_was_enabled, backup_enabled = sys.argv[1:]
+path, manifest, commit, dashboard_host, dashboard_port, v1_active, backup_was_enabled, backup_enabled = sys.argv[1:]
 data = {
     'product': 'Sabi Boy',
     'branch': 'v2',
@@ -121,7 +124,8 @@ data = {
     'acceptance_report': str(pathlib.Path(path).with_name('acceptance-latest.json')),
     'migration_report': str(pathlib.Path(path).with_name('migration-latest.json')),
     'v2_service': 'sabi-boy-dashboard.service',
-    'v2_port': 8091,
+    'v2_host': dashboard_host,
+    'v2_port': int(dashboard_port),
     'v1_service_was_active': v1_active.lower() == 'true',
     'backup_timer_was_enabled': backup_was_enabled.lower() == 'true',
     'backup_timer_enabled': backup_enabled.lower() == 'true',
@@ -134,7 +138,7 @@ PY
 
 cat <<EOF
 
-Sabi Boy V2 is staged and running in parallel on 127.0.0.1:8091.
+Sabi Boy V2 is staged and running on ${DASHBOARD_HOST}:${DASHBOARD_PORT}.
 V1 has not been stopped or modified.
 Verified daily backups are enabled through $BACKUP_TIMER.
 Backup manifest: $manifest
@@ -142,6 +146,6 @@ Acceptance:     $RELEASE_DIR/acceptance-latest.json
 Staging state:  $STATE_FILE
 
 External/Cloudflare cutover is intentionally NOT guessed by this script.
-Inspect the live routing on the Dell, point it to 8091 only after verification,
+Inspect the live routing on the Dell, point it to ${DASHBOARD_PORT} only after verification,
 then record that cutover in the deployment report.
 EOF

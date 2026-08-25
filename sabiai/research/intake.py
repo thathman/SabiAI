@@ -95,6 +95,7 @@ class EvidencePacketService:
         default_reliability: str = "unknown",
         default_freshness_seconds: int | None = None,
         persist: bool = False,
+        case_scoped: bool = False,
     ) -> EvidencePacketResult:
         rows = list(items)
         if not rows:
@@ -103,8 +104,11 @@ class EvidencePacketService:
             raise ValueError("Evidence packet is limited to 100 items per intake.")
         if persist and self.store is None:
             raise ValueError("Evidence persistence requested but no EvidenceStore was provided.")
-        if persist and not event_id:
-            raise ValueError("Persisted evidence packet needs a canonical event_id. Use persist=false while the event is still only known by name.")
+        if persist and not event_id and not case_scoped:
+            raise ValueError(
+                "Persisted evidence packet needs a canonical event_id or a durable research-case scope. "
+                "Use persist=false while the event is still only known by name."
+            )
 
         accepted: list[EvidencePacketItem] = []
         rejected: list[dict] = []

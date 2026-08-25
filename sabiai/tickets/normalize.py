@@ -101,7 +101,8 @@ class TicketNormalizer:
             home = home or event_home
             away = away or event_away
 
-            market_text = self._text(raw.get("market") or raw.get("pick"))
+            selection_text = self._text(raw.get("selection"))
+            market_text = selection_text or self._text(raw.get("market") or raw.get("pick"))
             if not market_text:
                 issues.append(
                     TicketIssue(
@@ -125,7 +126,12 @@ class TicketNormalizer:
                 )
 
             try:
-                odds = decimal_odds(raw["odds"])
+                odds_value = (
+                    raw.get("decimal_odds")
+                    if raw.get("decimal_odds") is not None
+                    else raw.get("odds")
+                )
+                odds = decimal_odds(odds_value)
             except Exception:
                 issues.append(
                     TicketIssue(

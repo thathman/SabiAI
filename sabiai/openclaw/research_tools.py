@@ -88,12 +88,13 @@ class ResearchTools:
         if not isinstance(items, list):
             raise ValueError("research.evidence.ingest needs an items list.")
         case_id = str(args.get("case_id") or "").strip() or None
+        context = self._case_context(args, allow_missing=True)
         # Evidence attached to a durable case must itself be durable.
         persist = bool(args.get("persist", False) or case_id)
         store = EvidenceStore(self.app._db(initialize=True)) if persist else None
         result = EvidencePacketService(store).ingest(
             items,
-            event_id=args.get("event_id"),
+            event_id=args.get("event_id") or (context or {}).get("event_id"),
             sport_id=args.get("sport_id"),
             default_source_name=args.get("source_name"),
             default_source_url=args.get("source_url"),
@@ -105,6 +106,7 @@ class ResearchTools:
                 else None
             ),
             persist=persist,
+            case_scoped=bool(case_id),
         )
         evidence_rows = [item.as_dict() for item in result.items]
         case = None
@@ -119,7 +121,6 @@ class ResearchTools:
             "persisted": persist,
             "case": json_value(case) if case else None,
         }
-        context = self._case_context(args, allow_missing=True)
         if context is not None:
             assessment = self.case_service.assess(
                 sport=context["sport"],
