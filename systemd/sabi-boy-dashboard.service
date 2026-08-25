@@ -1,0 +1,18 @@
+[Unit]
+Description=Sabi Boy V2 read-only dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.openclaw/workspace
+EnvironmentFile=-%h/.config/sabi-boy/sabi-boy.env
+ExecStart=%h/.openclaw/workspace/.venv/bin/python -m uvicorn dashboard.v2_app:app --host 127.0.0.1 --port 8091 --workers 1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
