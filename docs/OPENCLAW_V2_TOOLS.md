@@ -4,7 +4,7 @@ This document defines the boundary between OpenClaw and the SabiAI V2 domain cod
 
 ## Rule
 
-OpenClaw should call a stable Sabi tool contract. New skills should not duplicate business rules or query V2 SQLite directly.
+OpenClaw calls a stable Sabi tool contract. Skills orchestrate Sabi; they do not duplicate market, ticket, bankroll, history, source-selection or storage rules and they do not query V2 SQLite directly.
 
 Current bridge:
 
@@ -24,35 +24,91 @@ Response:
 {"ok":true,"tool":"market.interpret","data":{...}}
 ```
 
-## Implemented now
+## Language contract
 
-- `system.health`
-- `market.interpret`
-- `bookmaker.resolve`
-- `ticket.split`
-- `ticket.trim`
+Tool output that can reach the user must follow the Sabi language rules:
 
-## V2 namespaces to grow behind this same boundary
+- decimal odds only;
+- explicit team/player names where context exists;
+- plain selections such as `Arsenal to win`, `Chelsea or Draw — Double Chance`, `Over 2.5 goals`, `Arsenal +1.5 handicap`;
+- no American-facing betting vocabulary in user-facing wording;
+- internal technical details stay internal unless explicitly needed for maintenance.
 
-- `sports.*`
-- `research.*`
-- `bookmaker.*`
-- `market.*`
-- `ticket.*`
-- `record.*`
-- `history.*`
-- `blog.*`
-- `system.*`
+## Implemented tools
+
+### System
+
+- `system.initialize` — initialize/upgrade the separate V2 database.
+- `system.health` — V2 database/schema/table health.
+
+### Sports
+
+- `sports.list` — current built-in sport knowledge. The list is explicitly open-ended rather than a coverage wall.
+- `sports.describe` — scoring structure, event parts, useful metrics and research topics for a sport. Unknown sports return a discovery profile instead of `unsupported`.
+
+### Research
+
+- `research.plan` — creates a sport- and market-aware research checklist before sources are queried.
+- `research.evidence.save` — persist a plain-language evidence item with source/freshness/reliability metadata.
+- `research.evidence.list` — read persisted evidence for an event, optionally filtered by evidence type.
+
+Research source access is governed separately by the V2 `SourceService`: cache first, free/public sources first, paid escalation only after free options fail and a reason is supplied.
+
+### Markets and prices
+
+- `market.interpret` — normalize bookmaker/user market wording into explicit Sabi language.
+- `market.arbitrage` — compare a complete set of fresh prices after verifying event, market and settlement-rule compatibility; supports two, three or more outcomes and optional stake allocation.
+
+### Bookmakers
+
+- `bookmaker.resolve` — resolve supported bookmaker aliases to stable canonical bookmaker identities.
+
+Bookmaker capabilities remain conservative. Import/build/code-generation capabilities are not claimed until an adapter proves them.
+
+### Ticket Workshop
+
+- `ticket.split` — split one ticket into a requested number of slips.
+- `ticket.split_by_size` — split by games per slip.
+- `ticket.trim` — trim toward requested combined decimal odds while respecting locked selections and minimum game count.
+- `ticket.remove` — remove selected games by leg ID or explicit event name.
+- `ticket.keep` — keep only selected games while preserving locked selections.
+- `ticket.change_market` — change one game to another understood market and optional new decimal odds.
+
+Ticket responses retain visible event labels such as `Arsenal vs Chelsea`; OpenClaw should not expose draft/internal event IDs as the primary match description.
+
+### Our records/history
+
+- `record.bankroll` — write a signed V2 bankroll ledger event through the domain service.
+- `history.summary` — read our own W/L/D/void/pending totals, ticket totals and bankroll.
+- `history.by_sport` — read our results grouped by sport.
+- `history.by_market` — read our results grouped by market.
+- `history.by_bookmaker` — read our results grouped by bookmaker.
+- `history.bankroll` — read bankroll balance and ledger history.
+
+These are our records. They are not general sports-site statistics.
+
+## Namespaces still to grow behind this same boundary
+
+- `sports.*` — discovery/fixture/event helpers as free-source adapters arrive.
+- `research.*` — source orchestration, form, H2H, injuries, lineups, context and reviewer pass.
+- `bookmaker.*` — event/market search, booking-code import/build and conversion adapters.
+- `market.*` — broader market mappings, price comparison and movement history.
+- `ticket.*` — screenshot/code/X/text import, replacement, safer/riskier variants and bookmaker conversion.
+- `record.*` — picks/tickets/settlement recording.
+- `history.*` — streaks, P/L, strategy and ticket-analysis summaries.
+- `blog.*` — Sabi blog publication and retrieval.
+- `system.*` — job/source/backup/settlement health.
 
 The namespace list is a contract direction, not a claim that every tool already exists.
 
 ## Why one gateway
 
-- one canonical interpretation of events/markets/tickets;
+- one canonical interpretation of events, markets and tickets;
 - one place to enforce decimal odds and explicit wording;
 - one place to apply free-first source policy;
-- one place to protect V2 data writes;
-- easier testing;
+- one place to protect V2 writes;
+- one place to keep dashboard reads separate from active Sabi work;
+- easier local testing;
 - easier future MCP exposure;
 - OpenClaw can change orchestration without changing domain rules.
 
