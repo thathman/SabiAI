@@ -1,3 +1,4 @@
+from .advanced_analytics import AdvancedAnalytics
 from .analytics import PerformanceAnalytics
 from .bankroll import BankrollLedger, LedgerEntry
 from .dashboard_reads import DashboardReadService
@@ -7,6 +8,7 @@ from .offers import OfferObservation, OfferObservationStore
 from .sqlite import SabiDatabase
 
 __all__ = [
+    "AdvancedAnalytics",
     "BankrollLedger",
     "DashboardReadService",
     "HistoryService",
