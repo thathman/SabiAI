@@ -1,3 +1,4 @@
+from .analytics import PerformanceAnalytics
 from .bankroll import BankrollLedger, LedgerEntry
 from .drafts import TicketDraft, TicketDraftStore
 from .history import HistoryService
@@ -7,6 +8,7 @@ __all__ = [
     "BankrollLedger",
     "HistoryService",
     "LedgerEntry",
+    "PerformanceAnalytics",
     "SabiDatabase",
     "TicketDraft",
     "TicketDraftStore",
