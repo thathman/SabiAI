@@ -39,14 +39,15 @@
 - [x] Canonical event model
 - [x] Canonical market/selection model
 - [x] Bookmaker registry
+- [x] Stable canonical bookmaker identities
 - [x] Pick model
 - [x] Ticket model
 - [x] Ticket leg model
-- [ ] Bankroll ledger service — schema exists; service behavior/reconciliation still required
-- [~] Shared repository/data layer — V2 SQLite repository started
+- [x] Bankroll ledger service
+- [~] Shared repository/data layer — canonical SQLite repository, source cache/logging, ticket persistence and history reads exist; more repositories remain
 - [x] V2 schema
-- [~] Migration framework — preservation/rollback foundation exists; data migration not implemented
-- [~] Core tests — test suite committed; full execution on controlled runtime remains a gate
+- [~] Migration framework — preservation/rollback and schema migration runner exist; V1 data migration is not implemented
+- [~] Core tests — existing local V2 harness passes its pre-existing 16 tests; expanded V2 tests are committed and still need full controlled-runtime execution
 
 # Phase 2 — OpenClaw Native Sabi
 
@@ -57,14 +58,14 @@
 - [x] Free-first doctrine
 - [x] Broad-sports doctrine
 - [x] Read-only dashboard boundary
-- [ ] Native `sports.*` tools
-- [ ] Native `research.*` tools
-- [~] Native `bookmaker.*` tools — canonical bookmaker resolution implemented
-- [~] Native `market.*` tools — market interpreter implemented; wider market coverage remains
-- [~] Native `ticket.*` tools — split/trim gateway implemented; full workshop remains
-- [ ] Native `record.*` / `history.*` tools
+- [~] Native `sports.*` tools — list/describe core implemented; live event helpers remain
+- [~] Native `research.*` tools — research plan and evidence save/read implemented; live research orchestration remains
+- [~] Native `bookmaker.*` tools — canonical bookmaker resolution implemented; adapters/search/code workflows remain
+- [~] Native `market.*` tools — plain interpreter and rule-aware arbitrage implemented; wider bookmaker mappings and general price comparison remain
+- [~] Native `ticket.*` tools — split, split-by-size, trim, remove, keep and change-market implemented; import/conversion/booking-code workflows remain
+- [~] Native `record.*` / `history.*` tools — bankroll write and read-only history summaries implemented; picks/tickets/settlement recording remains
 - [ ] Native `blog.*` tools
-- [~] Native `system.*` tools — V2 system/database health implemented
+- [~] Native `system.*` tools — V2 initialize/database health implemented; jobs/sources/backups/settlement health remain
 - [~] AI Spine memory integration — existing agent integration retained; V2 research-memory conventions added to runtime doctrine
 - [ ] Temporary specialist-worker pattern
 - [ ] Skeptic/reviewer worker
@@ -73,7 +74,7 @@
 # Phase 3 — Free-First Sources
 
 - [x] Source Registry core
-- [ ] Cache/freshness engine
+- [x] Cache/freshness engine core — TTL cache and freshness checks implemented in SourceService/SQLite
 - [ ] Official-source adapters
 - [ ] Public endpoint adapters
 - [ ] Public web adapters
@@ -82,78 +83,79 @@
 - [ ] Source discovery
 - [ ] Source health
 - [x] Paid API gate core
-- [~] Paid usage log — schema exists; request service still required
-- [ ] Duplicate-request prevention
-- [~] Source fallback tests — test cases committed; controlled-runtime execution remains
+- [x] Paid usage log core — every source attempt can log paid/free, cache use, success/failure and reason
+- [~] Duplicate-request prevention — stable request-key cache prevents repeated fresh fetches; concurrent/in-flight coalescing remains
+- [x] Source fallback tests committed
 
 # Phase 4 — Sports Framework
 
 ## First wave
-- [~] Football — generic canonical sport support only; dedicated research adapter not complete
-- [~] Basketball — generic canonical sport support only
-- [~] Volleyball — generic canonical sport support only
-- [~] Tennis — generic canonical sport support only
-- [~] Table tennis — generic canonical sport support only
-- [~] Baseball — generic canonical sport support only
-- [~] Ice hockey — generic canonical sport support only
-- [~] Cricket — generic canonical sport support only
-- [~] Esports — generic canonical sport support only
-- [~] Golf — generic canonical sport support only
+- [~] Football — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Basketball — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Volleyball — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Tennis — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Table tennis — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Baseball — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Ice hockey — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Cricket — sport profile and market-aware research planning exist; dedicated live research adapters remain
+- [~] Esports — patch/roster/map research profile exists; dedicated live research adapters remain
+- [~] Golf — course/weather/tee-time research profile exists; dedicated live research adapters remain
 
 ## Second wave
-- [~] Handball — generic canonical sport support only
-- [~] Rugby — generic canonical sport support only
-- [~] Darts — generic canonical sport support only
-- [~] Snooker — generic canonical sport support only
-- [~] Badminton — generic canonical sport support only
-- [~] MMA — generic canonical sport support only
-- [~] Boxing — generic canonical sport support only
-- [~] Motorsport — generic canonical sport support only
-- [~] Cycling — generic canonical sport support only
-- [~] Futsal — generic canonical sport support only
-- [~] Water polo — generic canonical sport support only
-- [~] Beach volleyball — generic canonical sport support only
-- [~] Padel — generic canonical sport support only
-- [~] Floorball — generic canonical sport support only
-- [~] Aussie rules — generic canonical sport support only
+- [~] Handball — generic profile exists
+- [~] Rugby — generic profile exists
+- [~] Darts — generic profile exists
+- [~] Snooker — generic profile exists
+- [~] Badminton — generic profile exists
+- [~] MMA — generic profile exists
+- [~] Boxing — generic profile exists
+- [~] Motorsport — generic profile exists
+- [~] Cycling — generic profile exists
+- [~] Futsal — generic profile exists
+- [~] Water polo — generic profile exists
+- [~] Beach volleyball — generic profile exists
+- [~] Padel — generic profile exists
+- [~] Floorball — generic profile exists
+- [~] Aussie rules — generic profile exists
+- [x] Unknown-sport discovery behavior — unfamiliar sports return a discovery profile instead of `unsupported`
 
 # Phase 5 — Market Interpreter
 
-- [~] Match win/draw/loss — common 1/2/X parsing implemented; broader bookmaker fixtures remain
+- [~] Match win/draw/loss — common 1/2/X and named-winner parsing implemented; bookmaker corpus remains
 - [x] Double chance core
-- [~] Handicap — explicit-team generic parsing implemented; bookmaker variants remain
-- [~] Totals — generic over/under counts implemented
-- [ ] Team totals
-- [ ] Set/frame/map markets
-- [~] Corners — generic total/count recognition only
-- [~] Cards — generic total/count recognition only
-- [~] Shots / shots on target — generic total/count recognition only
-- [ ] Player markets
-- [~] General count markets — generic metric recognition started
+- [x] Handicap core — explicit team names and `Handicap 1/2 +/-line` parsing implemented
+- [x] Totals core
+- [x] Team totals core
+- [~] Set/frame/map markets — totals/period recognition implemented; winner/handicap variants remain
+- [~] Corners — totals/count recognition implemented; bookmaker variants remain
+- [~] Cards — totals/count recognition implemented; bookmaker variants remain
+- [~] Shots / shots on target — totals/player recognition implemented; bookmaker variants remain
+- [~] Player markets — generic named-player over/under stats implemented; richer player market corpus remains
+- [~] General count markets — broad metric vocabulary implemented; bookmaker variants remain
 - [ ] Race/field markets
-- [~] Period/scope support — domain field exists; parser coverage remains
-- [ ] Overtime/extra-time rules
+- [~] Period/scope support — halves, quarters, sets, maps and periods implemented; broader scope corpus remains
+- [~] Overtime/extra-time rules — rule fingerprint exists for price compatibility; sport/bookmaker mappings remain
 - [ ] Bookmaker label mappings
 - [x] Ambiguity detection core — unresolved markets return explicit reason instead of silent guessing
-- [ ] Real market-name test corpus
+- [~] Real market-name test corpus — expanded plain-language tests committed; large bookmaker corpus remains
 
 # Phase 6 — Research V2
 
-- [ ] Research request/orchestration
-- [ ] Sport-specific checklist selection
-- [ ] Market-specific checklist selection
-- [ ] Recent form
-- [ ] Home/away form
-- [ ] H2H
-- [ ] Injuries/availability
-- [ ] Expected lineups/rosters
-- [ ] Schedule/rest
-- [ ] Match/competition context
-- [ ] Market-specific stats
-- [~] Evidence persistence — V2 schema exists; service not yet implemented
-- [ ] Evidence reuse
+- [~] Research request/orchestration — planning and evidence layer exist; live source execution/reviewer orchestration remains
+- [x] Sport-specific checklist selection core
+- [x] Market-specific checklist selection core
+- [ ] Recent form adapter/workflow
+- [ ] Home/away form adapter/workflow
+- [ ] H2H adapter/workflow
+- [ ] Injuries/availability adapter/workflow
+- [ ] Expected lineups/rosters adapter/workflow
+- [ ] Schedule/rest adapter/workflow
+- [ ] Match/competition context adapter/workflow
+- [~] Market-specific stats — planner selects relevant focus; data adapters remain
+- [x] Evidence persistence core
+- [x] Evidence reuse core — freshness-limited reuse implemented
 - [ ] Conflicting source handling
-- [ ] Plain-language summaries
+- [~] Plain-language summaries — evidence model requires a plain summary; full synthesis service remains
 - [ ] Reviewer pass
 
 # Phase 7 — Bookmakers
@@ -170,7 +172,7 @@
 - [ ] Booking-code import
 - [ ] Booking-code creation where possible
 - [ ] Slip parsing
-- [ ] Bookmaker rule metadata
+- [~] Bookmaker rule metadata — rule fingerprint exists; bookmaker-specific rules remain
 - [ ] Browser fallback
 - [ ] Adapter fixtures/tests
 
@@ -182,29 +184,30 @@
 - [ ] Copied text
 - [ ] Bookmaker share text
 - [ ] X post
-- [~] Plain instruction — normalized JSON/tool instruction path exists; natural-language extraction still required
+- [~] Plain instruction — normalized tool instruction path exists; natural-language extraction still required
 
 ## Normalize
 - [x] Resolve bookmaker name/alias core
 - [ ] Resolve events
-- [~] Resolve home/away — explicit names accepted by interpreter; event identity resolution remains
-- [~] Normalize markets — initial interpreter implemented
+- [~] Resolve home/away — explicit names accepted and visible event labels survive ticket edits; canonical event identity resolution remains
+- [~] Normalize markets — expanded interpreter implemented
 - [x] Normalize decimal odds core
 - [ ] Resolve duplicate legs
 - [~] Flag unresolved legs — interpreter identifies ambiguity; ticket import pipeline not yet wired
 
 ## Edit
-- [x] Remove games domain operation
-- [ ] Replace games
-- [ ] Change markets
-- [x] Preserve locked picks in trim/remove operations
-- [ ] Keep strongest N
+- [x] Remove games
+- [~] Replace games — domain operation implemented; OpenClaw/import workflow remains
+- [x] Change markets core
+- [x] Preserve locked picks in trim/remove/keep/change operations
+- [x] Keep only selected games core
+- [ ] Keep strongest N using research strength
 - [ ] Lower-risk version
 - [ ] Higher-odds version
 
 ## Split
 - [x] Split by number of slips
-- [ ] Split by game count
+- [x] Split by game count
 - [~] Distribute stronger picks — current balancing uses odds/product, not research strength yet
 - [ ] Preserve groups
 
@@ -235,17 +238,17 @@
 
 # Phase 10 — Odds Comparison / Arbitrage
 
-- [~] Odds snapshots — V2 schema exists; ingestion not implemented
-- [~] Price timestamps — V2 schema exists; ingestion not implemented
-- [ ] Best price comparison
-- [ ] Stale-price detection
-- [ ] Two-outcome calculation
-- [ ] Three-outcome calculation
-- [ ] N-outcome calculation
-- [ ] Settlement-rule compatibility check
-- [ ] Stake split calculation
-- [ ] Price recheck before result
-- [ ] False-match rejection tests
+- [~] Odds snapshots — V2 schema exists; bookmaker ingestion not implemented
+- [~] Price timestamps — quote objects/schema support timestamps; bookmaker ingestion not implemented
+- [~] Best price comparison — best compatible price per outcome implemented inside arbitrage; general comparison service remains
+- [x] Stale-price rejection core
+- [x] Two-outcome calculation
+- [x] Three-outcome calculation
+- [x] N-outcome calculation
+- [x] Settlement-rule compatibility check core
+- [x] Stake split calculation core
+- [ ] Price recheck before external result/booking
+- [~] False-match rejection — normalized event/market keys are required; wider identity tests remain
 - [ ] Opportunity history
 
 # Phase 11 — Settlement / History Reliability
@@ -258,21 +261,21 @@
 - [~] Manual correction + audit — audit schema exists; service remains
 - [ ] Backlog monitoring
 - [ ] Duplicate settlement protection
-- [ ] Bankroll reconciliation
+- [~] Bankroll reconciliation — ledger reconciliation service exists; V1/V2 migration reconciliation remains
 - [ ] Consistency checks
 
 # Phase 12 — Historical Insights
 
-- [ ] Overall W/L/D
-- [ ] Win percentage
-- [ ] P/L
-- [ ] Bankroll change
+- [x] Overall W/L/D/void/pending core
+- [x] Win percentage core
+- [ ] P/L summary service
+- [~] Bankroll — current balance/history implemented; change-over-period insights remain
 - [ ] Current streak
 - [ ] Best/worst streak
-- [ ] By sport
+- [x] By sport core
 - [ ] By competition
-- [ ] By market
-- [ ] By bookmaker
+- [x] By market core
+- [x] By bookmaker core
 - [ ] By strategy
 - [ ] By decimal-odds range
 - [ ] By ticket size
@@ -331,7 +334,7 @@
 - [~] Job registry — V2 schema exists; runtime service remains
 - [ ] Retry/failure tracking
 - [ ] Settlement backlog health
-- [ ] Source freshness health
+- [ ] Source freshness health summary
 - [ ] Backup freshness
 - [~] DB integrity checks — V1 preservation tool checks snapshots; V2 periodic health remains
 - [ ] Remove default PIN
@@ -343,8 +346,8 @@
 - [ ] Restore test
 - [ ] Source health metrics
 - [ ] Bookmaker adapter health
-- [ ] Paid API usage metrics
-- [ ] Cache metrics
+- [~] Paid API usage metrics — raw paid/free usage log exists; dashboard/summary metrics remain
+- [~] Cache metrics — cache-hit events are logged; aggregate metrics remain
 
 # Phase 16 — V2 Release
 
@@ -375,3 +378,12 @@
 - `be17779` — OpenClaw JSON gateway plus Ticket Workshop split/trim core.
 - `05c9d62` — V2 OpenClaw runtime doctrine, rewritten Sabi skill, heartbeat rules and tool contract.
 - `4393cb3` — V1 repository audit, verified preservation snapshot tool and rollback runbook.
+- Source/sports/odds slice — broad open-ended sports registry, sport/market research planner, SourceService cache/free-first execution, schema migration runner and rule-aware arbitrage engine.
+- `916c145` / `29b345f` — research evidence package and reusable evidence store.
+- `3b4db05` / `676f18f` / `c01ea35` — bankroll ledger and read-only history services.
+- `3a3d3e2` / `3bcb81f` — explicit event labels plus expanded Ticket Workshop editing/splitting.
+- `945d36b` — OpenClaw gateway exposes research evidence, bankroll/history and expanded ticket tools.
+- `34cf8ce` — expanded plain-language market interpretation for handicaps, team/player totals and periods.
+- `6e0e8d6` — stable canonical bookmaker identities.
+- `85e82b7` / `5c80852` — expanded market-language and service regression tests.
+- `83ce209` — OpenClaw V2 tool contract updated to match the running build.
