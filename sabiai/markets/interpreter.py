@@ -101,6 +101,14 @@ class MarketInterpreter:
                 period=period,
             )
 
+        dnb = self._draw_no_bet(raw, low, home, away, period)
+        if dnb is not None:
+            return dnb
+
+        race_field = self._race_field(raw, low, period)
+        if race_field is not None:
+            return race_field
+
         participant, participant_side = self._participant_from_text(raw, home, away)
 
         ou = self._ou.search(low)
@@ -142,7 +150,7 @@ class MarketInterpreter:
                 period=period,
             )
 
-        if "handicap" in low or self._signed_line.search(low):
+        if "handicap" in low or "spread" in low or self._signed_line.search(low):
             signed = self._signed_line.search(low)
             number = signed or self._number_after_handicap(low)
             if number:
@@ -172,7 +180,7 @@ class MarketInterpreter:
                 )
 
         participant, participant_side = self._participant_from_text(raw, home, away)
-        if participant and any(word in low for word in {"win", "winner", "to win"}):
+        if participant and any(word in low for word in {"win", "winner", "to win", "moneyline"}):
             return InterpretedMarket(
                 MarketKind.WINNER,
                 self._with_period(f"{participant} to win", period),
@@ -200,6 +208,143 @@ class MarketInterpreter:
 
     def _clean(self, text: str) -> str:
         return self._space.sub(" ", (text or "").strip())
+
+    def _draw_no_bet(
+        self,
+        raw: str,
+        low: str,
+        home: str | None,
+        away: str | None,
+        period: str,
+    ) -> InterpretedMarket | None:
+        if not any(token in low for token in ("draw no bet", "no draw bet", " dnb", "dnb ", "dnb")):
+            return None
+        participant, participant_side = self._participant_from_text(raw, home, away)
+        if participant is None:
+            cleaned = re.sub(r"\b(draw\s+no\s+bet|no\s+draw\s+bet|dnb)\b", "", raw, flags=re.I).strip(" :-—")
+            participant = cleaned or None
+        if participant is None:
+            return InterpretedMarket(
+                MarketKind.HANDICAP,
+                self._with_period("Draw No Bet", period),
+                metric="draw_no_bet",
+                line=Decimal("0"),
+                period=period,
+                understood=False,
+                reason="Draw No Bet is clear, but the team or participant is not.",
+            )
+        return InterpretedMarket(
+            MarketKind.HANDICAP,
+            self._with_period(f"{participant} — Draw No Bet", period),
+            metric="draw_no_bet",
+            line=Decimal("0"),
+            side=participant_side or "participant",
+            participant=participant,
+            period=period,
+        )
+
+    def _race_field(self, raw: str, low: str, period: str) -> InterpretedMarket | None:
+        # These labels appear in golf, motorsport, cycling and other multi-participant fields.
+        # They are only recognized when a field-specific cue is present so ordinary team
+        # winner labels are not accidentally converted into race/field markets.
+        winner_patterns = (
+            r"^(?P<participant>.+?)\s*(?:—|-|:)??\s*(?:race|tournament|event|outright)\s+winner$",
+            r"^(?P<participant>.+?)\s+to\s+win\s+(?:the\s+)?(?:race|tournament|event|outright)$",
+            r"^(?:race|tournament|event|outright)\s+winner\s*(?:—|-|:)?\s*(?P<participant>.+)$",
+        )
+        for pattern in winner_patterns:
+            match = re.match(pattern, raw, re.I)
+            if match:
+                participant = match.group("participant").strip(" :-—")
+                return InterpretedMarket(
+                    MarketKind.RACE_FIELD,
+                    self._with_period(f"{participant} to win", period),
+                    metric="outright_winner",
+                    side="winner",
+                    participant=participant,
+                    period=period,
+                )
+
+        top_patterns = (
+            r"^(?P<participant>.+?)\s*(?:—|-|:)?\s*(?:to\s+)?(?:finish\s+)?top\s*(?P<n>\d+)(?:\s+finish)?$",
+            r"^top\s*(?P<n>\d+)(?:\s+finish)?\s*(?:—|-|:)?\s*(?P<participant>.+)$",
+        )
+        for pattern in top_patterns:
+            match = re.match(pattern, raw, re.I)
+            if match:
+                participant = match.group("participant").strip(" :-—")
+                n = int(match.group("n"))
+                if n < 1:
+                    return None
+                return InterpretedMarket(
+                    MarketKind.RACE_FIELD,
+                    self._with_period(f"{participant} — Top {n} finish", period),
+                    metric="finish_position",
+                    line=Decimal(n),
+                    side="top",
+                    participant=participant,
+                    period=period,
+                )
+
+        podium_patterns = (
+            r"^(?P<participant>.+?)\s*(?:—|-|:)?\s*(?:to\s+)?(?:finish\s+on\s+the\s+)?podium(?:\s+finish)?$",
+            r"^podium(?:\s+finish)?\s*(?:—|-|:)?\s*(?P<participant>.+)$",
+        )
+        for pattern in podium_patterns:
+            match = re.match(pattern, raw, re.I)
+            if match:
+                participant = match.group("participant").strip(" :-—")
+                return InterpretedMarket(
+                    MarketKind.RACE_FIELD,
+                    self._with_period(f"{participant} — Podium finish", period),
+                    metric="finish_position",
+                    line=Decimal("3"),
+                    side="top",
+                    participant=participant,
+                    period=period,
+                )
+
+        make_cut = re.match(
+            r"^(?P<participant>.+?)\s*(?:—|-|:)?\s*(?:to\s+)?(?P<verb>make|miss)(?:\s+the)?\s+cut(?:\s*(?:—|-|:)?\s*(?P<yn>yes|no))?$",
+            raw,
+            re.I,
+        )
+        if make_cut:
+            participant = make_cut.group("participant").strip(" :-—")
+            verb = make_cut.group("verb").casefold()
+            explicit = (make_cut.group("yn") or "").casefold()
+            makes_cut = verb == "make"
+            if explicit == "no":
+                makes_cut = not makes_cut
+            return InterpretedMarket(
+                MarketKind.RACE_FIELD,
+                self._with_period(
+                    f"{participant} — {'Make' if makes_cut else 'Miss'} the cut",
+                    period,
+                ),
+                metric="make_cut",
+                side="yes" if makes_cut else "no",
+                participant=participant,
+                period=period,
+            )
+
+        group_winner = re.match(
+            r"^(?P<participant>.+?)\s*(?:—|-|:)?\s*(?:group|matchup)\s+winner$",
+            raw,
+            re.I,
+        )
+        if group_winner:
+            participant = group_winner.group("participant").strip(" :-—")
+            return InterpretedMarket(
+                MarketKind.RACE_FIELD,
+                self._with_period(f"{participant} — Group winner", period),
+                metric="group_winner",
+                side="winner",
+                participant=participant,
+                period=period,
+            )
+
+        return None
 
     def _metric(self, low: str) -> str:
         aliases = (
@@ -279,7 +424,7 @@ class MarketInterpreter:
 
     @staticmethod
     def _number_after_handicap(low: str):
-        return re.search(r"handicap(?:\s+[12])?\s*(?P<number>-?\d+(?:\.\d+)?)", low)
+        return re.search(r"(?:handicap|spread)(?:\s+[12])?\s*(?P<number>-?\d+(?:\.\d+)?)", low)
 
     @staticmethod
     def _line(line: Decimal) -> str:
