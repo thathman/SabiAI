@@ -5,7 +5,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sabiai import __version__
-from sabiai.bookmakers import default_bookmakers, legacy_command_adapters
+from sabiai.bookmakers import (
+    BookmakerExecutionPlanner,
+    TargetOffer,
+    TicketConversionService,
+    default_bookmakers,
+    legacy_command_adapters,
+)
 from sabiai.config import Settings
 from sabiai.domain.models import Market, Selection, Ticket, TicketLeg
 from sabiai.markets import MarketInterpreter
@@ -22,6 +28,14 @@ class SabiToolGateway:
         self.market_interpreter = MarketInterpreter()
         self.bookmakers = default_bookmakers()
         self.bookmaker_adapters = legacy_command_adapters()
+        self.bookmaker_execution = BookmakerExecutionPlanner(
+            bookmakers=self.bookmakers,
+            adapters=self.bookmaker_adapters,
+        )
+        self.ticket_converter = TicketConversionService(
+            bookmakers=self.bookmakers,
+            interpreter=self.market_interpreter,
+        )
         self.sports = default_sports()
         self.research_planner = ResearchPlanner(self.sports)
         self.ticket_normalizer = TicketNormalizer(self.bookmakers, self.market_interpreter)
@@ -42,6 +56,9 @@ class SabiToolGateway:
             "market.arbitrage": self.market_arbitrage,
             "bookmaker.resolve": self.bookmaker_resolve,
             "bookmaker.capabilities": self.bookmaker_capabilities,
+            "bookmaker.booking_code.import_plan": self.bookmaker_booking_code_import_plan,
+            "bookmaker.convert.plan": self.bookmaker_convert_plan,
+            "bookmaker.build.plan": self.bookmaker_build_plan,
             "ticket.normalize": self.ticket_normalize,
             "ticket.from_text": self.ticket_from_text,
             "ticket.split": self.ticket_split,
@@ -60,7 +77,7 @@ class SabiToolGateway:
         }
         handler = handlers.get(tool)
         if handler is None:
-            return {"ok": False, "error": f"Unknown Sabi V2 tool: {tool}"}
+            return {"ok": False, "error": f"Unknown Sabi Boy V2 tool: {tool}"}
         try:
             return {"ok": True, "tool": tool, "data": handler(args or {})}
         except Exception as exc:
@@ -257,6 +274,54 @@ class SabiToolGateway:
             "bookmakers": [asdict(status) for status in self.bookmaker_adapters.statuses()]
         }
 
+    def bookmaker_booking_code_import_plan(self, args: dict) -> dict:
+        plan = self.bookmaker_execution.import_booking_code(
+            bookmaker=str(args.get("bookmaker", "")),
+            booking_code=str(args.get("booking_code", "")),
+        )
+        return asdict(plan)
+
+    def bookmaker_convert_plan(self, args: dict) -> dict:
+        source_ticket = self._ticket_from_args(args)
+        target_name = str(args.get("target_bookmaker", ""))
+        target = self.bookmakers.resolve(target_name)
+        if target is None:
+            raise ValueError(f"Unknown target bookmaker: {target_name}")
+
+        offers = []
+        for raw in args.get("target_offers", []):
+            offers.append(
+                TargetOffer(
+                    event=str(raw["event"]),
+                    market=str(raw.get("market") or raw.get("pick") or ""),
+                    odds=raw["odds"],
+                    bookmaker_slug=str(raw.get("bookmaker_slug") or target.slug),
+                    event_ref=raw.get("event_ref"),
+                    market_ref=raw.get("market_ref"),
+                    home=raw.get("home"),
+                    away=raw.get("away"),
+                    sport=raw.get("sport"),
+                )
+            )
+
+        source_book = None
+        if args.get("bookmaker"):
+            resolved = self.bookmakers.resolve(str(args["bookmaker"]))
+            source_book = resolved.slug if resolved else str(args["bookmaker"])
+
+        plan = self.ticket_converter.plan(
+            source_ticket,
+            target_bookmaker=target.name,
+            offers=offers,
+            source_bookmaker_slug=source_book,
+        )
+        return self._conversion_to_dict(plan)
+
+    def bookmaker_build_plan(self, args: dict) -> dict:
+        ticket = self._ticket_from_args(args)
+        target = str(args.get("target_bookmaker") or args.get("bookmaker") or "")
+        return asdict(self.bookmaker_execution.build(ticket, bookmaker=target))
+
     def ticket_normalize(self, args: dict) -> dict:
         result = self.ticket_normalizer.normalize(
             args.get("legs", []),
@@ -272,8 +337,12 @@ class SabiToolGateway:
 
     def ticket_from_text(self, args: dict) -> dict:
         extraction = self.ticket_text_importer.extract(str(args.get("text", "")))
+        extracted = [leg.as_dict() for leg in extraction.legs]
+        if args.get("sport"):
+            for leg in extracted:
+                leg.setdefault("sport", args.get("sport"))
         result = self.ticket_normalizer.normalize(
-            [leg.as_dict() for leg in extraction.legs],
+            extracted,
             bookmaker=args.get("bookmaker"),
             source_type=str(args.get("source_type", "copied_text")),
             source_reference=args.get("source_reference"),
@@ -484,6 +553,8 @@ class SabiToolGateway:
                     "id": leg.id,
                     "event_id": leg.event_id,
                     "event": leg.event_label,
+                    "sport": leg.sport,
+                    "market": leg.market.label,
                     "pick": leg.selection.label,
                     "odds": str(leg.odds),
                     "locked": leg.locked,
@@ -491,6 +562,36 @@ class SabiToolGateway:
                 for leg in ticket.legs
             ],
             "notes": ticket.notes,
+        }
+
+    @classmethod
+    def _conversion_to_dict(cls, plan) -> dict:
+        return {
+            "ready": plan.ready,
+            "source_ticket_id": plan.source_ticket_id,
+            "source_bookmaker": plan.source_bookmaker_slug,
+            "target_bookmaker": plan.target_bookmaker_slug,
+            "missing_count": plan.missing_count,
+            "legs": [
+                {
+                    "source_leg_id": leg.source_leg_id,
+                    "source_event": leg.source_event,
+                    "source_selection": leg.source_selection,
+                    "source_odds": str(leg.source_odds),
+                    "status": leg.status,
+                    "reason": leg.reason,
+                    "target_event": leg.target_event,
+                    "target_selection": leg.target_selection,
+                    "target_odds": str(leg.target_odds) if leg.target_odds is not None else None,
+                    "target_event_ref": leg.target_event_ref,
+                    "target_market_ref": leg.target_market_ref,
+                }
+                for leg in plan.legs
+            ],
+            "target_ticket": cls._ticket_to_dict(plan.target_ticket)
+            if plan.target_ticket is not None
+            else None,
+            "notes": plan.notes,
         }
 
     @staticmethod
