@@ -5,6 +5,7 @@ from typing import Mapping
 
 from sabiai.config import Settings
 
+from .espn import EspnPublicAdapter
 from .football_data import FootballDataAdapter
 from .registry import Source, SourceCost, SourceKind, SourceRegistry
 from .service import Fetcher
@@ -22,7 +23,7 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
 
     OpenClaw Browser/Search are registered as later free fallbacks, but their actual fetchers
     are supplied by OpenClaw when it orchestrates those actions. Built-in Python adapters are
-    only for sources that are safe to call directly from the Sabi Boy runtime.
+    only for sources that are reasonable to call directly from the Sabi Boy runtime.
     """
 
     registry = SourceRegistry()
@@ -31,6 +32,10 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
     sportsdb = TheSportsDBAdapter(api_key=settings.thesportsdb_key)
     registry.register(sportsdb.source)
     fetchers[sportsdb.name] = sportsdb.fetch
+
+    espn = EspnPublicAdapter()
+    registry.register(espn.source)
+    fetchers[espn.name] = espn.fetch
 
     if settings.football_data_token:
         football_data = FootballDataAdapter(token=settings.football_data_token)
