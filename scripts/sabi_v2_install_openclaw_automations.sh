@@ -27,11 +27,13 @@ jobs_json() {
 
 job_id_by_name() {
   local wanted="$1"
-  jobs_json | python3 - "$wanted" <<'PY'
-import json, sys
+  local payload
+  payload="$(jobs_json)"
+  JOBS_PAYLOAD="$payload" python3 - "$wanted" <<'PY'
+import json, os, sys
 wanted = sys.argv[1]
 try:
-    data = json.load(sys.stdin)
+    data = json.loads(os.environ.get("JOBS_PAYLOAD", ""))
 except Exception:
     sys.exit(0)
 if isinstance(data, dict):
