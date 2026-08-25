@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 import shlex
 import subprocess
-import sys
 from typing import Any
 
 
@@ -81,22 +80,37 @@ def _run(command: list[str], *, timeout: int = 60) -> subprocess.CompletedProces
     )
 
 
-def _json_command(command: list[str], *, timeout: int = 60) -> Any:
-    proc = _run(command, timeout=timeout)
+def _json_from_process(proc: subprocess.CompletedProcess[str], command: list[str]) -> Any:
+    """Parse CLI JSON, with a narrow fallback for older OpenClaw stderr regressions.
+
+    Some historical OpenClaw builds routed `skills ... --json` output through stderr even on
+    success. Prefer stdout. If stdout is empty, accept stderr only when the *entire* stderr
+    payload is valid JSON. Ordinary warnings/errors therefore never become a false green.
+    """
     if proc.returncode != 0:
         raise AcceptanceError(
             f"Command failed ({proc.returncode}): {shlex.join(command)}\n"
             f"stdout: {proc.stdout.strip()}\nstderr: {proc.stderr.strip()}"
         )
-    text = proc.stdout.strip()
-    if not text:
+    candidates = []
+    if proc.stdout.strip():
+        candidates.append(("stdout", proc.stdout.strip()))
+    elif proc.stderr.strip():
+        candidates.append(("stderr", proc.stderr.strip()))
+    if not candidates:
         raise AcceptanceError(f"Command returned no JSON: {shlex.join(command)}")
+
+    location, text = candidates[0]
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
         raise AcceptanceError(
-            f"Command did not return valid JSON: {shlex.join(command)}: {exc}\n{text[:1000]}"
+            f"Command did not return valid JSON on {location}: {shlex.join(command)}: {exc}\n{text[:1000]}"
         ) from exc
+
+
+def _json_command(command: list[str], *, timeout: int = 60) -> Any:
+    return _json_from_process(_run(command, timeout=timeout), command)
 
 
 def _rows(payload: Any, keys: tuple[str, ...]) -> list[dict]:
@@ -107,7 +121,6 @@ def _rows(payload: Any, keys: tuple[str, ...]) -> list[dict]:
             value = payload.get(key)
             if isinstance(value, list):
                 return [row for row in value if isinstance(row, dict)]
-        # Some CLIs return a single object for one selected item.
         return [payload]
     return []
 
