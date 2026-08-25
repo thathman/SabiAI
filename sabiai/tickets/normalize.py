@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+import re
 from typing import Iterable
 
 from sabiai.bookmakers import BookmakerRegistry, default_bookmakers
@@ -32,7 +33,14 @@ class TicketNormalizer:
 
     Screenshot/X/browser work should extract visible information first, then hand the
     structured legs here. This keeps bookmaker/browser quirks outside ticket rules.
+
+    Visible event labels such as ``Arsenal vs Chelsea`` are also participant context. If an
+    extractor omits separate home/away fields, derive them from that explicit label before
+    interpreting the market. This keeps a round-trip through draft JSON from changing
+    ``Arsenal to win`` into an unknown market merely because home/away fields were absent.
     """
+
+    _event_split = re.compile(r"\s+(?:vs\.?|v\.?)\s+", re.I)
 
     def __init__(
         self,
@@ -88,6 +96,10 @@ class TicketNormalizer:
                     )
                 )
                 continue
+
+            event_home, event_away = self._participants_from_event(event_label)
+            home = home or event_home
+            away = away or event_away
 
             market_text = self._text(raw.get("market") or raw.get("pick"))
             if not market_text:
@@ -178,6 +190,15 @@ class TicketNormalizer:
             )
 
         return TicketNormalization(ticket=ticket, issues=issues)
+
+    @classmethod
+    def _participants_from_event(cls, event_label: str) -> tuple[str | None, str | None]:
+        parts = cls._event_split.split(event_label.strip(), maxsplit=1)
+        if len(parts) != 2:
+            return None, None
+        home = parts[0].strip()
+        away = parts[1].strip()
+        return (home or None), (away or None)
 
     @staticmethod
     def _text(value) -> str | None:
