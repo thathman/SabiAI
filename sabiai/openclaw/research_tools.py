@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sabiai.research import (
     Evidence,
+    EvidencePacketService,
     EvidenceStore,
     ResearchCaseService,
     ResearchSynthesizer,
@@ -24,6 +25,7 @@ class ResearchTools:
         return {
             "research.plan": self.plan,
             "research.evidence.save": self.evidence_save,
+            "research.evidence.ingest": self.evidence_ingest,
             "research.evidence.list": self.evidence_list,
             "research.case.assess": self.case_assess,
             "research.case.next": self.case_next,
@@ -66,6 +68,49 @@ class ResearchTools:
             id=args.get("id"),
         )
         return {"id": store.save(evidence)}
+
+    def evidence_ingest(self, args: dict) -> dict:
+        items = args.get("items")
+        if not isinstance(items, list):
+            raise ValueError("research.evidence.ingest needs an items list.")
+        persist = bool(args.get("persist", False))
+        store = EvidenceStore(self.app._db(initialize=True)) if persist else None
+        result = EvidencePacketService(store).ingest(
+            items,
+            event_id=args.get("event_id"),
+            sport_id=args.get("sport_id"),
+            default_source_name=args.get("source_name"),
+            default_source_url=args.get("source_url"),
+            default_observed_at=args.get("observed_at"),
+            default_reliability=str(args.get("reliability") or "unknown"),
+            default_freshness_seconds=(
+                int(args["freshness_seconds"])
+                if args.get("freshness_seconds") is not None
+                else None
+            ),
+            persist=persist,
+        )
+        evidence_rows = [item.as_dict() for item in result.items]
+        response = {
+            "usable": result.usable,
+            "items": evidence_rows,
+            "rejected": list(result.rejected),
+            "persisted_ids": list(result.persisted_ids),
+            "persisted": persist,
+        }
+        if args.get("sport") and args.get("event"):
+            assessment = self.case_service.assess(
+                sport=str(args.get("sport")),
+                event=str(args.get("event")),
+                market=args.get("market"),
+                home=args.get("home"),
+                away=args.get("away"),
+                evidence=evidence_rows,
+            )
+            summary = self.synthesizer.summarize(assessment, evidence_rows)
+            response["assessment"] = json_value(assessment)
+            response["summary"] = {**json_value(summary), "plain_text": summary.plain_text()}
+        return response
 
     def evidence_list(self, args: dict) -> dict:
         event_id = str(args["event_id"])
