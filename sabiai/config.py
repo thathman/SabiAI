@@ -12,6 +12,7 @@ class Settings:
     Secrets are read from environment variables only. They are never embedded in source.
     """
 
+    repo_root: Path
     data_dir: Path
     legacy_bets_db: Path
     v2_db: Path
@@ -20,8 +21,14 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        data_dir = Path(os.getenv("SABIAI_DATA_DIR", "~/.openclaw/workspace/data")).expanduser()
+        repo_root = Path(
+            os.getenv("SABIAI_REPO_ROOT", "~/.openclaw/workspace")
+        ).expanduser()
+        data_dir = Path(
+            os.getenv("SABIAI_DATA_DIR", str(repo_root / "data"))
+        ).expanduser()
         return cls(
+            repo_root=repo_root,
             data_dir=data_dir,
             legacy_bets_db=Path(
                 os.getenv("SABIAI_LEGACY_DB", str(data_dir / "bets.db"))
