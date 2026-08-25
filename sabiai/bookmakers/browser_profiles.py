@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +17,20 @@ class BrowserPlaybook:
     source_reference: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class MarketSearchPlaybook:
+    bookmaker_slug: str
+    entry_url: str | None
+    ready: bool
+    search_method: str
+    event_navigation: str
+    market_navigation: str
+    odds_format: str
+    extraction_fields: tuple[str, ...]
+    verified_on: str | None
+    verification_note: str
+
+
 DEFAULT_EXTRACTION_FIELDS = (
     "sport",
     "event",
@@ -30,13 +43,27 @@ DEFAULT_EXTRACTION_FIELDS = (
     "combined_odds",
 )
 
+MARKET_SEARCH_FIELDS = (
+    "sport",
+    "competition",
+    "event",
+    "home",
+    "away",
+    "event_ref",
+    "market",
+    "selection",
+    "market_ref",
+    "decimal_odds",
+    "observed_at",
+)
+
 
 class BookmakerBrowserProfiles:
     """Human-readable browser playbooks for OpenClaw.
 
     These are intentionally not brittle DOM selectors. OpenClaw/browser should locate the
-    visible controls described here, restore/read the slip, and hand structured output to
-    `bookmaker.booking_code.restore`, where canonical validation happens.
+    visible controls described here, restore/read/search the sportsbook, and hand structured
+    output to Sabi Boy's canonical validators. No profile authorizes wager placement.
     """
 
     def __init__(self):
@@ -103,8 +130,85 @@ class BookmakerBrowserProfiles:
             ),
         }
 
+        self._search_profiles = {
+            "sportybet": MarketSearchPlaybook(
+                bookmaker_slug="sportybet",
+                entry_url="https://www.sportybet.com/ng/lite",
+                ready=True,
+                search_method=(
+                    "Use the public Sports/Lite event listing and visible sport/category/tournament navigation. "
+                    "Match both participant names; open the event when the requested market is not shown in the event row."
+                ),
+                event_navigation="Sport → competition/tournament → exact event; verify both home and away participants before reading a market.",
+                market_navigation="Open the event's full market list, then locate the exact requested market, line and period.",
+                odds_format="decimal",
+                extraction_fields=MARKET_SEARCH_FIELDS,
+                verified_on="2026-08-25",
+                verification_note=(
+                    "SportyBet NG public Lite sportsbook currently exposes event rows, 1/X/2 decimal prices and links to many additional markets. "
+                    "Market availability and prices are live data and must be re-read at search time."
+                ),
+            ),
+            "bet9ja": MarketSearchPlaybook(
+                bookmaker_slug="bet9ja",
+                entry_url="https://sports.bet9ja.com/",
+                ready=True,
+                search_method=(
+                    "Use the public sportsbook sport/competition pages and visible event listing. Search or navigate to the competition, "
+                    "then match both participant names before opening the event/markets."
+                ),
+                event_navigation="Sport → competition/league → exact event; never identify an event from one team name alone.",
+                market_navigation="Open the event market view and locate the exact market label, line, period and selection; retain event/market references when visible.",
+                odds_format="decimal",
+                extraction_fields=MARKET_SEARCH_FIELDS,
+                verified_on="2026-08-25",
+                verification_note=(
+                    "The existing Sabi Bet9ja browser integration uses the current public sportsbook root at sports.bet9ja.com. "
+                    "Do not reuse its old hard-coded league guesses as authoritative market discovery; inspect the live page instead."
+                ),
+            ),
+            "stake": MarketSearchPlaybook(
+                bookmaker_slug="stake",
+                entry_url="https://stake.com/sports/home",
+                ready=True,
+                search_method=(
+                    "Use Stake Sportsbook's current sports menu or search bar to find the exact team/event, then open the event. "
+                    "If region/account restrictions hide an event, report it unavailable rather than substituting another region or market."
+                ),
+                event_navigation="Search exact participants or browse Sport → competition → event; verify both participants and event date/context.",
+                market_navigation="Open the event and locate the exact market/line/period; set/read decimal odds rather than converting American prices.",
+                odds_format="decimal",
+                extraction_fields=MARKET_SEARCH_FIELDS,
+                verified_on="2026-08-25",
+                verification_note=(
+                    "Stake's current official sportsbook describes a search bar plus live/upcoming event browsing and supports decimal odds. "
+                    "Availability is region/account dependent and must be verified at runtime."
+                ),
+            ),
+            "1xbet": MarketSearchPlaybook(
+                bookmaker_slug="1xbet",
+                entry_url=None,
+                ready=False,
+                search_method="Discover and verify the configured regional sportsbook entry/search flow before automating market discovery.",
+                event_navigation="Not yet verified for the configured region.",
+                market_navigation="Not yet verified for the configured region.",
+                odds_format="decimal",
+                extraction_fields=MARKET_SEARCH_FIELDS,
+                verified_on=None,
+                verification_note=(
+                    "Sabi Boy knows 1xBet as a bookmaker but does not yet claim a verified V2 public market-search playbook for the configured region."
+                ),
+            ),
+        }
+
     def get(self, bookmaker_slug: str) -> BrowserPlaybook | None:
         return self._profiles.get((bookmaker_slug or "").casefold().strip())
 
     def all(self) -> tuple[BrowserPlaybook, ...]:
         return tuple(self._profiles[key] for key in sorted(self._profiles))
+
+    def market_search(self, bookmaker_slug: str) -> MarketSearchPlaybook | None:
+        return self._search_profiles.get((bookmaker_slug or "").casefold().strip())
+
+    def all_market_search(self) -> tuple[MarketSearchPlaybook, ...]:
+        return tuple(self._search_profiles[key] for key in sorted(self._search_profiles))
