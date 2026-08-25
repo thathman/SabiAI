@@ -19,7 +19,12 @@ from sabiai.markets import MarketInterpreter
 from sabiai.odds import ArbitrageEngine, PriceQuote, SettlementRules
 from sabiai.research import Evidence, EvidenceStore
 from sabiai.sports import ResearchPlanner, default_sports
-from sabiai.storage import BankrollLedger, HistoryService, SabiDatabase
+from sabiai.storage import (
+    BankrollLedger,
+    HistoryService,
+    SabiDatabase,
+    TicketDraftStore,
+)
 from sabiai.tickets import TicketNormalizer, TicketTextImporter, TicketWorkshop
 
 
@@ -64,6 +69,11 @@ class SabiToolGateway:
             "bookmaker.build.execute": self.bookmaker_build_execute,
             "ticket.normalize": self.ticket_normalize,
             "ticket.from_text": self.ticket_from_text,
+            "ticket.draft.save": self.ticket_draft_save,
+            "ticket.draft.revise": self.ticket_draft_revise,
+            "ticket.draft.get": self.ticket_draft_get,
+            "ticket.draft.recent": self.ticket_draft_recent,
+            "ticket.draft.lineage": self.ticket_draft_lineage,
             "ticket.split": self.ticket_split,
             "ticket.split_by_size": self.ticket_split_by_size,
             "ticket.trim": self.ticket_trim,
@@ -91,6 +101,9 @@ class SabiToolGateway:
         if initialize:
             db.initialize()
         return db
+
+    def _draft_store(self) -> TicketDraftStore:
+        return TicketDraftStore(self._db(initialize=True))
 
     def system_initialize(self, args: dict) -> dict:
         db = self._db(initialize=True)
@@ -373,6 +386,71 @@ class SabiToolGateway:
             "issues": [asdict(issue) for issue in result.issues],
         }
 
+    def ticket_draft_save(self, args: dict) -> dict:
+        payload = args.get("payload")
+        issues = args.get("issues")
+        if payload is None:
+            normalized = self.ticket_normalizer.normalize(
+                args.get("legs", []),
+                bookmaker=args.get("bookmaker"),
+                source_type=str(args.get("source_type", "instruction")),
+                source_reference=args.get("source_reference"),
+            )
+            payload = self._ticket_to_dict(normalized.ticket)
+            issues = [asdict(issue) for issue in normalized.issues]
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be one ticket object.")
+
+        source_slug = self._bookmaker_slug(args.get("bookmaker"))
+        target_slug = self._bookmaker_slug(args.get("target_bookmaker"))
+        draft = self._draft_store().create(
+            payload,
+            source_type=str(args.get("source_type", "instruction")),
+            source_reference=args.get("source_reference"),
+            source_bookmaker_slug=source_slug,
+            target_bookmaker_slug=target_slug,
+            status=str(args.get("status", "draft")),
+            issues=list(issues or []),
+            parent_draft_id=args.get("parent_draft_id"),
+        )
+        return self._draft_to_dict(draft)
+
+    def ticket_draft_revise(self, args: dict) -> dict:
+        draft_id = str(args["draft_id"])
+        payload = args.get("payload")
+        issues = args.get("issues")
+        if payload is None:
+            normalized = self.ticket_normalizer.normalize(
+                args.get("legs", []),
+                bookmaker=args.get("bookmaker"),
+                source_type="revision",
+                source_reference=args.get("source_reference"),
+            )
+            payload = self._ticket_to_dict(normalized.ticket)
+            issues = [asdict(issue) for issue in normalized.issues]
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be one ticket object.")
+        draft = self._draft_store().revise(
+            draft_id,
+            payload,
+            issues=list(issues or []),
+            status=str(args.get("status", "draft")),
+            target_bookmaker_slug=self._bookmaker_slug(args.get("target_bookmaker")),
+        )
+        return self._draft_to_dict(draft)
+
+    def ticket_draft_get(self, args: dict) -> dict:
+        draft = self._draft_store().get(str(args["draft_id"]))
+        return {"found": draft is not None, "draft": self._draft_to_dict(draft) if draft else None}
+
+    def ticket_draft_recent(self, args: dict) -> dict:
+        drafts = self._draft_store().recent(int(args.get("limit", 25)))
+        return {"drafts": [self._draft_to_dict(draft) for draft in drafts]}
+
+    def ticket_draft_lineage(self, args: dict) -> dict:
+        drafts = self._draft_store().lineage(str(args["draft_id"]))
+        return {"lineage": [self._draft_to_dict(draft) for draft in drafts]}
+
     def ticket_split(self, args: dict) -> dict:
         ticket = self._ticket_from_args(args)
         children = self.ticket_workshop.split(ticket, int(args["slips"]))
@@ -531,6 +609,12 @@ class SabiToolGateway:
             raise ValueError("; ".join(errors) or "Ticket needs at least one usable leg.")
         return normalized.ticket
 
+    def _bookmaker_slug(self, value) -> str | None:
+        if not value:
+            return None
+        resolved = self.bookmakers.resolve(str(value))
+        return resolved.slug if resolved else str(value).strip().casefold()
+
     @staticmethod
     def _find_leg(ticket: Ticket, leg_id, event_label) -> TicketLeg | None:
         if leg_id:
@@ -580,6 +664,22 @@ class SabiToolGateway:
                 for leg in ticket.legs
             ],
             "notes": ticket.notes,
+        }
+
+    @staticmethod
+    def _draft_to_dict(draft) -> dict:
+        return {
+            "id": draft.id,
+            "parent_draft_id": draft.parent_draft_id,
+            "source_type": draft.source_type,
+            "source_reference": draft.source_reference,
+            "source_bookmaker_slug": draft.source_bookmaker_slug,
+            "target_bookmaker_slug": draft.target_bookmaker_slug,
+            "status": draft.status,
+            "payload": draft.payload,
+            "issues": draft.issues,
+            "created_at": draft.created_at,
+            "updated_at": draft.updated_at,
         }
 
     @classmethod
