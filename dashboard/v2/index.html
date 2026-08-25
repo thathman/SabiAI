@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111216">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Sabi Boy — our sports intelligence history, performance and journal.">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+  <title>Sabi Boy</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SB</div>
+        <div>
+          <strong>Sabi Boy</strong>
+          <span>Our record</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="/" data-route="overview"><span class="nav-icon">⌂</span><span>Overview</span></a>
+        <a href="/picks" data-route="picks"><span class="nav-icon">✓</span><span>Games / Picks</span></a>
+        <a href="/tickets" data-route="tickets"><span class="nav-icon">▤</span><span>Tickets</span></a>
+        <a href="/performance" data-route="performance"><span class="nav-icon">↗</span><span>Performance</span></a>
+        <a href="/finance" data-route="finance"><span class="nav-icon">₦</span><span>Finance</span></a>
+        <a href="/strategies" data-route="strategies"><span class="nav-icon">◎</span><span>Strategies</span></a>
+        <a href="/history" data-route="history"><span class="nav-icon">◷</span><span>History</span></a>
+        <a href="/blog" data-route="blog"><span class="nav-icon">✎</span><span>Sabi Boy Blog</span></a>
+        <a href="/system" data-route="system"><span class="nav-icon">◉</span><span>System</span></a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="read-only-pill"><span></span> Read-only dashboard</div>
+        <small>Research and ticket work happen with Sabi Boy in OpenClaw.</small>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button id="menu-button" class="icon-button menu-button" aria-label="Open navigation">☰</button>
+        <div class="page-heading">
+          <p id="eyebrow">OUR HISTORY</p>
+          <h1 id="page-title">Overview</h1>
+        </div>
+        <div class="topbar-actions">
+          <div id="readiness-chip" class="status-chip loading"><span></span><b>Checking</b></div>
+          <button id="refresh-button" class="icon-button" title="Refresh data" aria-label="Refresh data">↻</button>
+        </div>
+      </header>
+
+      <main id="view" class="view" aria-live="polite">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading our record…</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
