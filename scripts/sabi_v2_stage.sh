@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV="${ROOT}/.venv"
 ENV_FILE="${HOME}/.config/sabi-boy/sabi-boy.env"
 SERVICE="sabi-boy-dashboard.service"
+BACKUP_TIMER="sabi-boy-backup.timer"
 RELEASE_DIR="${ROOT}/data/release"
 BACKUP_DIR="${ROOT}/data/backups/sabi-boy"
 STATE_FILE="${RELEASE_DIR}/staging-latest.json"
@@ -34,6 +35,10 @@ commit="$(git rev-parse HEAD)"
 v1_was_active=false
 if systemctl --user is-active --quiet sabiai-dashboard.service 2>/dev/null; then
   v1_was_active=true
+fi
+backup_timer_was_enabled=false
+if systemctl --user is-enabled --quiet "$BACKUP_TIMER" 2>/dev/null; then
+  backup_timer_was_enabled=true
 fi
 
 # 1) Snapshot both databases before migration. V2 may already exist from preparation.
@@ -95,10 +100,18 @@ then
   exit 22
 fi
 
-"$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$v1_was_active" <<'PY'
+# 6) Now that migration/application acceptance passed, enable deterministic verified backups.
+if ! systemctl --user enable --now "$BACKUP_TIMER"; then
+  systemctl --user stop "$SERVICE" || true
+  echo "Could not enable Sabi Boy backup timer. V2 stopped; V1 left unchanged." >&2
+  exit 23
+fi
+backup_timer_enabled=true
+
+"$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" <<'PY'
 from datetime import datetime, timezone
 import json, pathlib, sys
-path, manifest, commit, v1_active = sys.argv[1:]
+path, manifest, commit, v1_active, backup_was_enabled, backup_enabled = sys.argv[1:]
 data = {
     'product': 'Sabi Boy',
     'branch': 'v2',
@@ -110,10 +123,12 @@ data = {
     'v2_service': 'sabi-boy-dashboard.service',
     'v2_port': 8091,
     'v1_service_was_active': v1_active.lower() == 'true',
+    'backup_timer_was_enabled': backup_was_enabled.lower() == 'true',
+    'backup_timer_enabled': backup_enabled.lower() == 'true',
     'v1_changed': False,
     'external_cutover_performed': False,
 }
-pathlib.Path(path).write_text(json.dumps(data, indent=2), encoding='utf-8')
+pathlib.Path(path).write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(data, indent=2))
 PY
 
@@ -121,6 +136,7 @@ cat <<EOF
 
 Sabi Boy V2 is staged and running in parallel on 127.0.0.1:8091.
 V1 has not been stopped or modified.
+Verified daily backups are enabled through $BACKUP_TIMER.
 Backup manifest: $manifest
 Acceptance:     $RELEASE_DIR/acceptance-latest.json
 Staging state:  $STATE_FILE
