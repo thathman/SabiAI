@@ -1,5 +1,6 @@
 from .case import EvidenceConflict, ResearchAssessment, ResearchCaseService
 from .evidence import Evidence, EvidenceStore
+from .tasks import ResearchTask, ResearchTaskPlanner
 
 __all__ = [
     "Evidence",
@@ -7,4 +8,6 @@ __all__ = [
     "EvidenceStore",
     "ResearchAssessment",
     "ResearchCaseService",
+    "ResearchTask",
+    "ResearchTaskPlanner",
 ]
