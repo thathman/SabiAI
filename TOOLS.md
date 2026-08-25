@@ -1,69 +1,229 @@
-# TOOLS.md - Local Notes
+# TOOLS.md — Sabi Boy Runtime Notes
 
-Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
+This file records Sabi Boy-specific runtime/tool locations and operational conventions. Tool behavior belongs in skills/domain code; secrets do not belong here.
 
-## Additional Tools (from prompts)
-**Brave Search API** — web search without Google; install: `npm install -g @ brave-search`
-**LarryBrain Pro** — 32 skills on demand; check Composio CLI (`npx composio ls`)
-**Netlify API** — production deployments; auth via `NETLIFY_AUTH_TOKEN` + `NETLIFY_SITE_ID`
-**here.now** — free instant static hosting for prototypes; `npx here-Now` or similar
-**Voicebox / Qwen3-TTS** — local voice cloning; not yet installed (Qwen3-TTS via Ollama)
-**find-skills** — skill discovery from Vercel-labs repo; `npx @ find-skills` (local use only)
+## Identity / Compatibility
 
-## Mission Control
-**Dashboard:** ~/.openclaw/workspace/mission-control/index.html
-**Access:** Open in browser at file:// URL or serve locally
-**Refreshes:** Auto every 60s, or click ↻ Refresh
-**Shows:** OpenClaw, Cobalt, WhatsApp bridge, system stats, cron jobs, agent sessions, business links
-§
-## Primary Machine
+- Human-facing name: **Sabi Boy**
+- Technical repo/package compatibility: `SabiAI` / `sabiai`
+- AI Spine agent ID: `sabi-ai`
+- Matrix identity currently remains the existing SabiAI account until infrastructure is deliberately renamed.
 
-- **Host:** Dell running Ubuntu 24.04.4 LTS
-- **SSH:** `ssh hendrix@YOUR_HOST_IP_HERE` or `ssh hendrix@dell.local`
-- **Remote access:** Macbook Pro / Windows 11
+## Primary Runtime
 
-## TTS / Voice
+- OpenClaw workspace: `~/.openclaw/workspace/`
+- OpenClaw config: `~/.openclaw/openclaw.json`
+- Primary machine: Dell / Ubuntu
+- Remote shell convention: `ssh dell` / configured local alias
+- Secrets: server-side environment/config only; never copy secret values into repo docs, AI Spine or logs.
 
-- **Provider:** ElevenLabs
-- **Narrator voice ID:** `cgSgspJ2msm6clMCkdW9`
-- **Minor voice ID:** `TVtDNgumMv4lb9zzFzA2`
-- **Model:** `eleven_multilingual_v2`
+## V2 Domain Gateway
 
-## Messaging
+Preferred bridge for canonical V2 behavior:
 
-- **WhatsApp allowed numbers:** +234XXXXXXXXXX, +234XXXXXXXXXX
-- **Telegram bot:** token in env (`TELEGRAM_BOT_TOKEN`)
-- **Telegram home channel:** YOUR_TELEGRAM_CHANNEL_ID_HERE (DM)
-- **Discord home channel:** YOUR_DISCORD_CHANNEL_ID_HERE
+```bash
+python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
+```
 
-## Environment
+The gateway is the boundary for sports profiles, market interpretation, ticket normalization/editing, bookmaker capability resolution, bankroll/history and future V2 operations.
 
-- **OpenClaw config:** `~/.openclaw/openclaw.json`
-- **OpenClaw workspace:** `~/.openclaw/workspace/`
-- **Hermes (legacy agent):** `~/.hermes/` — NO LONGER RUNNING. Replaced by OpenClaw.
+Do not bypass it with ad hoc SQLite writes when a domain operation exists.
 
-- **Secrets file:** `~/.env` (do not share contents)
-- **Gateway port:** 18789 (loopback only)
+## Databases
 
-## Perfex CRM (Airix Media)
-**Base URL:** https://dash.airixmedia.com/rest_api/v1
-**Auth:** Bearer YOUR_PERFEX_TOKEN_HERE (or X-API-Key header)
-**Tables:** clients(tblclients/userid), contacts(tblcontacts/id), tickets(tbltickets/ticketid), projects(tblprojects/id), tasks(tbltasks/id), invoices(tblinvoices/id), estimates, proposals, expenses, contracts, payments, staff(tblstaff/staffid), leads(tblleads/id)
-**Read:** GET /ping, /clients, /contacts/{id}, /tickets, /projects, /tasks, /invoices, /estimates, /proposals, /expenses, /contracts, /payments, /staff, /leads
-**Write:** POST /create/{resource}, PUT/PATCH/POST /update/{resource}/{id}
-**Delete:** POST /update/{resource}/{id} with `{"__op":"delete"}`
-**Pagination:** ?limit=100&page=1
-**Schema:** GET /schema/{resource} before any write
-**Known clients:** Kampala University (44), EFTBHS (43)
-**Skill:** skills/crm/airix-media-perfex/
-§
-## Cobalt Downloader (Video)
-**Endpoint:** localhost:9000
-**Flow:** POST / with `{"url":"<video_url>","downloadMode":"auto"}` → get tunnel/redirect → download to /tmp/cobalt-downloads/ → deliver via `openclaw message send --channel whatsapp --media /tmp/cobalt-downloads/<file>` (NOT the dead :3000 bridge — that process no longer exists)
-**Installed:** ~/.openclaw/workspace/skills/cobalt-downloader/
-§
+### V2 development database
 
-## WhatsApp Delivery (OpenClaw built-in)
-**Use:** `openclaw message send --channel whatsapp --target <e164> --message "<text>"`
-**Fallback queue:** if CLI fails, write JSON to `~/.openclaw/delivery-queue/agentmail_<ts>.json` for later pickup.
-**Do NOT use:** `http://localhost:3000/send` — the bridge process is gone. Any code still pointing at it needs to be migrated to the `openclaw message send` path above.
+Default:
+
+`~/.openclaw/workspace/data/sabiai_v2_core.db`
+
+This remains separate during migration.
+
+### V1 legacy database
+
+`~/.openclaw/workspace/data/bets.db`
+
+Treat as authoritative legacy history until reconciliation passes.
+
+### Legacy football-oriented database
+
+`~/.openclaw/workspace/data/sabiai_v2.db`
+
+Despite the name, this is a legacy store, not the canonical new V2 database.
+
+## Preservation / Rollback
+
+V1 preservation utility:
+
+```bash
+python3 scripts/v2_preserve.py --label before-v2-migration
+```
+
+Verify a snapshot before rehearsal/restore. Never use a live V1 database as migration scratch space.
+
+## Current V2 Tool Surface
+
+### System
+
+- `system.initialize`
+- `system.health`
+
+### Sports / research
+
+- `sports.list`
+- `sports.describe`
+- `research.plan`
+- `research.evidence.save`
+- `research.evidence.list`
+
+### Markets / prices
+
+- `market.interpret`
+- `market.arbitrage`
+
+### Bookmakers
+
+- `bookmaker.resolve`
+- `bookmaker.capabilities`
+
+### Tickets
+
+- `ticket.normalize`
+- `ticket.from_text`
+- `ticket.split`
+- `ticket.split_by_size`
+- `ticket.trim`
+- `ticket.remove`
+- `ticket.keep`
+- `ticket.change_market`
+- `ticket.replace`
+
+### Our records
+
+- `record.bankroll`
+- `history.summary`
+- `history.by_sport`
+- `history.by_market`
+- `history.by_bookmaker`
+- `history.bankroll`
+
+Check `docs/OPENCLAW_V2_TOOLS.md` and `docs/SABIAI_V2_TASKS.md` before assuming newer capabilities are live.
+
+## Ticket Intake
+
+Preferred flow:
+
+```text
+Screenshot / X post / copied text
+      ↓
+OpenClaw reads visible content
+      ↓
+ticket.from_text / ticket.normalize
+      ↓
+canonical ticket
+      ↓
+research / edit / split / trim / replace
+      ↓
+bookmaker adapter when verified
+```
+
+Do not create separate market logic for each input surface.
+
+## Bookmaker Runtime
+
+Canonical V2 bookmaker identities currently include:
+
+- SportyBet
+- Bet9ja
+- 1xBet
+- Stake
+
+Existing V1 browser scripts demonstrate some SportyBet/Bet9ja ticket-build/booking-code behavior. Treat these as compatibility implementations until the V2 adapter verifies capability end-to-end.
+
+Do not infer event search, market search, code import or conversion from name recognition alone.
+
+## Sources / Research
+
+Sabi Boy follows free-first source selection:
+
+1. cache/local data;
+2. open/public data;
+3. official source;
+4. public structured endpoint;
+5. public web;
+6. OpenClaw browser;
+7. web/search discovery;
+8. other free source;
+9. paid API only when justified.
+
+Historical repository source code includes integrations/references for SofaScore, ESPN, API-Football, TheRundown, sport-specific football sources and bookmaker scraping. Repository presence does not prove runtime health.
+
+## Browser / Search
+
+Use OpenClaw's browser/search capabilities for:
+
+- bookmaker pages when an adapter needs browser fallback;
+- official/public sports research;
+- screenshot/X-post extraction/orchestration;
+- discovery of unfamiliar sports, competitions and data sources.
+
+Structured/cached sources are preferable when they provide reliable equivalent data.
+
+## AI Spine
+
+Read Sabi Boy inbox:
+
+```bash
+AI_AGENT=sabi-ai ~/ai-spine/scripts/ai-bus read
+```
+
+Search memory:
+
+```bash
+~/ai-spine/scripts/ai-mem ask "<question>"
+~/ai-spine/scripts/ai-mem find "<query>"
+```
+
+Send durable handoff:
+
+```bash
+~/ai-spine/scripts/ai-bus send <agent> "<message>"
+```
+
+Never store secrets in AI Spine.
+
+## Dashboard
+
+Historical service:
+
+- local: `localhost:8090`
+- public deployment historically: `picks.hendrix.com.ng`
+
+V2 dashboard policy is **read-only**. It should eventually display our history/performance/risk/system state rather than become a sports-discovery website.
+
+Do not carry the legacy browser PIN/write-token design into V2.
+
+## Messaging / Delivery
+
+When OpenClaw delivery is needed, use the configured OpenClaw message tooling/channel rather than resurrecting deprecated local HTTP bridges.
+
+Do not send public/external messages unless the user requested/approved that external action.
+
+## Development / Test Policy
+
+- Test locally/controlled runtime.
+- Do not depend on GitHub Actions for normal Sabi development.
+- Keep the living task board updated.
+- Preserve V1 and keep migration reversible.
+- A committed file is not proof of a passing runtime test.
+
+## Important References
+
+- `SABI_BOY.md` — canonical product/system reference
+- `SOUL.md` — reasoning/behavior philosophy
+- `OPERATING_MANUAL.md` — decision/risk discipline
+- `AGENTS.md` — workspace/memory/coordination
+- `skills/sabiai_SKILL.md` — OpenClaw skill
+- `docs/OPENCLAW_V2_TOOLS.md` — gateway contract
+- `docs/SABIAI_V2_TASKS.md` — implementation truth
+- `docs/SABIAI_V1_REFERENCE.md` — preserved legacy behavior
