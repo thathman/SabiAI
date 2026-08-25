@@ -27,11 +27,18 @@ class OpenClawGatewayTests(unittest.TestCase):
         result = self.gateway.dispatch("system.tools")
         self.assertTrue(result["ok"])
         tools = result["data"]["tools"]
-        self.assertIn("research.case.assess", tools)
-        self.assertIn("research.case.next", tools)
-        self.assertIn("bookmaker.search.plan", tools)
-        self.assertIn("system.readiness", tools)
-        self.assertIn("ticket.draft.lineage", tools)
+        expected = {
+            "research.case.assess",
+            "research.case.next",
+            "research.case.summary",
+            "research.review.plan",
+            "bookmaker.search.plan",
+            "bookmaker.browser.playbook",
+            "bookmaker.booking_code.restore",
+            "system.readiness",
+            "ticket.draft.lineage",
+        }
+        self.assertTrue(expected.issubset(set(tools)))
 
     def test_initialize_and_readiness(self):
         initialized = self.gateway.dispatch("system.initialize")
@@ -72,6 +79,18 @@ class OpenClawGatewayTests(unittest.TestCase):
         self.assertTrue(result["data"]["ready"])
         self.assertEqual(result["data"]["tasks"][0]["sport"], "Football")
 
+    def test_bookmaker_browser_playbook_is_available_through_gateway(self):
+        result = self.gateway.dispatch(
+            "bookmaker.browser.playbook",
+            {"bookmaker": "SportyBet"},
+        )
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["data"]["found"])
+        self.assertEqual(
+            result["data"]["playbook"]["entry_url"],
+            "https://www.sportybet.com/ng/lite/betslip",
+        )
+
     def test_research_case_returns_next_free_first_tasks(self):
         result = self.gateway.dispatch(
             "research.case.next",
@@ -87,6 +106,46 @@ class OpenClawGatewayTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["data"]["assessment"]["evidence_quality"], "weak")
         self.assertTrue(result["data"]["tasks"])
+
+    def test_research_summary_stays_plain_language(self):
+        result = self.gateway.dispatch(
+            "research.case.summary",
+            {
+                "sport": "Football",
+                "event": "Arsenal vs Chelsea",
+                "market": "Arsenal to win",
+                "home": "Arsenal",
+                "away": "Chelsea",
+                "evidence": [
+                    {
+                        "id": "e1",
+                        "evidence_type": "form",
+                        "summary": "Arsenal have won four of their last five home matches.",
+                        "source_name": "Official League",
+                        "reliability": "official",
+                    }
+                ],
+            },
+        )
+        self.assertTrue(result["ok"])
+        self.assertIn("What I know:", result["data"]["plain_text"])
+        self.assertNotIn("model", result["data"]["plain_text"].casefold())
+
+    def test_skeptic_review_plan_triggers_for_large_ticket(self):
+        result = self.gateway.dispatch(
+            "research.review.plan",
+            {
+                "sport": "Volleyball",
+                "event": "Team A vs Team B",
+                "market": "Team A to win",
+                "evidence": [],
+                "ticket_legs": 8,
+                "user_asked_strongest": True,
+            },
+        )
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["data"]["required"])
+        self.assertTrue(result["data"]["questions"])
 
 
 if __name__ == "__main__":
