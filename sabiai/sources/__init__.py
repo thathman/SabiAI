@@ -1,4 +1,5 @@
 from .catalog import SourceBundle, default_source_bundle
+from .espn import EspnPublicAdapter
 from .football_data import FootballDataAdapter
 from .health import SourceHealth, SourceHealthService
 from .registry import (
@@ -13,6 +14,7 @@ from .thesportsdb import TheSportsDBAdapter
 
 __all__ = [
     "AccessDecision",
+    "EspnPublicAdapter",
     "FootballDataAdapter",
     "Source",
     "SourceBundle",
