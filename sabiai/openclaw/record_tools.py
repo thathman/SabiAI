@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sabiai.storage import BankrollLedger, HistoryService, PerformanceAnalytics
+from sabiai.storage import AdvancedAnalytics, BankrollLedger, HistoryService, PerformanceAnalytics
 
 from .serializers import ledger_to_dict
 
@@ -28,6 +28,9 @@ class RecordTools:
             "history.ticket_killers": self.ticket_killers,
             "history.daily_outcomes": self.daily_outcomes,
             "history.bankroll_series": self.bankroll_series,
+            "history.ticket_versions": self.ticket_versions,
+            "history.bookmaker_prices": self.bookmaker_prices,
+            "history.price_disagreements": self.price_disagreements,
         }
 
     def record_bankroll(self, args: dict) -> dict:
@@ -48,6 +51,9 @@ class RecordTools:
 
     def _analytics(self) -> PerformanceAnalytics:
         return PerformanceAnalytics(self.app._db(initialize=True))
+
+    def _advanced(self) -> AdvancedAnalytics:
+        return AdvancedAnalytics(self.app._db(initialize=True))
 
     def summary(self, args: dict) -> dict:
         return self._history().summary()
@@ -101,3 +107,12 @@ class RecordTools:
 
     def bankroll_series(self, args: dict) -> dict:
         return {"rows": self._analytics().bankroll_series(int(args.get("limit", 365)))}
+
+    def ticket_versions(self, args: dict) -> dict:
+        return self._advanced().ticket_version_outcomes(int(args.get("limit", 250)))
+
+    def bookmaker_prices(self, args: dict) -> dict:
+        return {"rows": self._advanced().bookmaker_price_history(int(args.get("limit", 100)))}
+
+    def price_disagreements(self, args: dict) -> dict:
+        return {"rows": self._advanced().latest_price_disagreements(int(args.get("limit", 50)))}
