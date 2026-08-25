@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from subprocess import CompletedProcess
+import sys
 from unittest.mock import patch
 
 from sabiai.bookmakers import BookmakerCommandRunner, BuildExecutionPlan
@@ -47,8 +48,18 @@ class BookmakerRunnerTests(unittest.TestCase):
         self.assertEqual(result.booking_code, "AB12CD")
         argv = run.call_args.args[0]
         self.assertNotIn("shell=True", str(run.call_args))
-        self.assertEqual(argv[:2], ["python3", "scripts/sportybet_book.py"])
+        self.assertEqual(argv[:2], [sys.executable, "scripts/sportybet_book.py"])
         self.assertIn("--legs", argv)
+
+    @patch("sabiai.bookmakers.runner.subprocess.run")
+    def test_builder_uses_accepted_runtime_interpreter_not_path_python(self, run):
+        run.return_value = CompletedProcess(
+            args=[], returncode=0, stdout="AB12CD\n", stderr=""
+        )
+
+        self.runner.execute(self.plan(), repo_root=self.root)
+
+        self.assertEqual(run.call_args.args[0][0], sys.executable)
 
     @patch("sabiai.bookmakers.runner.subprocess.run")
     def test_dry_run_does_not_claim_placeholder_as_real_code(self, run):

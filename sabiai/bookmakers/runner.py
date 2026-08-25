@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+import sys
 
 from .execution import BuildExecutionPlan
 
@@ -105,7 +106,11 @@ class BookmakerCommandRunner:
             )
 
         payload = [dict(leg) for leg in plan.legs]
-        argv = [command[0], expected_script, "--legs", json.dumps(payload, ensure_ascii=False)]
+        # The release runtime prepares Playwright and its browser inside the V2
+        # virtualenv. Reusing the current interpreter keeps the builder inside
+        # that accepted runtime even when PATH still resolves ``python3`` to the
+        # host interpreter (for example from systemd or an OpenClaw worker).
+        argv = [sys.executable, expected_script, "--legs", json.dumps(payload, ensure_ascii=False)]
         if dry_run:
             argv.append("--dry-run")
 
