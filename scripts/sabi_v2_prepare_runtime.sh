@@ -51,21 +51,26 @@ set +a
 "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" --init-db --request '{"tool":"system.health"}' >/dev/null
 printf '%s\n' '{"tool":"source.catalog","args":{}}' | "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" >/dev/null
 
-# The checked-in unit uses the historical workspace path as a template. Render it
-# to the actual checkout so V2 works even when OpenClaw keeps the repo elsewhere.
+# Render user-systemd units to the actual checkout so V2 works even when the
+# repository is not located at the historical ~/.openclaw/workspace path.
 ROOT_ESCAPED="${ROOT//&/\\&}"
-sed "s#%h/.openclaw/workspace#${ROOT_ESCAPED}#g" \
-  "$ROOT/systemd/sabi-boy-dashboard.service" > "$UNIT_DIR/sabi-boy-dashboard.service"
+for unit in sabi-boy-dashboard.service sabi-boy-backup.service; do
+  sed "s#%h/.openclaw/workspace#${ROOT_ESCAPED}#g" \
+    "$ROOT/systemd/$unit" > "$UNIT_DIR/$unit"
+done
+cp "$ROOT/systemd/sabi-boy-backup.timer" "$UNIT_DIR/sabi-boy-backup.timer"
 systemctl --user daemon-reload
 
 cat <<EOF
 Sabi Boy V2 runtime prepared.
 
-Repository:  $ROOT
-Branch:      $branch
-Virtualenv:  $VENV
-Environment: $ENV_FILE
-V2 service:  sabi-boy-dashboard.service (installed, not started)
+Repository:    $ROOT
+Branch:        $branch
+Virtualenv:    $VENV
+Environment:   $ENV_FILE
+V2 dashboard:  sabi-boy-dashboard.service (installed, not started)
+Backup service:sabi-boy-backup.service (installed, not started)
+Backup timer:  sabi-boy-backup.timer (installed, not enabled)
 
 No V1 service was stopped and no V1 data was migrated by this preparation step.
 EOF
