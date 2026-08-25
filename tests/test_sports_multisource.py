@@ -3,6 +3,7 @@ from pathlib import Path
 from sabiai.openclaw.sports_insight_tools import SportsInsightTools
 from sabiai.openclaw.sports_tools import SportsTools
 from sabiai.sources import EspnPublicAdapter, SourceBundle, SourceRegistry, TheSportsDBAdapter
+from sabiai.sports import ResearchPlanner, default_sports
 from sabiai.storage import SabiDatabase
 
 
@@ -11,6 +12,8 @@ class FakeApp:
         self._database = SabiDatabase(db_path)
         self._database.initialize()
         self.source_bundle = source_bundle
+        self.sports = default_sports()
+        self.research_planner = ResearchPlanner(self.sports)
 
     def _db(self, *, initialize: bool = False):
         if initialize:
@@ -43,17 +46,32 @@ def _bundle(calls):
     def sportsdb_get(url, *, params=None, headers=None):
         calls.append(("TheSportsDB", url, params))
         if url.endswith("searchteams.php"):
-            return {"teams": [{"idTeam": "TSD-ARS", "strTeam": "Arsenal"}]}
+            query = (params or {}).get("t")
+            source_id = "TSD-ARS" if query == "Arsenal" else "TSD-CHE"
+            return {"teams": [{"idTeam": source_id, "strTeam": query}]}
         if url.endswith("eventslast.php"):
-            assert params == {"id": "TSD-ARS"}
+            team_id = (params or {}).get("id")
+            if team_id == "TSD-ARS":
+                return {
+                    "results": [
+                        {
+                            "idEvent": "old-1",
+                            "dateEvent": "2026-08-05",
+                            "strHomeTeam": "Arsenal",
+                            "strAwayTeam": "Leeds",
+                            "intHomeScore": "2",
+                            "intAwayScore": "0",
+                        }
+                    ]
+                }
             return {
                 "results": [
                     {
-                        "idEvent": "old-1",
-                        "dateEvent": "2026-08-05",
-                        "strHomeTeam": "Arsenal",
-                        "strAwayTeam": "Leeds",
-                        "intHomeScore": "2",
+                        "idEvent": "old-che",
+                        "dateEvent": "2026-08-04",
+                        "strHomeTeam": "Chelsea",
+                        "strAwayTeam": "Everton",
+                        "intHomeScore": "1",
                         "intAwayScore": "0",
                     }
                 ]
@@ -69,7 +87,8 @@ def _bundle(calls):
                         "leagues": [
                             {
                                 "teams": [
-                                    {"team": {"id": "ESPN-ARS", "displayName": "Arsenal"}}
+                                    {"team": {"id": "ESPN-ARS", "displayName": "Arsenal"}},
+                                    {"team": {"id": "ESPN-CHE", "displayName": "Chelsea"}},
                                 ]
                             }
                         ]
@@ -84,6 +103,34 @@ def _bundle(calls):
                     _espn_event("e3", "2026-08-01T18:00Z", 0, 2, "Chelsea", home=False),
                 ]
             }
+        if url.endswith("/teams/ESPN-CHE/schedule"):
+            return {
+                "events": [
+                    {
+                        "id": "c1",
+                        "date": "2026-08-19T18:00Z",
+                        "status": {"type": {"completed": True}},
+                        "competitions": [
+                            {
+                                "competitors": [
+                                    {
+                                        "homeAway": "home",
+                                        "score": "1",
+                                        "winner": True,
+                                        "team": {"id": "ESPN-CHE", "displayName": "Chelsea"},
+                                    },
+                                    {
+                                        "homeAway": "away",
+                                        "score": "0",
+                                        "winner": False,
+                                        "team": {"id": "OPP-EVE", "displayName": "Everton"},
+                                    },
+                                ]
+                            }
+                        ],
+                    }
+                ]
+            }
         if url.endswith("/teams/ESPN-ARS/injuries"):
             return {
                 "injuries": [
@@ -94,6 +141,8 @@ def _bundle(calls):
                     }
                 ]
             }
+        if url.endswith("/teams/ESPN-CHE/injuries"):
+            return {"injuries": []}
         raise AssertionError(f"Unexpected ESPN URL: {url}")
 
     sportsdb = TheSportsDBAdapter(http_get=sportsdb_get)
@@ -187,3 +236,26 @@ def test_injury_summary_returns_names_and_statuses(tmp_path: Path):
     assert result["players"][0]["status"] == "Out"
     assert result["players"][0]["detail"] == "Ankle"
     assert result["needs_official_confirmation"] is True
+
+
+def test_match_snapshot_composes_form_h2h_injuries_and_market_checks(tmp_path: Path):
+    app = FakeApp(tmp_path / "v2.db", _bundle([]))
+    result = SportsInsightTools(app).match_snapshot(
+        {
+            "home": "Arsenal",
+            "away": "Chelsea",
+            "sport": "football",
+            "league": "eng.1",
+            "market": "Over 2.5 goals",
+            "limit": 10,
+        }
+    )
+
+    assert result["home_team"] == "Arsenal"
+    assert result["away_team"] == "Chelsea"
+    assert result["sections"]["form"] is not None
+    assert result["sections"]["h2h"]["meetings"] == 2
+    assert result["sections"]["home_injuries"]["listed"] == 1
+    assert result["sections"]["away_injuries"]["listed"] == 0
+    assert result["market_specific_checks"]
+    assert "Arsenal vs Chelsea" in result["plain"]
