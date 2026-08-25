@@ -1,61 +1,89 @@
-# SabiAI Onboarding Skill
+# Sabi Boy V2 — Onboarding / Bootstrap Compatibility Skill
 
-Use this skill to run Hendrix's **SabiAI start questionnaire** — the first-time setup that
-builds his betting database correctly. Trigger phrases: "start sabiai", "set up sabiai",
-"sabiai onboarding", "let's start", "set up my bankroll", or when `config.onboarded` is `no`.
+> Compatibility filename retained for old OpenClaw triggers such as `start sabiai` or `sabiai onboarding`.
 
-SabiAI = Hendrix's personal AI betting analyst ("sabi" = *to know*). Plain language only —
-**decimal odds, confidence as %, no betting jargon** in anything you say to him.
+## Existing V1 user / upgrade
 
-## How to run it
+**Do not run a new-user questionnaire when V1 history exists.**
 
-Ask the questions below **conversationally, a few at a time** (not as one giant wall). Be warm
-and clear. Explain options simply. Accept natural answers and map them yourself. When all
-answers are gathered, **confirm a summary back to him**, then persist (see "Save" at the end).
+The V2 upgrade path is:
 
-### 1) Bankroll & staking
-- **Starting bankroll** — how much money (NGN) are you setting aside for betting? This is your
-  bankroll; SabiAI tracks every bet against it.
-- **Staking style** — how big should each bet be?
-  - *Flat units* (same amount each time) — simplest.
-  - *Percent of bankroll* (e.g. 2% per bet) — scales as you grow/shrink.
-  - *Fractional Kelly* (math-optimal, bets more on stronger edges) — I recommend ¼ Kelly.
-- **Unit size** — if flat: NGN per bet. If percent: what % per bet (e.g. 2%).
-- **Max exposure** — most you'd risk on a single slip, as a % of bankroll (e.g. 10%).
+1. preserve and back up V1;
+2. migrate/reconcile V1 history and bankroll;
+3. keep existing user preferences where still meaningful;
+4. start Sabi Boy V2 in parallel;
+5. ask only for genuinely missing runtime preferences.
 
-### 2) Sports & markets focus
-- **Sports** — which to prioritise? (football, tennis, basketball, etc.)
-- **Markets** — what kinds of bets do you like? Remind him SabiAI favours **events likely to
-  happen**: over/under goals, both teams to score, corners, cards — not just win/draw/loss.
-- **Odds preference** — safer picks (decimal **1.50–2.19**, lands often) or chase bigger odds?
+Use `docs/SABI_BOY_V2_DEPLOYMENT.md` and the release tooling rather than `setup.py` from the old onboarding flow.
 
-### 3) Bookmakers & limits
-- **Bookmakers** — which do you use? (1xBet, SportyBet, …)
-- **Min / max stake** per bet (NGN).
-- **Daily bet limit** — how many bets per day max? (discipline guardrail)
+## New installation only
 
-### 4) Goals & risk
-- **Target** — monthly ROI or profit goal?
-- **Risk profile** — conservative, balanced, or aggressive?
-- **Stop-loss** — if the bankroll drops by X% in a period, SabiAI warns/pauses. What %?
+Keep onboarding short and conversational. Sabi Boy does not need the user to understand technical betting/statistics terminology.
 
-## Save (do this once, after confirming the summary)
+Collect only what materially affects operation:
 
-Pipe ONE JSON object to setup.py (fill from his answers; omit anything he skipped):
+### 1. Display / locale
 
-```bash
-echo '{
-  "bankroll_start": 50000, "currency": "NGN",
-  "staking_style": "percent", "unit_size": 2, "kelly_fraction": 0.25,
-  "max_exposure_pct": 10,
-  "sports_focus": ["football","tennis"],
-  "markets_focus": ["over/under goals","both teams to score","corners"],
-  "odds_band": "1.50-2.19",
-  "bookmakers": ["1xBet","SportyBet"],
-  "min_stake": 200, "max_stake": 5000, "daily_bet_limit": 5,
-  "target_roi_pct": 15, "risk_profile": "balanced", "stop_loss_pct": 30
-}' | python3 ~/.openclaw/workspace/scripts/setup.py
-```
+- preferred currency;
+- timezone;
+- preferred bookmaker(s), if any;
+- any bookmaker the user never wants used.
 
-It returns `{"ok": true, ...}` and initialises the virtual bankroll. Then tell Hendrix:
-"SabiAI is set up. Your dashboard is live at https://picks.hendrix.com.ng — we start today. 🟢"
+### 2. Record keeping
+
+- starting recorded bankroll if the user wants bankroll tracking;
+- whether imported historical tickets should be included in performance charts;
+- whether Sabi Boy should record only tickets actually used or also keep research-only drafts separately.
+
+### 3. Ticket preferences
+
+Examples:
+
+- usual number of games per ticket;
+- rough combined-odds targets the user commonly asks for;
+- whether the user normally prefers singles, smaller tickets, larger accumulators or a mix;
+- whether Sabi Boy may automatically prepare alternative versions or should wait to be asked.
+
+These are preferences, not sports-coverage boundaries.
+
+### 4. Sports
+
+Ask about favourite/prioritised sports only if useful for ordering research. Never use the answer as an architectural allow-list.
+
+Sabi Boy remains able to research a broad/open-ended sports universe, including unfamiliar sports discovered later.
+
+### 5. Blog / proactive behavior
+
+Ask whether the user wants:
+
+- daily Sabi Boy thoughts;
+- weekly reflection;
+- posts only when something interesting happened;
+- no automatic blog cadence.
+
+## Language
+
+Do not ask the user to choose technical methods or explain internal model names.
+
+Use plain questions such as:
+
+- “Which bookmakers do you normally use?”
+- “Do you want me to track the money you actually put into tickets?”
+- “When you ask me to make a ticket stronger, do you normally want fewer games, lower-risk markets, or both?”
+
+## Persistence
+
+V2 preferences must ultimately live in the canonical V2 settings/config path, not a separate hidden JSON file created by this skill.
+
+Until the dedicated preferences service is implemented, preserve answers in OpenClaw memory/config notes and do **not** invent a new permanent store.
+
+## Completion
+
+A migrated user is onboarded when:
+
+- V1 history/bankroll reconcile;
+- Sabi Boy runtime/tooling is healthy;
+- required environment preferences are known;
+- no old questionnaire has overwritten existing history/preferences.
+
+A new user is onboarded when the minimum preferences above are known and V2 storage is initialized.
