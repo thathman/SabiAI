@@ -52,6 +52,19 @@ def main() -> int:
     if not stopped:
         print(f"Warning: could not cleanly stop V2 service: {stop_output}", file=sys.stderr)
 
+    backup_timer_restored = False
+    if state.get("backup_timer_was_enabled"):
+        enabled, output = run_systemctl("enable", "--now", "sabi-boy-backup.timer")
+        if not enabled:
+            print(f"Warning: could not restore previous backup timer state: {output}", file=sys.stderr)
+        else:
+            backup_timer_restored = True
+    else:
+        disabled, output = run_systemctl("disable", "--now", "sabi-boy-backup.timer")
+        if not disabled and "not loaded" not in output.casefold() and "does not exist" not in output.casefold():
+            print(f"Warning: could not disable V2 backup timer: {output}", file=sys.stderr)
+        backup_timer_restored = disabled
+
     v1_restarted = False
     if state.get("v1_service_was_active"):
         started, output = run_systemctl("start", "sabiai-dashboard.service")
@@ -77,13 +90,15 @@ def main() -> int:
         "product": "Sabi Boy",
         "rolled_back_at": datetime.now(timezone.utc).isoformat(),
         "v2_service_stopped": stopped,
+        "backup_timer_posture_restored": backup_timer_restored,
+        "backup_timer_was_enabled_before_staging": bool(state.get("backup_timer_was_enabled")),
         "v1_restarted": v1_restarted,
         "v2_database_restored": restored,
         "external_routing_requires_revert": bool(state.get("external_cutover_performed")),
         "previous_external_health_url": state.get("external_health_url"),
     }
     state["last_rollback"] = rollback
-    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(rollback, ensure_ascii=False, indent=2))
     return 0
 
