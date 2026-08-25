@@ -1,141 +1,70 @@
-# Value Bet Scanner Skill
+# Value Bet Scanner — V2 Compatibility Bridge
 
-Use this skill when Hendrix asks for value bets, betting picks, or sports research.
+> **Status:** legacy filename retained so old OpenClaw references do not fail. Sabi Boy V2 no longer treats a standalone football/value scanner as the product brain.
 
-**Trigger phrases:** "scan for value bets", "what are this week's picks", "find me value bets", "check the bets", "any good bets this week", "value bets for [sport]"
+Use the main `skills/sabiai_SKILL.md` behavior instead.
 
----
+## V2 behavior when invoked
 
-## What it does
+Interpret “scan”, “find value”, “find games”, “what is interesting today?” or similar requests as a **multi-sport Sabi Boy discovery/research task**.
 
-Scans 34+ sports for value bets using:
-- Live bookmaker odds (The Odds API — 40+ bookmakers)
-- Team Elo strength (ClubElo)
-- Recent form (ESPN API)
-- Historical BTTS/Over/corners/cards stats (football-data.co.uk)
-- Injury/suspension news (Exa)
-- NCAAB college basketball (ActionNetwork)
-- Volleyball, table tennis, rugby union (Exa value scout)
+Do not start with a bookmaker's price and work backward.
 
-Value = our model probability > bookmaker's no-vig probability. Kelly ¼ sizing.
+Start with:
 
----
+1. What events are available?
+2. What is happening in the sport/event?
+3. What evidence is relevant to the market?
+4. What does that evidence suggest in plain language?
+5. What decimal price is available?
+6. Is the price interesting enough to act, watch, wait or pass?
+7. Is the research/system state trustworthy enough?
 
-## How to run
+## Multi-sport rule
 
-### Full weekly scan (all sports, 5%+ edge):
-```bash
-python3 ~.openclaw/workspace/scripts/value_bet_finder.py \
-  --format telegram --min-ev 0.05
-```
+Football has no priority unless the user's request gives it priority.
 
-### Football only:
-```bash
-python3 ~.openclaw/workspace/scripts/value_bet_finder.py \
-  --sport soccer --format telegram --min-ev 0.05
-```
+Sabi Boy may inspect basketball, volleyball, tennis, table tennis, baseball, hockey, cricket, golf, esports, darts, snooker, combat sports, handball, rugby, motorsport, cycling and unfamiliar sports discovered from bookmaker/event menus.
 
-### Specific sport:
-```bash
-# Options: soccer, basketball, tennis, boxing, mma, combat, baseball, mlb,
-#          rugby, nrl, hockey, nhl, cricket, afl, handball, nfl, ncaaf,
-#          ncaab, college, wnba, nba, volleyball, "table tennis", "rugby union"
-python3 ~.openclaw/workspace/scripts/value_bet_finder.py \
-  --sport tennis --format telegram --min-ev 0.03
-```
+Unknown sport means **research/discover**, not unsupported.
 
-### Lower the threshold for more picks:
-```bash
-python3 ~.openclaw/workspace/scripts/value_bet_finder.py \
-  --format telegram --min-ev 0.03
-```
+## Tools
 
----
+Use current V2 tools through `scripts/sabiai_v2_tool.py` and query `system.tools` rather than relying on a hard-coded old tool list.
 
-## After running
+Typical flow:
 
-1. **Send the full output to Telegram** channel `YOUR_TELEGRAM_CHANNEL_ID_HERE` (The Clawsons). Do not truncate.
+- `sports.*` / `source.*` for event/source discovery;
+- `research.plan` / `research.case.next` for evidence work;
+- `research.case.summary` for a plain brief;
+- `research.review.plan` for skeptic checks;
+- `market.interpret` for bookmaker language;
+- bookmaker tools for actual prices;
+- history/risk/system tools for our own context.
 
-2. **Log the picks** — append to the results file:
-```bash
-python3 - <<'EOF'
-import json, datetime
-path = "~.openclaw/workspace/data/value_bet_results.json"
-# Read existing
-try:
-    with open(path) as f: data = json.load(f)
-except: data = []
-# Build entry from scan output (summary only)
-entry = {
-    "week": datetime.date.today().strftime("%Y-W%V"),
-    "date": str(datetime.date.today()),
-    "picks": [],   # populate from scan output
-    "actual_outcome": None
-}
-data.append(entry)
-with open(path, "w") as f: json.dump(data, f, indent=2)
-print("Logged")
-EOF
-```
+## User-facing language
 
-3. **Send a Telegram summary card** after logging:
-```
-📋 Week [W] value picks logged — [N] picks.
-Reply W (all won) or L (any lost) when the week settles.
-```
+Do not talk about model architecture, ML, feature engineering, calibration jargon or American betting notation unless asked for internals.
 
----
+Say things like:
 
-## Bet history & results tracking
+- `Arsenal to win — 1.82`
+- `Arsenal or Draw — Double Chance — 1.30`
+- `Over 2.5 goals — 1.75`
+- `Chelsea +1.5 handicap — 1.42`
 
-Every pick is stored in **SQLite** (`data/bets.db`) — one row per bet, permanent record.
+Use decimal odds and explicit team/player names.
 
-### View pending bets (unsettled):
-```bash
-python3 ~.openclaw/workspace/scripts/bet_history.py --pending
-```
+## Decision states
 
-### Settle a whole week (most common — after Hendrix reports W or L):
-```bash
-python3 ~.openclaw/workspace/scripts/bet_history.py --settle-week 2026-W22 W
-python3 ~.openclaw/workspace/scripts/bet_history.py --settle-week 2026-W22 L
-```
+Use:
 
-### Settle a single bet by ID:
-```bash
-python3 ~.openclaw/workspace/scripts/bet_history.py --settle abc123 W
-```
-(bet IDs shown in --pending output)
+- BET
+- BET IF PRICE
+- WATCH
+- WAIT
+- PASS
+- REJECT
+- RECORD ONLY
 
-### Full stats (win rate by sport, market, bookmaker):
-```bash
-python3 ~.openclaw/workspace/scripts/bet_history.py --stats
-python3 ~.openclaw/workspace/scripts/bet_history.py --stats --sport soccer
-```
-
-### When Hendrix asks "how are my picks doing?":
-```bash
-python3 ~.openclaw/workspace/scripts/value_bet_finder.py --accuracy
-```
-
----
-
-## Odds source
-
-- **TheRundown API** — primary odds source (15+ sportsbooks, real-time)
-  - Sign up: https://therundown.io/api
-  - Key env var: `RUNDOWN_API_KEY`
-  - Set in `~/.config/systemd/user/openclaw-gateway.service.d/20-secrets.conf`
-- **Model-first**: football picks surface even without a key using Elo+Form+H2H
-- **Confidence tiers** (model-only picks): 🔴 HIGH · 🟠 MEDIUM · ⚪ LOW
-
-## Output guide
-
-| Icon | Meaning |
-|------|---------|
-| 🟢 | EV ≥ 8% — strong value |
-| 🟡 | EV 5–8% — moderate value |
-| 🔵 | EV 3–5% — marginal value |
-| 📐 | Model pick — no API odds, verify manually |
-| ✓sharp | At least one sharp book (Pinnacle/Betfair) in the consensus |
-| ⚠️ verify | EV >150% — likely stale/error line, act fast or skip |
+Do not manufacture a selection just because a scan was requested.
