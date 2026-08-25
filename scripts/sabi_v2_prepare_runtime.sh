@@ -32,9 +32,10 @@ fi
 
 mkdir -p "$CONFIG_DIR" "$UNIT_DIR" "$ROOT/data"
 if [[ ! -f "$ENV_FILE" ]]; then
+  ROOT_ESCAPED="${ROOT//&/\\&}"
   sed \
-    -e "s#/home/hendrix#${HOME}#g" \
-    -e "s#${HOME}/.openclaw/workspace#${ROOT}#g" \
+    -e "s#/home/hendrix#${HOME//&/\\&}#g" \
+    -e "s#${HOME//&/\\&}/.openclaw/workspace#${ROOT_ESCAPED}#g" \
     "$ROOT/config/sabi-boy.env.example" > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
   echo "Created $ENV_FILE"
@@ -50,7 +51,11 @@ set +a
 "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" --init-db --request '{"tool":"system.health"}' >/dev/null
 printf '%s\n' '{"tool":"source.catalog","args":{}}' | "$VENV/bin/python" "$ROOT/scripts/sabiai_v2_tool.py" >/dev/null
 
-cp "$ROOT/systemd/sabi-boy-dashboard.service" "$UNIT_DIR/sabi-boy-dashboard.service"
+# The checked-in unit uses the historical workspace path as a template. Render it
+# to the actual checkout so V2 works even when OpenClaw keeps the repo elsewhere.
+ROOT_ESCAPED="${ROOT//&/\\&}"
+sed "s#%h/.openclaw/workspace#${ROOT_ESCAPED}#g" \
+  "$ROOT/systemd/sabi-boy-dashboard.service" > "$UNIT_DIR/sabi-boy-dashboard.service"
 systemctl --user daemon-reload
 
 cat <<EOF
