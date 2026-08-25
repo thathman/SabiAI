@@ -4,11 +4,29 @@ from sabiai.domain.models import Ticket, TicketLeg
 
 
 def ticket_from_args(app, args: dict) -> Ticket:
+    working = dict(args)
+    legs = working.get("legs")
+    if (not isinstance(legs, list) or not legs) and working.get("draft_id"):
+        draft_id = str(working["draft_id"])
+        draft = app._draft_store().get(draft_id)
+        if draft is None:
+            raise ValueError(f"Unknown ticket draft: {draft_id}")
+        payload = draft.payload if isinstance(draft.payload, dict) else {}
+        ticket_payload = payload.get("ticket") if isinstance(payload.get("ticket"), dict) else payload
+        draft_legs = ticket_payload.get("legs") if isinstance(ticket_payload, dict) else None
+        if not isinstance(draft_legs, list) or not draft_legs:
+            raise ValueError(f"Ticket draft {draft_id} does not contain usable ticket legs.")
+        working["legs"] = draft_legs
+        if not working.get("bookmaker"):
+            working["bookmaker"] = draft.target_bookmaker_slug or draft.source_bookmaker_slug
+        working.setdefault("source_type", "draft")
+        working.setdefault("source_reference", draft_id)
+
     normalized = app.ticket_normalizer.normalize(
-        args.get("legs", []),
-        bookmaker=args.get("bookmaker"),
-        source_type=str(args.get("source_type", "instruction")),
-        source_reference=args.get("source_reference"),
+        working.get("legs", []),
+        bookmaker=working.get("bookmaker"),
+        source_type=str(working.get("source_type", "instruction")),
+        source_reference=working.get("source_reference"),
     )
     errors = [issue.message for issue in normalized.issues if issue.level == "error"]
     if errors or not normalized.ticket.legs:
