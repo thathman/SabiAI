@@ -1,3 +1,4 @@
+from .jobs import JobService, JobState
 from .readiness import (
     ReadinessIssue,
     ReadinessReport,
@@ -6,6 +7,8 @@ from .readiness import (
 )
 
 __all__ = [
+    "JobService",
+    "JobState",
     "ReadinessIssue",
     "ReadinessReport",
     "ReadinessState",
