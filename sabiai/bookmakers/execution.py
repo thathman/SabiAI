@@ -6,6 +6,7 @@ import re
 from sabiai.domain.models import Ticket
 
 from .adapters import AdapterRegistry, BookmakerCapability, legacy_command_adapters
+from .browser_profiles import BookmakerBrowserProfiles
 from .registry import BookmakerRegistry, default_bookmakers
 
 
@@ -35,8 +36,15 @@ class BookingCodeImportPlan:
         "market",
         "selection",
         "decimal_odds",
+        "leg_count",
+        "combined_odds",
     )
-    next_tool: str = "ticket.normalize"
+    next_tool: str = "bookmaker.booking_code.restore"
+    entry_url: str | None = None
+    code_prompt: str | None = None
+    load_action: str | None = None
+    verified_on: str | None = None
+    verification_note: str | None = None
 
 
 class BookmakerExecutionPlanner:
@@ -49,9 +57,11 @@ class BookmakerExecutionPlanner:
         *,
         bookmakers: BookmakerRegistry | None = None,
         adapters: AdapterRegistry | None = None,
+        browser_profiles: BookmakerBrowserProfiles | None = None,
     ):
         self.bookmakers = bookmakers or default_bookmakers()
         self.adapters = adapters or legacy_command_adapters()
+        self.browser_profiles = browser_profiles or BookmakerBrowserProfiles()
 
     def build(self, ticket: Ticket, *, bookmaker: str) -> BuildExecutionPlan:
         target = self.bookmakers.resolve(bookmaker)
@@ -160,16 +170,39 @@ class BookmakerExecutionPlanner:
                 code,
                 True,
                 "adapter",
-                "Use the registered bookmaker importer, then normalize the returned legs.",
+                "Use the registered bookmaker importer, then validate the returned slip with bookmaker.booking_code.restore.",
             )
 
+        profile = self.browser_profiles.get(target.slug)
+        if profile and profile.public_restore and profile.entry_url:
+            return BookingCodeImportPlan(
+                target.slug,
+                code,
+                True,
+                "openclaw_browser",
+                (
+                    f"Open {profile.entry_url} in the controlled OpenClaw browser, locate '{profile.code_prompt or 'the bet-code field'}', "
+                    f"enter booking code {code}, use '{profile.load_action or 'the visible load action'}', and read the restored slip without placing a wager. "
+                    "Extract every visible leg plus displayed leg count/combined odds, then call bookmaker.booking_code.restore."
+                ),
+                extraction_fields=profile.extraction_fields,
+                entry_url=profile.entry_url,
+                code_prompt=profile.code_prompt,
+                load_action=profile.load_action,
+                verified_on=profile.verified_on,
+                verification_note=profile.verification_note,
+            )
+
+        note = profile.verification_note if profile else "No browser restoration profile exists yet."
         return BookingCodeImportPlan(
             target.slug,
             code,
-            True,
-            "openclaw_browser",
+            False,
+            "discover_current_flow",
             (
-                f"Load booking code {code} on {target.name} using the controlled OpenClaw browser, "
-                "read the restored slip without placing a wager, extract every visible leg and pass it to ticket.normalize."
+                f"A current public booking-code restoration flow has not been verified for {target.name}. "
+                "Use OpenClaw source/browser discovery to verify the live public flow before importing this code."
             ),
+            verified_on=profile.verified_on if profile else None,
+            verification_note=note,
         )
