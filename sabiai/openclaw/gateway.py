@@ -13,7 +13,7 @@ from sabiai.odds import ArbitrageEngine, PriceQuote, SettlementRules
 from sabiai.research import Evidence, EvidenceStore
 from sabiai.sports import ResearchPlanner, default_sports
 from sabiai.storage import BankrollLedger, HistoryService, SabiDatabase
-from sabiai.tickets import TicketNormalizer, TicketWorkshop
+from sabiai.tickets import TicketNormalizer, TicketTextImporter, TicketWorkshop
 
 
 class SabiToolGateway:
@@ -25,6 +25,7 @@ class SabiToolGateway:
         self.sports = default_sports()
         self.research_planner = ResearchPlanner(self.sports)
         self.ticket_normalizer = TicketNormalizer(self.bookmakers, self.market_interpreter)
+        self.ticket_text_importer = TicketTextImporter()
         self.ticket_workshop = TicketWorkshop()
         self.arbitrage = ArbitrageEngine()
 
@@ -42,6 +43,7 @@ class SabiToolGateway:
             "bookmaker.resolve": self.bookmaker_resolve,
             "bookmaker.capabilities": self.bookmaker_capabilities,
             "ticket.normalize": self.ticket_normalize,
+            "ticket.from_text": self.ticket_from_text,
             "ticket.split": self.ticket_split,
             "ticket.split_by_size": self.ticket_split_by_size,
             "ticket.trim": self.ticket_trim,
@@ -263,6 +265,22 @@ class SabiToolGateway:
             source_reference=args.get("source_reference"),
         )
         return {
+            "usable": result.usable,
+            "ticket": self._ticket_to_dict(result.ticket),
+            "issues": [asdict(issue) for issue in result.issues],
+        }
+
+    def ticket_from_text(self, args: dict) -> dict:
+        extraction = self.ticket_text_importer.extract(str(args.get("text", "")))
+        result = self.ticket_normalizer.normalize(
+            [leg.as_dict() for leg in extraction.legs],
+            bookmaker=args.get("bookmaker"),
+            source_type=str(args.get("source_type", "copied_text")),
+            source_reference=args.get("source_reference"),
+        )
+        return {
+            "extraction_complete": extraction.complete,
+            "unparsed_lines": extraction.unparsed_lines,
             "usable": result.usable,
             "ticket": self._ticket_to_dict(result.ticket),
             "issues": [asdict(issue) for issue in result.issues],
