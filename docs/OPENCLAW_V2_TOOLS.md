@@ -62,8 +62,16 @@ Research source access is governed separately by the V2 `SourceService`: cache f
 ### Bookmakers
 
 - `bookmaker.resolve` — resolve supported bookmaker aliases to stable canonical bookmaker identities.
+- `bookmaker.capabilities` — report only capabilities currently proven by a registered integration.
 
-Bookmaker capabilities remain conservative. Import/build/code-generation capabilities are not claimed until an adapter proves them.
+The current compatibility layer recognizes the existing SportyBet and Bet9ja browser builders as ticket-build/booking-code-create integrations only. Import/search/conversion capabilities are not claimed until those paths are implemented and revalidated.
+
+### Ticket intake and normalization
+
+- `ticket.normalize` — normalize already-extracted legs and report ambiguity/duplicate/price issues.
+- `ticket.from_text` — import common copied/share text. It is also the deterministic path for text OpenClaw extracts from an X post or screenshot.
+
+`ticket.from_text` never silently discards lines it cannot parse; it returns them in `unparsed_lines` for OpenClaw to resolve.
 
 ### Ticket Workshop
 
@@ -73,6 +81,7 @@ Bookmaker capabilities remain conservative. Import/build/code-generation capabil
 - `ticket.remove` — remove selected games by leg ID or explicit event name.
 - `ticket.keep` — keep only selected games while preserving locked selections.
 - `ticket.change_market` — change one game to another understood market and optional new decimal odds.
+- `ticket.replace` — replace one game/selection with another normalized leg.
 
 Ticket responses retain visible event labels such as `Arsenal vs Chelsea`; OpenClaw should not expose draft/internal event IDs as the primary match description.
 
@@ -87,13 +96,35 @@ Ticket responses retain visible event labels such as `Arsenal vs Chelsea`; OpenC
 
 These are our records. They are not general sports-site statistics.
 
+## Input flow for screenshots and X posts
+
+The V2 domain does not need its own screenshot reader or X client. OpenClaw already has the right eyes for those inputs.
+
+```text
+Screenshot / X post / copied share text
+        ↓
+OpenClaw reads/extracts visible content
+        ↓
+ticket.from_text OR ticket.normalize
+        ↓
+Canonical explicit ticket
+        ↓
+research.plan / research evidence
+        ↓
+Ticket Workshop edits
+        ↓
+Bookmaker adapter / booking code when supported
+```
+
+This keeps vision/browser changes outside ticket rules and avoids building one parser per input surface.
+
 ## Namespaces still to grow behind this same boundary
 
 - `sports.*` — discovery/fixture/event helpers as free-source adapters arrive.
 - `research.*` — source orchestration, form, H2H, injuries, lineups, context and reviewer pass.
 - `bookmaker.*` — event/market search, booking-code import/build and conversion adapters.
 - `market.*` — broader market mappings, price comparison and movement history.
-- `ticket.*` — screenshot/code/X/text import, replacement, safer/riskier variants and bookmaker conversion.
+- `ticket.*` — booking-code import, stronger/lower-risk variants, grouping rules and bookmaker conversion.
 - `record.*` — picks/tickets/settlement recording.
 - `history.*` — streaks, P/L, strategy and ticket-analysis summaries.
 - `blog.*` — Sabi blog publication and retrieval.
