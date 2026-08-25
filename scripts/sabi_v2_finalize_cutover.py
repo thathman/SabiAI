@@ -41,25 +41,66 @@ def main() -> int:
         return 2
     state = json.loads(state_path.read_text(encoding="utf-8"))
 
+    # Cutover is a commit-pinned release operation. If the checkout moved after staging,
+    # re-stage/re-accept it instead of routing an unaccepted commit into production.
+    current_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if current_commit.returncode != 0:
+        print(current_commit.stderr.strip() or "Could not resolve current git commit.", file=sys.stderr)
+        return 3
+    current_sha = current_commit.stdout.strip()
+    if state.get("commit") != current_sha:
+        print(
+            f"Checkout moved after staging: staged {state.get('commit')}, current {current_sha}. Re-stage before cutover.",
+            file=sys.stderr,
+        )
+        return 4
+
+    # The dashboard alone is not Sabi Boy V2. OpenClaw must also prove it is attached to this
+    # workspace, sees the required current-format skills/tools, and has the V2 scheduled jobs.
+    openclaw_state = state.get("openclaw")
+    if not isinstance(openclaw_state, dict):
+        print(
+            "OpenClaw activation is missing from staging state. Run scripts/sabi_v2_activate_openclaw.sh first.",
+            file=sys.stderr,
+        )
+        return 5
+    if not openclaw_state.get("skills_verified") or not openclaw_state.get("automations_installed"):
+        print(f"OpenClaw activation is incomplete: {openclaw_state}", file=sys.stderr)
+        return 6
+    openclaw_report_path = Path(str(openclaw_state.get("acceptance_report") or "")).expanduser()
+    if not openclaw_report_path.is_file():
+        print(f"OpenClaw acceptance report is missing: {openclaw_report_path}", file=sys.stderr)
+        return 7
+    openclaw_report = json.loads(openclaw_report_path.read_text(encoding="utf-8"))
+    if not openclaw_report.get("ok"):
+        print("OpenClaw acceptance report is not green.", file=sys.stderr)
+        return 8
+
     # Local process must still be healthy.
     try:
         local_status, local = fetch_json("http://127.0.0.1:8091/health")
     except Exception as exc:
         print(f"Local Sabi Boy health failed: {exc}", file=sys.stderr)
-        return 3
+        return 9
     if local_status != 200 or not local.get("ok") or local.get("product") != "Sabi Boy" or local.get("read_only") is not True:
         print(f"Unexpected local health response: {local}", file=sys.stderr)
-        return 4
+        return 10
 
     # The caller supplies the actual external URL after inspecting/updating routing.
     try:
         external_status, external = fetch_json(args.health_url)
     except Exception as exc:
         print(f"External Sabi Boy health failed: {exc}", file=sys.stderr)
-        return 5
+        return 11
     if external_status != 200 or not external.get("ok") or external.get("product") != "Sabi Boy" or external.get("read_only") is not True:
         print(f"External route does not resolve to Sabi Boy V2: {external}", file=sys.stderr)
-        return 6
+        return 12
 
     v1_stopped = False
     if args.stop_v1:
@@ -72,7 +113,7 @@ def main() -> int:
         )
         if proc.returncode != 0:
             print(proc.stdout, file=sys.stderr)
-            return 7
+            return 13
         v1_stopped = True
 
     state.update(
@@ -84,7 +125,7 @@ def main() -> int:
             "v1_stopped": v1_stopped,
         }
     )
-    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(state, ensure_ascii=False, indent=2))
     return 0
 
