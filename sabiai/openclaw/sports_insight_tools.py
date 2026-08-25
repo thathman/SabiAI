@@ -9,6 +9,7 @@ class SportsInsightTools:
     """Human-facing form/H2H/availability summaries built from provider-safe lookups."""
 
     def __init__(self, app):
+        self.app = app
         self.lookup = SportsTools(app)
         self.form = FormService()
 
@@ -18,6 +19,7 @@ class SportsInsightTools:
             "sports.compare_form_summary": self.compare_form_summary,
             "sports.h2h": self.h2h,
             "sports.injury_summary": self.injury_summary,
+            "sports.match_snapshot": self.match_snapshot,
         }
 
     def form_summary(self, args: dict) -> dict:
@@ -160,6 +162,73 @@ class SportsInsightTools:
                 else f"{team}: {len(rows)} player(s) listed in the available public injury feed."
             ),
             "note": lookup.get("note"),
+        }
+
+    def match_snapshot(self, args: dict) -> dict:
+        """Gather the standard pre-play research picture without making a betting decision."""
+        home = str(args.get("home") or "").strip()
+        away = str(args.get("away") or "").strip()
+        sport = str(args.get("sport") or "").strip()
+        market = str(args.get("market") or "").strip() or None
+        if not home or not away:
+            raise ValueError("sports.match_snapshot needs explicit home and away team names.")
+        if not sport:
+            raise ValueError("sports.match_snapshot needs sport.")
+
+        sections: dict[str, dict | None] = {}
+        errors: dict[str, str] = {}
+
+        def capture(name: str, fn):
+            try:
+                sections[name] = fn()
+            except Exception as exc:
+                sections[name] = None
+                errors[name] = str(exc)
+
+        capture("form", lambda: self.compare_form_summary(args))
+        capture("h2h", lambda: self.h2h(args))
+        capture("home_injuries", lambda: self.injury_summary({"team": home, **args}))
+        capture("away_injuries", lambda: self.injury_summary({"team": away, **args}))
+
+        plan = self.app.research_planner.plan(
+            sport,
+            market_text=market,
+            home=home,
+            away=away,
+        )
+        still_to_check: list[str] = []
+        if errors:
+            still_to_check.append("Retry or replace any research section that could not be loaded from the current free sources.")
+        still_to_check.append("Confirm important absences/lineups with a current official team/league source or fresh reputable reporting.")
+        if market:
+            still_to_check.extend(plan.market_focus)
+        if plan.needs_source_discovery:
+            still_to_check.append("Confirm the sport/competition rules and identify reliable sources before relying on the research.")
+
+        plain_parts = [f"{home} vs {away} — {sport}."]
+        form_section = sections.get("form")
+        if isinstance(form_section, dict) and form_section.get("plain"):
+            plain_parts.append(str(form_section["plain"]))
+        home_injuries = sections.get("home_injuries")
+        away_injuries = sections.get("away_injuries")
+        if isinstance(home_injuries, dict):
+            plain_parts.append(str(home_injuries.get("plain")))
+        if isinstance(away_injuries, dict):
+            plain_parts.append(str(away_injuries.get("plain")))
+
+        return {
+            "sport": sport,
+            "home_team": home,
+            "away_team": away,
+            "market": market,
+            "plain": " ".join(part for part in plain_parts if part),
+            "sections": sections,
+            "errors": errors,
+            "research_checklist": list(plan.checklist),
+            "market_specific_checks": list(plan.market_focus),
+            "still_to_check": list(dict.fromkeys(still_to_check)),
+            "ready_for_decision": not errors and bool(sections.get("form")),
+            "note": "This snapshot assembles research evidence. Sabi Boy still decides separately whether the evidence and current bookmaker price justify BET, WATCH, WAIT, PASS or REJECT.",
         }
 
     @staticmethod
