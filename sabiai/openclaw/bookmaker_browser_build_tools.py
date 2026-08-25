@@ -45,22 +45,38 @@ class BookmakerBrowserBuildTools:
         }
 
     def plan(self, args: dict) -> dict:
+        expected_draft_id = str(args.get("expected_draft_id") or args.get("draft_id") or "").strip() or None
+        expected_draft = None
+        if expected_draft_id:
+            expected_draft = self.app._draft_store().get(expected_draft_id)
+            if expected_draft is None:
+                raise ValueError(f"Unknown converted ticket draft: {expected_draft_id}")
+
         target_name = str(args.get("target_bookmaker") or args.get("bookmaker") or "").strip()
+        if not target_name and expected_draft and expected_draft.target_bookmaker_slug:
+            target_name = expected_draft.target_bookmaker_slug
         if not target_name:
-            raise ValueError("bookmaker.browser_build.plan needs target_bookmaker.")
+            raise ValueError(
+                "bookmaker.browser_build.plan needs target_bookmaker, unless the converted draft already records its target bookmaker."
+            )
+
         bookmaker = self.app.bookmakers.resolve(target_name)
         if bookmaker is None:
             raise ValueError(f"Unknown target bookmaker: {target_name}")
 
-        expected_draft_id = str(args.get("expected_draft_id") or args.get("draft_id") or "").strip() or None
+        if expected_draft and expected_draft.target_bookmaker_slug:
+            recorded = self.app.bookmakers.resolve(expected_draft.target_bookmaker_slug)
+            recorded_slug = recorded.slug if recorded else expected_draft.target_bookmaker_slug.casefold()
+            if recorded_slug != bookmaker.slug:
+                raise ValueError(
+                    f"Converted draft targets {expected_draft.target_bookmaker_slug}; refusing to build it on {bookmaker.name}."
+                )
+
         working_args = dict(args)
-        if expected_draft_id and not working_args.get("legs"):
-            draft = self.app._draft_store().get(expected_draft_id)
-            if draft is None:
-                raise ValueError(f"Unknown converted ticket draft: {expected_draft_id}")
-            payload = draft.payload.get("ticket") if isinstance(draft.payload, dict) else None
-            if payload is None and isinstance(draft.payload, dict):
-                payload = draft.payload
+        if expected_draft and not working_args.get("legs"):
+            payload = expected_draft.payload.get("ticket") if isinstance(expected_draft.payload, dict) else None
+            if payload is None and isinstance(expected_draft.payload, dict):
+                payload = expected_draft.payload
             legs = payload.get("legs") if isinstance(payload, dict) else None
             if not isinstance(legs, list) or not legs:
                 raise ValueError("Converted ticket draft has no ticket legs to build.")
