@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sqlite3
@@ -46,8 +47,11 @@ class BackupService:
     ) -> BackupManifest:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         root = Path(destination_root).expanduser()
+        root.mkdir(parents=True, exist_ok=True)
+        root.chmod(0o700)
         directory = root / stamp
-        directory.mkdir(parents=True, exist_ok=False)
+        directory.mkdir(exist_ok=False)
+        directory.chmod(0o700)
 
         entries: list[BackupFile] = []
         for label, source_value in files.items():
@@ -84,6 +88,7 @@ class BackupService:
             files=tuple(entries),
             manifest_path=str(manifest_path),
         )
+        manifest_path.touch(mode=0o600, exist_ok=False)
         manifest_path.write_text(
             json.dumps(manifest.as_dict(), ensure_ascii=False, indent=2),
             encoding="utf-8",
@@ -154,6 +159,8 @@ class BackupService:
     def _sqlite_backup(source: Path, destination: Path) -> None:
         src_uri = f"file:{source.resolve()}?mode=ro"
         src = sqlite3.connect(src_uri, uri=True)
+        descriptor = os.open(destination, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+        os.close(descriptor)
         dst = sqlite3.connect(destination)
         try:
             src.backup(dst)
