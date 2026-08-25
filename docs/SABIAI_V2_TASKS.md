@@ -3,14 +3,23 @@
 > **Branch:** `v2`  
 > **Human-facing product:** Sabi Boy  
 > **Compatibility identifiers:** SabiAI / `sabiai` / `sabi-ai` remain where changing them would break runtime/data interfaces.  
-> **Rule:** A task may be implemented without its phase being release-ready. Dell/OpenClaw runtime acceptance is a separate gate.
+> **Rule:** A task may be implemented without its phase being release-ready. Dell/OpenClaw/runtime acceptance is a separate gate.
 
 ## Status
 
 - [x] Implemented at code/task level
-- [~] Implemented/partly implemented; live/runtime/coverage gate remains
-- [ ] Not yet complete
-- [!] Blocked or requires a deliberate live decision
+- [~] Code/path exists; live/runtime/data-coverage acceptance remains
+- [ ] Release/acceptance action not yet performed
+- [!] Deliberately deferred or live-dependent; do not fake implementation before verification
+
+## Development freeze status
+
+- [x] V2 repository-side development is complete for the installation/testing candidate.
+- [x] Current-format OpenClaw skills are synchronized with the final V2 tool surface.
+- [x] OpenClaw acceptance requires the final V2 capabilities, not an earlier V2 subset.
+- [x] Read-only dashboard exposes our ticket-version and bookmaker-price history analytics.
+- [x] Remaining open items are Dell/OpenClaw/live-browser/data acceptance or explicitly deferred optional/live-dependent capabilities.
+- [x] Any code change after this point should be driven by a failing test, migration discrepancy, real browser incompatibility, security finding, or explicit new product decision.
 
 ---
 
@@ -37,13 +46,15 @@
 - [x] Canonical V2 SQLite schema + migrations
 - [x] Source cache/fetch log
 - [x] Research evidence persistence
+- [x] Persistent named research-case/session storage
 - [x] Ticket draft/version lineage persistence
 - [x] Bookmaker offer/price-observation persistence
+- [x] Durable learned-source registry
 - [x] Bankroll ledger and reconciliation
 - [x] Blog persistence
 - [x] Legacy archive
 - [x] Ticket round-trip participant derivation from explicit `Home vs Away` labels
-- [~] Full expanded test suite — many tests committed; complete current-suite run on controlled runtime still required
+- [~] Full expanded test suite — regression coverage committed; complete current-suite run on controlled Dell/runtime required
 
 ## Phase 2 — OpenClaw-Native Sabi Boy
 
@@ -58,20 +69,21 @@
 - [x] Current OpenClaw skill package: Ticket Engineer
 - [x] Current OpenClaw skill package: Records/Settlement
 - [x] Current OpenClaw skill package: Blog
+- [x] Final skill sync includes durable research cases, source learning, settlement profiles, verified variants, advanced history, bookmaker browser health and Blog triggers
 - [x] Dynamic `system.tools` capability truth
 - [x] Modular OpenClaw gateway
-- [x] `system.*` health/readiness/source/economy tools
-- [x] `source.*` free-first tools
+- [x] `system.*` health/readiness/source/economy/job tools
+- [x] `source.*` free-first + durable discovery/learning tools
 - [x] `sports.*` registry/live lookup/form/H2H/injury/match-snapshot tools
-- [x] `research.*` plan/evidence/assess/next/summary/reviewer tools
-- [x] `market.*` interpreter/price-comparison/arbitrage tools
-- [x] `bookmaker.*` capability/import/restore/search/multi-book/convert/build/verify tools
-- [x] `ticket.*` intake/edit/variant/draft/research tools
-- [x] `record.*` / `history.*` tools
+- [x] `research.*` plan/evidence/persistent-case/assess/next/summary/reviewer tools
+- [x] `market.*` interpreter/settlement-profile/price-comparison/arbitrage tools
+- [x] `bookmaker.*` capability/import/restore/search/multi-book/convert/build/verify/health tools
+- [x] `ticket.*` intake/edit/verified-variant/draft/research tools
+- [x] `record.*` / `history.*` tools including advanced lineage/price analytics
 - [x] `settlement.*` tools
-- [x] `blog.*` tools
+- [x] `blog.*` tools including event-driven reflection triggers
 - [x] Safe OpenClaw agent ensure/create helper — never silently retargets a mismatched existing agent
-- [x] Fail-closed OpenClaw workspace/skill/tool acceptance verifier
+- [x] Fail-closed OpenClaw workspace/skill/final-tool-surface acceptance verifier
 - [x] Guarded post-staging OpenClaw activation flow
 - [~] Actual OpenClaw subagent spawning/swarm acceptance on Dell
 - [~] AI Spine runtime integration acceptance after V2 upgrade
@@ -80,6 +92,7 @@
 
 - [x] Source Registry
 - [x] Cache/freshness reuse
+- [x] In-flight concurrent-request coalescing for identical requests
 - [x] Paid-source gate and reason requirement
 - [x] Fetch logging / cache metrics / paid-call metrics
 - [x] Source-health and API-economy summaries
@@ -95,14 +108,14 @@
 - [x] Event lineup evidence with explicit warning that it is not a full injury feed
 - [x] Event/player statistics helpers
 - [x] `sports.match_snapshot` composed pre-play research view
-- [~] Complete recent-form sourcing for every sport/competition — source depth varies
-- [~] Complete injury/suspension/withdrawal sourcing — official/team/news fallback execution still required
-- [~] Complete long-history H2H across every sport/competition
-- [~] Schedule/rest/travel workflow — direct feeds + browser/search/official fallback remains
-- [~] Market-specific statistics across all sports — framework exists; source depth varies by sport
-- [~] Official-source discovery and durable source-learning workflow
-- [~] OpenClaw Browser/Search fetcher execution acceptance
-- [ ] In-flight concurrent-request coalescing
+- [x] Official/public source-discovery planning and durable source-learning workflow
+- [x] Candidate → verified/rejected/retired learned-source lifecycle and health checks
+- [~] Complete recent-form sourcing for every sport/competition — source depth is a live coverage property, not a finite code task
+- [~] Complete injury/suspension/withdrawal sourcing — official/team/news fallback execution must be proven live
+- [~] Complete long-history H2H across every sport/competition — depends on available public history
+- [~] Schedule/rest/travel workflow — direct feeds + browser/search/official fallback must be exercised live
+- [~] Market-specific statistics across all sports — framework exists; source depth expands organically
+- [~] OpenClaw Browser/Search fallback execution acceptance
 
 ## Phase 4 — Sports Universe
 
@@ -136,7 +149,9 @@
 - [x] Explicit home/away winner language
 - [x] 1/X/2 translation
 - [x] Double Chance
+- [x] Draw No Bet normalization
 - [x] Handicap 1/2 and named handicap
+- [x] Common `spread` ingestion normalized to plain handicap language
 - [x] Match totals
 - [x] Team totals
 - [x] Corners/cards/shots/shots on target/general count markets
@@ -146,15 +161,18 @@
 - [x] Ambiguity rejection instead of silent guessing
 - [x] Settlement-rule fingerprint for cross-book compatibility
 - [x] Round-trip winner/double-chance interpretation from explicit event label context
-- [~] Race/field market depth
-- [~] Large real bookmaker-label corpus
-- [~] Bookmaker-specific overtime/retirement/dead-heat rule mappings
+- [x] Race/field core: outright/race/tournament winner, Top-N finish, podium, make/miss cut, group winner
+- [x] Sport-level settlement profiles for overtime/retirement/dead-heat/forfeit/event-format concerns
+- [~] Additional bookmaker-specific label aliases will be learned from real live menus as encountered
+- [~] Exact bookmaker policy values for variable settlement rules must be verified against current live rule pages before equivalence is claimed
 
 ## Phase 6 — Research Intelligence
 
 - [x] Sport-specific research plan
 - [x] Market-specific research focus
 - [x] Evidence persistence/reuse/freshness
+- [x] Persistent named research-case/session object
+- [x] Evidence attachment and case resume across workers/sessions
 - [x] Batch Scout evidence intake
 - [x] Structured conflict detection
 - [x] Research-case assessment: coverage / stale / weak / missing / conflicts
@@ -165,9 +183,8 @@
 - [x] Ticket-wide per-leg research planner
 - [x] Ticket-wide match-snapshot orchestration
 - [x] Large-ticket automatic Skeptic-review trigger
-- [~] Persistent named research-case session object — evidence works now; richer case persistence remains
 - [~] End-to-end multi-worker live research acceptance
-- [~] Automatic official-source conflict resolution
+- [!] Conflicting live facts are deliberately **not** auto-resolved by guessing; Sabi Boy must recheck a fresher/more authoritative source and let the Skeptic challenge unresolved conflicts
 
 ## Phase 7 — Bookmakers
 
@@ -183,22 +200,21 @@
 - [x] Verified browser-restoration playbook: SportyBet
 - [x] Verified browser-restoration playbook: Bet9ja
 - [x] Verified browser-restoration playbook: Stake (region/account availability must be checked live)
-- [~] 1xBet booking-code restore flow — intentionally discovery-only until live public flow is verified
 - [x] Verified market-search browser playbook: SportyBet
 - [x] Verified market-search browser playbook: Bet9ja
 - [x] Verified market-search browser playbook: Stake (region/account availability runtime check)
-- [~] 1xBet market-search flow — discovery-only until configured regional flow is verified
 - [x] Browser-restored slip verifier
 - [x] Restored-slip leg-count and combined-odds consistency checks
 - [x] Restored booking-code → draft persistence tool
 - [x] Rebuilt booking-code structural verifier with price-change separation
-- [~] SportyBet legacy booking-code creation — runtime revalidation required
-- [~] Bet9ja legacy booking-code creation — runtime revalidation required
-- [~] Rich market-aware SportyBet browser builder plan — code/playbook ready; real browser acceptance pending
-- [~] Rich market-aware Bet9ja browser builder plan — code/playbook ready; real browser acceptance pending
-- [ ] Stake target-ticket code-creation builder — not claimed until current creation flow is verified
-- [ ] 1xBet target-ticket builder
-- [~] Live event/market/odds extraction — browser playbooks/validation ready; controlled runtime acceptance pending
+- [x] Rich market-aware SportyBet browser builder plan
+- [x] Rich market-aware Bet9ja browser builder plan
+- [x] Bookmaker browser-health service/tool separates configured playbooks from recently exercised behavior
+- [~] SportyBet legacy/rich booking-code creation — real browser revalidation required
+- [~] Bet9ja legacy/rich booking-code creation — real browser revalidation required
+- [~] Live event/market/odds extraction — playbooks/validation ready; controlled runtime acceptance pending
+- [!] 1xBet restore/search/build remains discovery-only until Work verifies the configured regional public flow; do not invent selectors or claim support before then
+- [!] Stake target booking-code creation remains unclaimed until Work confirms that a current reusable-code creation flow exists for the accessible region/account state
 
 ## Phase 8 — Ticket Workshop
 
@@ -208,6 +224,7 @@
 - [~] Screenshot → OpenClaw vision → normalize path; runtime acceptance pending
 - [~] X post/link → OpenClaw read → normalize path; runtime acceptance pending
 - [x] Plain structured instruction
+- [x] Persistent `draft_id` accepted by common Ticket Workshop operations
 
 ### Editing
 - [x] Remove games
@@ -220,8 +237,8 @@
 - [x] Locked-leg protection
 - [x] Strongest-N selection from supplied research ranking
 - [x] Lower-risk market-change planning
-- [~] Higher-odds variant using only live verified replacement prices
-- [~] User-facing comparison of multiple candidate versions
+- [x] Higher-odds variant using only fresh verified replacement prices tied to exact ticket legs
+- [x] Candidate-version comparison without equating higher combined odds with better quality
 
 ### Lineage
 - [x] Draft persistence
@@ -230,7 +247,9 @@
 - [x] Booking-code source preservation
 - [x] Converted-draft price-observation preservation
 - [x] Verified-built child draft after code reload/verification
-- [~] Full dashboard original-vs-edited/conversion storytelling
+- [x] Parent→child outcome/odds analytics
+- [x] Dashboard History view for ticket edit/conversion outcome storytelling
+- [~] Visual correctness against migrated production history is part of Work acceptance
 
 ## Phase 9 — Convert / Rebuild
 
@@ -247,8 +266,8 @@
 - [x] Generated-code reload/structural verification tool
 - [x] Build-plan target inferred from converted draft with cross-book mismatch protection
 - [~] First real end-to-end SportyBet ↔ Bet9ja conversion/rebuild on Dell
-- [~] End-to-end Stake conversion/search; code creation remains unverified
-- [ ] End-to-end 1xBet conversion after public restore/search/build flow verification
+- [~] End-to-end Stake restoration/search/conversion where region permits
+- [!] End-to-end 1xBet conversion is live-dependent on verifying its current regional restore/search/build flow
 
 ## Phase 10 — Odds Comparison / Arbitrage
 
@@ -263,10 +282,11 @@
 - [x] 2-outcome arbitrage math
 - [x] 3-outcome arbitrage math
 - [x] N-outcome arbitrage math
-- [x] Settlement-rule compatibility
+- [x] Expanded settlement-rule compatibility fingerprint
 - [x] Stake split / theoretical locked return
+- [x] Historical bookmaker price-movement/disagreement analytics
+- [x] Read-only dashboard History display for recorded price movement/disagreement
 - [~] Live multi-book browser extraction runtime acceptance
-- [~] Price/opportunity-history dashboard analytics
 
 ## Phase 11 — Settlement / History Reliability
 
@@ -279,7 +299,8 @@
 - [x] Duplicate payout protection
 - [x] Settlement-backlog reporting
 - [x] Bankroll reconciliation service
-- [~] Sport/bookmaker-specific settlement-rule library depth
+- [x] Sport-level settlement-rule library with bookmaker-verification flags for variable policies
+- [~] Exact current bookmaker-specific retirement/dead-heat/overtime/forfeit policies must be verified live before cross-book equivalence
 - [~] Real production history reconciliation
 
 ## Phase 12 — Historical Insights
@@ -300,13 +321,15 @@
 - [x] Ticket killers
 - [x] Daily outcome series
 - [x] Bankroll series
-- [~] Original vs edited/conversion comparative outcome analysis
+- [x] Original vs edited/conversion parent-child comparative outcome analysis
+- [x] Historical bookmaker price movement
+- [x] Historical cross-book price disagreement
 
 ## Phase 13 — Read-Only Dashboard
 
 - [x] New standalone `dashboard/v2_app.py` instead of extending the V1 monolith
 - [x] GET-only `/api/v2/*`
-- [x] Test forbidding dashboard mutation methods
+- [x] Tests forbidding dashboard mutation methods
 - [x] No PIN/write token/localStorage write-key in V2 app
 - [x] Overview
 - [x] Games/Picks
@@ -319,6 +342,8 @@
 - [x] System
 - [x] Bankroll/outcome/performance charts and breakdowns
 - [x] Ticket-killer view
+- [x] Advanced ticket-version comparison on History
+- [x] Recorded bookmaker price movement/disagreement on History
 - [~] Mobile/PWA/browser visual regression on Dell/real phone
 - [~] Production history correctness after migration
 
@@ -330,13 +355,14 @@
 - [x] OpenClaw blog tools
 - [x] Current-format OpenClaw Blog skill
 - [x] Reflection context based on our recent blog/history
+- [x] Event-driven trigger evaluator: corrections, streaks, ticket killers, source discoveries, busy result windows, bookmaker disagreement
+- [x] Trigger timestamp handling supports SQLite and ISO timestamps safely
 - [x] V1 diary → published historical blog migration
 - [x] Dashboard blog index/post read path
 - [x] Idempotent OpenClaw daily-reflection automation installer
 - [x] Idempotent OpenClaw weekly-reflection automation installer
 - [~] Daily/weekly automation execution acceptance on Dell/OpenClaw
-- [~] Event-driven post rules beyond daily/weekly reflection
-- [ ] RSS/Atom if still useful after acceptance
+- [!] RSS/Atom is deliberately deferred; it is not required for V2 installation/acceptance and can be added later if there is a real consumer
 
 ## Phase 15 — Reliability / Security / Operations
 
@@ -345,7 +371,12 @@
 - [x] Bankroll integrity checks
 - [x] Source health/API economy
 - [x] Settlement backlog health
+- [x] Durable job registry with start/success/failure/consecutive-failure tracking
 - [x] Verified backup/restore/checksum tooling
+- [x] Daily verified-backup systemd service/timer + conservative retention pruner
+- [x] Runtime preparation installs rendered dashboard + backup units
+- [x] Staging enables backup timer only after V2 acceptance
+- [x] Rollback restores the pre-stage backup-timer posture
 - [x] V2 environment template; secrets server-side only
 - [x] Explicit OpenClaw compatibility agent-id setting
 - [x] Separate V2 systemd service on 127.0.0.1:8091
@@ -353,21 +384,20 @@
 - [x] Release acceptance runner
 - [x] Guarded staging script
 - [x] Safe OpenClaw agent ensure/create script
-- [x] OpenClaw exact-workspace/skill/tool acceptance script
+- [x] OpenClaw exact-workspace/skill/final-tool-surface acceptance script
 - [x] Guarded post-staging OpenClaw activation script
 - [x] Current OpenClaw automation-scheduler integration
+- [x] Bookmaker browser-health service/tool
 - [x] External-route cutover verifier
 - [x] External finalizer requires green OpenClaw activation and the exact staged commit
 - [x] Explicit rollback helper
 - [x] Deployment/upgrade runbook
-- [~] Automated scheduled backups on Dell
-- [~] Job retry/failure runtime registration
-- [~] Bookmaker browser-adapter health checks
+- [~] Backup timer/job/browser-health behavior must be observed on the real Dell runtime
 - [~] Security review on actual Dell/OpenClaw deployment
 
-## Phase 16 — Release Gate
+## Phase 16 — Installation / Test / Release Gate
 
-**Do not promote `v2` to `main` and do not issue the final OpenClaw upgrade prompt until the applicable gates below pass.**
+**Repository development is frozen. Do not promote `v2` to `main` until the applicable runtime gates below pass.**
 
 - [ ] Full current pytest suite passes on controlled Dell/runtime
 - [ ] V1 database snapshot taken and verified
@@ -375,9 +405,11 @@
 - [ ] Historical pick/ticket totals reconcile
 - [ ] Bankroll reconciles exactly
 - [ ] Strategy/compound/long-shot history reviewed
-- [ ] Sabi Boy OpenClaw tool acceptance
+- [ ] Sabi Boy OpenClaw final-tool-surface acceptance
 - [ ] Current-format Sabi Boy skill visibility acceptance on the real agent
 - [ ] Research Scout/Skeptic/Ticket Engineer OpenClaw acceptance
+- [ ] Persistent research-case resume across OpenClaw sessions verified
+- [ ] Learned-source discovery/verify/reuse workflow verified
 - [ ] Multi-sport research acceptance across representative sports
 - [ ] SportyBet browser restoration acceptance
 - [ ] Bet9ja browser restoration acceptance
@@ -386,18 +418,24 @@
 - [ ] Bet9ja rich booking-number build/reload verification acceptance
 - [ ] At least one real end-to-end bookmaker conversion/rebuild pair passes
 - [ ] Multi-book fresh-price comparison acceptance
+- [ ] Bookmaker browser-health observations reflect live tests correctly
+- [ ] Settlement profile/live-bookmaker rule verification tested for at least tennis/racquet, golf/field and overtime sport cases
 - [ ] Dashboard mobile/desktop acceptance against migrated data
+- [ ] Advanced History ticket-version/price panels verified against real data
 - [ ] Blog migration/display acceptance
 - [ ] Daily/weekly OpenClaw reflection automation acceptance
+- [ ] Event-driven `blog.triggers` behavior acceptance
+- [ ] Job success/failure/retry/readiness behavior acceptance
 - [ ] Settlement duplicate/correction acceptance
-- [ ] Backup/restore drill passes on Dell
+- [ ] Backup timer + backup/restore drill passes on Dell
 - [ ] External route/cutover rehearsal documented
 - [ ] Security/secrets review
 - [x] Repository deployment runbook exists
-- [ ] Release notes complete
+- [x] Release-candidate notes exist
+- [x] ChatGPT Work installation/testing handoff exists
 - [ ] Final V2 acceptance review
 - [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
-- [ ] Provide the user the final one-shot OpenClaw V2 upgrade/setup prompt
+- [ ] Produce the final production OpenClaw/cutover instruction only after runtime acceptance is green
 
 ---
 
@@ -445,4 +483,6 @@ Rollback helper:
 .venv/bin/python scripts/sabi_v2_rollback.py
 ```
 
-Detailed runbook: `docs/SABI_BOY_V2_DEPLOYMENT.md`.
+Detailed runbook: `docs/SABI_BOY_V2_DEPLOYMENT.md`.  
+ChatGPT Work installation/testing handoff: `docs/SABI_BOY_V2_WORK_HANDOFF.md`.  
+Release-candidate notes: `docs/SABI_BOY_V2_RELEASE_CANDIDATE.md`.
