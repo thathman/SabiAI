@@ -13,6 +13,12 @@ from .browser_profiles import (
 from .conversion import ConversionLeg, ConversionPlan, TargetOffer, TicketConversionService
 from .discovery import BookmakerDiscoveryPlanner, BookmakerSearchPlan, BookmakerSearchTask
 from .execution import BookingCodeImportPlan, BookmakerExecutionPlanner, BuildExecutionPlan
+from .price_compare import (
+    BookmakerLegPrice,
+    TicketLegPriceComparison,
+    TicketPriceComparison,
+    TicketPriceComparisonService,
+)
 from .registry import BookmakerRegistry, default_bookmakers
 from .runner import BookmakerCommandRunner, BuildExecutionResult
 from .search_results import BookmakerOfferService, OfferBatch, OfferIssue, VerifiedOffer
@@ -25,6 +31,7 @@ __all__ = [
     "BookmakerCommandRunner",
     "BookmakerDiscoveryPlanner",
     "BookmakerExecutionPlanner",
+    "BookmakerLegPrice",
     "BookmakerOfferService",
     "BookmakerRegistry",
     "BookmakerSearchPlan",
@@ -41,6 +48,9 @@ __all__ = [
     "OfferIssue",
     "TargetOffer",
     "TicketConversionService",
+    "TicketLegPriceComparison",
+    "TicketPriceComparison",
+    "TicketPriceComparisonService",
     "VerifiedOffer",
     "default_bookmakers",
     "legacy_command_adapters",
