@@ -20,6 +20,7 @@ class BookmakerTools:
             "bookmaker.resolve": self.resolve,
             "bookmaker.capabilities": self.capabilities,
             "bookmaker.browser.playbook": self.browser_playbook,
+            "bookmaker.market_search.playbook": self.market_search_playbook,
             "bookmaker.booking_code.import_plan": self.booking_code_import_plan,
             "bookmaker.booking_code.restore": self.booking_code_restore,
             "bookmaker.search.plan": self.search_plan,
@@ -34,6 +35,7 @@ class BookmakerTools:
             return {"found": False, "name": args.get("name")}
         adapter = self.app.bookmaker_adapters.get(bookmaker.slug)
         profile = self.browser_profiles.get(bookmaker.slug)
+        market_profile = self.browser_profiles.market_search(bookmaker.slug)
         proven = sorted(cap.value for cap in adapter.capabilities()) if adapter else []
         return {
             "found": True,
@@ -42,6 +44,7 @@ class BookmakerTools:
             "slug": bookmaker.slug,
             "proven_capabilities": proven,
             "browser_restore_verified": bool(profile and profile.public_restore and profile.entry_url),
+            "browser_market_search_verified": bool(market_profile and market_profile.ready and market_profile.entry_url),
         }
 
     def capabilities(self, args: dict) -> dict:
@@ -52,17 +55,20 @@ class BookmakerTools:
                 return {"found": False, "name": name}
             adapter = self.app.bookmaker_adapters.get(bookmaker.slug)
             profile = self.browser_profiles.get(bookmaker.slug)
+            market_profile = self.browser_profiles.market_search(bookmaker.slug)
             return {
                 "found": True,
                 "bookmaker": bookmaker.name,
                 "slug": bookmaker.slug,
                 "adapter": json_value(adapter.status()) if adapter else None,
                 "browser_playbook": json_value(profile) if profile else None,
+                "market_search_playbook": json_value(market_profile) if market_profile else None,
             }
         rows = []
         for bookmaker in self.app.bookmakers.all():
             adapter = self.app.bookmaker_adapters.get(bookmaker.slug)
             profile = self.browser_profiles.get(bookmaker.slug)
+            market_profile = self.browser_profiles.market_search(bookmaker.slug)
             rows.append(
                 {
                     "bookmaker": bookmaker.name,
@@ -70,6 +76,10 @@ class BookmakerTools:
                     "adapter": json_value(adapter.status()) if adapter else None,
                     "browser_restore_verified": bool(profile and profile.public_restore and profile.entry_url),
                     "browser_verified_on": profile.verified_on if profile else None,
+                    "browser_market_search_verified": bool(
+                        market_profile and market_profile.ready and market_profile.entry_url
+                    ),
+                    "market_search_verified_on": market_profile.verified_on if market_profile else None,
                 }
             )
         return {"bookmakers": rows}
@@ -81,6 +91,19 @@ class BookmakerTools:
         profile = self.browser_profiles.get(bookmaker.slug)
         return {
             "found": profile is not None,
+            "bookmaker": bookmaker.name,
+            "slug": bookmaker.slug,
+            "playbook": json_value(profile) if profile else None,
+        }
+
+    def market_search_playbook(self, args: dict) -> dict:
+        bookmaker = self.app.bookmakers.resolve(str(args.get("bookmaker") or args.get("name") or ""))
+        if bookmaker is None:
+            return {"found": False, "name": args.get("bookmaker") or args.get("name")}
+        profile = self.browser_profiles.market_search(bookmaker.slug)
+        return {
+            "found": profile is not None,
+            "ready": bool(profile and profile.ready),
             "bookmaker": bookmaker.name,
             "slug": bookmaker.slug,
             "playbook": json_value(profile) if profile else None,
@@ -136,11 +159,22 @@ class BookmakerTools:
     def search_plan(self, args: dict) -> dict:
         ticket = ticket_from_args(self.app, args)
         target = str(args.get("target_bookmaker") or "")
+        bookmaker = self.app.bookmakers.resolve(target)
+        if bookmaker is None:
+            raise ValueError(f"Unknown target bookmaker: {target}")
         plan = self.app.bookmaker_discovery.plan_conversion(
             ticket,
             target_bookmaker=target,
         )
-        return json_value(plan)
+        data = json_value(plan)
+        market_profile = self.browser_profiles.market_search(bookmaker.slug)
+        data["browser_playbook"] = json_value(market_profile) if market_profile else None
+        data["browser_ready"] = bool(market_profile and market_profile.ready and market_profile.entry_url)
+        if not data["browser_ready"]:
+            data.setdefault("notes", []).append(
+                f"{bookmaker.name} does not yet have a verified V2 public market-search browser playbook."
+            )
+        return data
 
     def convert_plan(self, args: dict) -> dict:
         source_ticket = ticket_from_args(self.app, args)
