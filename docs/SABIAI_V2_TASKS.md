@@ -44,10 +44,10 @@
 - [x] Ticket model
 - [x] Ticket leg model
 - [x] Bankroll ledger service
-- [~] Shared repository/data layer — canonical SQLite repository, source cache/logging, ticket persistence and history reads exist; more repositories remain
+- [~] Shared repository/data layer — canonical SQLite repository, source cache/logging, ticket persistence, evidence persistence and history reads exist; more repositories remain
 - [x] V2 schema
 - [~] Migration framework — preservation/rollback and schema migration runner exist; V1 data migration is not implemented
-- [~] Core tests — existing local V2 harness passes its pre-existing 16 tests; expanded V2 tests are committed and still need full controlled-runtime execution
+- [~] Core tests — current local V2 harness passes 36 tests; controlled Dell/runtime acceptance remains a release gate
 
 # Phase 2 — OpenClaw Native Sabi
 
@@ -60,9 +60,9 @@
 - [x] Read-only dashboard boundary
 - [~] Native `sports.*` tools — list/describe core implemented; live event helpers remain
 - [~] Native `research.*` tools — research plan and evidence save/read implemented; live research orchestration remains
-- [~] Native `bookmaker.*` tools — canonical bookmaker resolution implemented; adapters/search/code workflows remain
+- [~] Native `bookmaker.*` tools — canonical resolution/capability reporting implemented; search/code import/conversion remain
 - [~] Native `market.*` tools — plain interpreter and rule-aware arbitrage implemented; wider bookmaker mappings and general price comparison remain
-- [~] Native `ticket.*` tools — split, split-by-size, trim, remove, keep and change-market implemented; import/conversion/booking-code workflows remain
+- [~] Native `ticket.*` tools — normalize/from-text/split/split-by-size/trim/remove/keep/change/replace implemented; booking-code import/conversion remain
 - [~] Native `record.*` / `history.*` tools — bankroll write and read-only history summaries implemented; picks/tickets/settlement recording remains
 - [ ] Native `blog.*` tools
 - [~] Native `system.*` tools — V2 initialize/database health implemented; jobs/sources/backups/settlement health remain
@@ -160,44 +160,44 @@
 
 # Phase 7 — Bookmakers
 
-- [ ] Bookmaker adapter base
-- [~] Capability flags — conservative capability field exists; no adapter should claim unsupported features
-- [ ] SportyBet adapter
-- [ ] Bet9ja adapter
+- [x] Bookmaker adapter base
+- [x] Capability flags core — features are exposed only after an adapter proves them
+- [~] SportyBet adapter — existing browser ticket-build/code-create path registered; runtime revalidation, import and search remain
+- [~] Bet9ja adapter — existing browser ticket-build/code-create path registered; runtime revalidation, import and search remain
 - [ ] 1xBet adapter
 - [ ] Stake adapter
 - [ ] Event search
 - [ ] Market search
 - [ ] Decimal odds extraction
 - [ ] Booking-code import
-- [ ] Booking-code creation where possible
-- [ ] Slip parsing
-- [~] Bookmaker rule metadata — rule fingerprint exists; bookmaker-specific rules remain
-- [ ] Browser fallback
-- [ ] Adapter fixtures/tests
+- [~] Booking-code creation where possible — compatibility path registered for SportyBet and Bet9ja; V2 runtime validation remains
+- [ ] Slip parsing from bookmaker code/page
+- [~] Bookmaker rule metadata — rule fingerprint exists; bookmaker-specific mappings remain
+- [ ] Browser fallback adapter
+- [~] Adapter fixtures/tests — capability tests committed; live browser fixtures remain
 
 # Phase 8 — Ticket Workshop
 
 ## Inputs
 - [ ] Booking code
-- [ ] Screenshot/image
-- [ ] Copied text
-- [ ] Bookmaker share text
-- [ ] X post
-- [~] Plain instruction — normalized tool instruction path exists; natural-language extraction still required
+- [~] Screenshot/image — OpenClaw vision can extract visible ticket text/legs into the canonical normalization path; end-to-end runtime workflow remains
+- [x] Copied text — deterministic importer implemented
+- [~] Bookmaker share text — common copied/share formats supported; bookmaker-specific corpus remains
+- [~] X post — OpenClaw can read/extract post content then use `ticket.from_text`/`ticket.normalize`; end-to-end runtime workflow remains
+- [~] Plain instruction — normalized tool instruction path exists; broader natural-language extraction still required
 
 ## Normalize
 - [x] Resolve bookmaker name/alias core
-- [ ] Resolve events
-- [~] Resolve home/away — explicit names accepted and visible event labels survive ticket edits; canonical event identity resolution remains
+- [ ] Resolve canonical events against live bookmaker/source IDs
+- [~] Resolve home/away — explicit names accepted and visible event labels survive all current ticket edits; live event identity resolution remains
 - [~] Normalize markets — expanded interpreter implemented
 - [x] Normalize decimal odds core
-- [ ] Resolve duplicate legs
-- [~] Flag unresolved legs — interpreter identifies ambiguity; ticket import pipeline not yet wired
+- [x] Detect duplicate legs
+- [x] Flag unresolved/ambiguous legs without silently discarding them
 
 ## Edit
 - [x] Remove games
-- [~] Replace games — domain operation implemented; OpenClaw/import workflow remains
+- [x] Replace games core + OpenClaw gateway
 - [x] Change markets core
 - [x] Preserve locked picks in trim/remove/keep/change operations
 - [x] Keep only selected games core
@@ -225,13 +225,13 @@
 
 # Phase 9 — Convert / Rebuild / Booking Codes
 
-- [ ] Source-book import
+- [ ] Source-book code import
 - [ ] Target-book event mapping
 - [ ] Equivalent-market mapping
 - [ ] Missing-market alternatives
 - [ ] Target-book odds
-- [ ] Build target slip
-- [ ] Create/extract booking code
+- [~] Build target slip — existing SportyBet/Bet9ja browser builders registered as compatibility integrations; canonical V2 orchestration remains
+- [~] Create/extract booking code — existing SportyBet/Bet9ja builders can create/extract codes; controlled-runtime V2 validation remains
 - [ ] Verify rebuilt ticket
 - [ ] Conversion history
 - [ ] First end-to-end conversion pair
@@ -383,7 +383,16 @@
 - `3b4db05` / `676f18f` / `c01ea35` — bankroll ledger and read-only history services.
 - `3a3d3e2` / `3bcb81f` — explicit event labels plus expanded Ticket Workshop editing/splitting.
 - `945d36b` — OpenClaw gateway exposes research evidence, bankroll/history and expanded ticket tools.
-- `34cf8ce` — expanded plain-language market interpretation for handicaps, team/player totals and periods.
+- `34cf8ce` / `30f5fc9` — expanded plain-language market interpretation and home/away edge-case fix.
 - `6e0e8d6` — stable canonical bookmaker identities.
 - `85e82b7` / `5c80852` — expanded market-language and service regression tests.
-- `83ce209` — OpenClaw V2 tool contract updated to match the running build.
+- `83ce209` — OpenClaw V2 tool contract updated to match the foundation build.
+- `e7f91e3` / `5a7adfd` — conservative bookmaker adapter/capability contract with SportyBet and Bet9ja compatibility builders.
+- `c2532a5` / `90a15cc` — canonical ticket normalization with duplicate/ambiguity/invalid-odds checks.
+- `8d44f62` — OpenClaw gateway unified around ticket normalization and bookmaker capability reporting.
+- `d2f6ad1` — ticket normalizer/bookmaker capability regression tests.
+- `7566635` / `ee6741e` — deterministic copied/share ticket text importer.
+- `1ce100b` — OpenClaw `ticket.from_text` path for copied text and text extracted from X/screenshots.
+- `00bc5c3` — copied/extracted ticket-text regression tests.
+- `4abb2c1` — OpenClaw tool contract updated with ticket intake flow.
+- Local V2 harness checkpoint — **36 tests passing** across the currently synced foundation/ticket/service test set.
