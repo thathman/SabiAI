@@ -72,13 +72,15 @@ upsert_agent_job() {
       --no-deliver >/dev/null
   else
     echo "Creating OpenClaw automation: $name"
-    "$OPENCLAW_BIN" automations add \
+    # Current OpenClaw create/add syntax takes the schedule and agent prompt as positional
+    # arguments. Keep flags for identity/session/delivery only.
+    "$OPENCLAW_BIN" automations create \
+      "$cron_expr" \
+      "$prompt" \
       --name "$name" \
-      --cron "$cron_expr" \
       --tz "$TZ_NAME" \
       --session isolated \
       --agent "$AGENT_ID" \
-      --message "$prompt" \
       --no-deliver >/dev/null
   fi
 }
