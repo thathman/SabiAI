@@ -11,6 +11,7 @@ from sabiai.bookmakers import (
 from sabiai.config import Settings
 from sabiai.markets import MarketInterpreter
 from sabiai.odds import ArbitrageEngine
+from sabiai.sources import default_source_bundle
 from sabiai.sports import ResearchPlanner, default_sports
 from sabiai.storage import SabiDatabase, TicketDraftStore
 from sabiai.tickets import TicketNormalizer, TicketTextImporter, TicketWorkshop
@@ -21,6 +22,7 @@ from .market_tools import MarketTools
 from .record_tools import RecordTools
 from .research_tools import ResearchTools
 from .settlement_tools import SettlementTools
+from .source_tools import SourceTools
 from .sports_tools import SportsTools
 from .system_tools import SystemTools
 from .ticket_tools import TicketTools
@@ -35,6 +37,7 @@ class SabiToolGateway:
 
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or Settings.from_env()
+        self.source_bundle = default_source_bundle(self.settings)
 
         self.market_interpreter = MarketInterpreter()
         self.bookmakers = default_bookmakers()
@@ -63,6 +66,7 @@ class SabiToolGateway:
 
         groups = (
             SystemTools(self),
+            SourceTools(self),
             SportsTools(self),
             ResearchTools(self),
             MarketTools(self),
