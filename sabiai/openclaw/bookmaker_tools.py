@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from sabiai.bookmakers import TargetOffer
+from sabiai.bookmakers import BookmakerBrowserProfiles, TargetOffer
 from sabiai.system import SystemReadinessService
 from sabiai.tickets import RestoredSlipService
 
@@ -13,11 +13,13 @@ from .serializers import conversion_to_dict, draft_to_dict, json_value, ticket_t
 class BookmakerTools:
     def __init__(self, app):
         self.app = app
+        self.browser_profiles = BookmakerBrowserProfiles()
 
     def handlers(self) -> dict:
         return {
             "bookmaker.resolve": self.resolve,
             "bookmaker.capabilities": self.capabilities,
+            "bookmaker.browser.playbook": self.browser_playbook,
             "bookmaker.booking_code.import_plan": self.booking_code_import_plan,
             "bookmaker.booking_code.restore": self.booking_code_restore,
             "bookmaker.search.plan": self.search_plan,
@@ -31,6 +33,7 @@ class BookmakerTools:
         if bookmaker is None:
             return {"found": False, "name": args.get("name")}
         adapter = self.app.bookmaker_adapters.get(bookmaker.slug)
+        profile = self.browser_profiles.get(bookmaker.slug)
         proven = sorted(cap.value for cap in adapter.capabilities()) if adapter else []
         return {
             "found": True,
@@ -38,6 +41,7 @@ class BookmakerTools:
             "name": bookmaker.name,
             "slug": bookmaker.slug,
             "proven_capabilities": proven,
+            "browser_restore_verified": bool(profile and profile.public_restore and profile.entry_url),
         }
 
     def capabilities(self, args: dict) -> dict:
@@ -47,14 +51,39 @@ class BookmakerTools:
             if bookmaker is None:
                 return {"found": False, "name": name}
             adapter = self.app.bookmaker_adapters.get(bookmaker.slug)
+            profile = self.browser_profiles.get(bookmaker.slug)
             return {
                 "found": True,
                 "bookmaker": bookmaker.name,
                 "slug": bookmaker.slug,
                 "adapter": json_value(adapter.status()) if adapter else None,
+                "browser_playbook": json_value(profile) if profile else None,
             }
+        rows = []
+        for bookmaker in self.app.bookmakers.all():
+            adapter = self.app.bookmaker_adapters.get(bookmaker.slug)
+            profile = self.browser_profiles.get(bookmaker.slug)
+            rows.append(
+                {
+                    "bookmaker": bookmaker.name,
+                    "slug": bookmaker.slug,
+                    "adapter": json_value(adapter.status()) if adapter else None,
+                    "browser_restore_verified": bool(profile and profile.public_restore and profile.entry_url),
+                    "browser_verified_on": profile.verified_on if profile else None,
+                }
+            )
+        return {"bookmakers": rows}
+
+    def browser_playbook(self, args: dict) -> dict:
+        bookmaker = self.app.bookmakers.resolve(str(args.get("bookmaker") or args.get("name") or ""))
+        if bookmaker is None:
+            return {"found": False, "name": args.get("bookmaker") or args.get("name")}
+        profile = self.browser_profiles.get(bookmaker.slug)
         return {
-            "bookmakers": [json_value(status) for status in self.app.bookmaker_adapters.statuses()]
+            "found": profile is not None,
+            "bookmaker": bookmaker.name,
+            "slug": bookmaker.slug,
+            "playbook": json_value(profile) if profile else None,
         }
 
     def booking_code_import_plan(self, args: dict) -> dict:
