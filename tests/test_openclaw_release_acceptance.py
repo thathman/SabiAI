@@ -77,11 +77,45 @@ def test_every_required_current_format_skill_exists_with_frontmatter():
         assert "description:" in frontmatter, name
 
 
-def test_required_tool_gate_covers_new_v2_workflows():
+def test_required_tool_gate_covers_final_v2_workflows():
     required = set(acceptance.REQUIRED_TOOLS)
-    assert "sports.match_snapshot" in required
-    assert "ticket.research.plan" in required
-    assert "bookmaker.compare.from_search" in required
-    assert "bookmaker.browser_build.plan" in required
-    assert "bookmaker.build.verify" in required
-    assert "blog.reflection.context" in required
+    expected = {
+        "system.tools",
+        "system.readiness",
+        "system.jobs.failure",
+        "source.discovery.plan",
+        "source.discovery.verify",
+        "sports.match_snapshot",
+        "research.evidence.ingest",
+        "research.case.create",
+        "research.case.attach",
+        "research.case.summary",
+        "ticket.research.plan",
+        "ticket.draft.lineage",
+        "ticket.higher_odds.from_verified_offers",
+        "ticket.candidates.compare",
+        "market.settlement.profile",
+        "bookmaker.compare.plan",
+        "bookmaker.compare.from_search",
+        "bookmaker.convert.from_search",
+        "bookmaker.browser_build.plan",
+        "bookmaker.build.verify",
+        "bookmaker.browser_health",
+        "history.ticket_versions",
+        "history.bookmaker_prices",
+        "history.price_disagreements",
+        "blog.reflection.context",
+        "blog.triggers",
+    }
+    assert expected <= required
+
+
+def test_release_handoff_documents_exist():
+    repo = Path(__file__).resolve().parents[1]
+    for name in (
+        "SABI_BOY_V2_DEPLOYMENT.md",
+        "SABI_BOY_V2_RELEASE_CANDIDATE.md",
+        "SABI_BOY_V2_WORK_HANDOFF.md",
+        "SABIAI_V2_TASKS.md",
+    ):
+        assert (repo / "docs" / name).exists(), name
