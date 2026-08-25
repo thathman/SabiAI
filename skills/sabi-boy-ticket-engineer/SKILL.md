@@ -22,15 +22,18 @@ Normalize everything before editing. Keep sport, visible event, exact selection,
 
 If the input is ambiguous, preserve the ambiguity instead of guessing.
 
+Most Ticket Workshop operations accept `draft_id` directly. Prefer that over manually unpacking/repacking a saved draft.
+
 ## Research before quality edits
 
 For requests such as `make this stronger`, `remove weak games`, or `check every game`:
 
 1. `ticket.research.plan`;
-2. gather evidence per leg;
-3. run `ticket.research.snapshot` / match research where appropriate;
-4. use a Skeptic pass when required;
-5. only then rank/remove/replace based on actual research.
+2. create/reuse durable research cases when appropriate;
+3. gather evidence per leg;
+4. run `ticket.research.snapshot` / match research where appropriate;
+5. use a Skeptic pass when required;
+6. only then rank/remove/replace based on actual research.
 
 Do not create a fake strength score from bookmaker odds alone.
 
@@ -50,11 +53,19 @@ Use the canonical V2 Ticket Workshop tools for:
 
 Locked selections remain protected unless the user explicitly changes them.
 
+## Candidate versions
+
+Use `ticket.candidates.compare` when the user wants multiple ticket versions compared. It reports structural/odds differences without pretending the highest combined odds is automatically the best choice.
+
+Use `ticket.higher_odds.from_verified_offers` only when OpenClaw has just observed exact replacement offers at the target bookmaker. Every replacement needs the exact `leg_id`, market and fresh decimal price.
+
+Never invent replacement odds or silently strengthen a market line.
+
 ## Market changes
 
 A proposed market change is not complete until the target bookmaker actually offers that exact alternative at a current decimal price.
 
-Never invent replacement odds.
+Use `market.settlement.profile` when the new market can be affected by overtime, retirement, dead heat, forfeits or event-format rules.
 
 ## Conversion/rebuild
 
