@@ -30,28 +30,32 @@ class BlogTriggerService:
         streak_milestone: int = 3,
     ) -> list[BlogTrigger]:
         now = now or datetime.now(timezone.utc)
-        cutoff = (now - timedelta(hours=max(1, int(hours)))).isoformat()
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        cutoff_dt = now - timedelta(hours=max(1, int(hours)))
+        cutoff = cutoff_dt.isoformat()
         triggers: list[BlogTrigger] = []
 
         with self.db.connect() as conn:
             corrections = conn.execute(
                 """SELECT entity_type,entity_id,previous_outcome,new_outcome,reason,changed_at
                    FROM settlement_audit
-                   WHERE previous_outcome IS NOT NULL AND changed_at>=?
-                   ORDER BY changed_at DESC LIMIT 10""",
+                   WHERE previous_outcome IS NOT NULL AND datetime(changed_at)>=datetime(?)
+                   ORDER BY datetime(changed_at) DESC LIMIT 10""",
                 (cutoff,),
             ).fetchall()
             recently_settled = conn.execute(
                 """SELECT outcome,COUNT(*) AS n FROM picks_v2
-                   WHERE settled_at IS NOT NULL AND settled_at>=?
+                   WHERE settled_at IS NOT NULL AND datetime(settled_at)>=datetime(?)
                    GROUP BY outcome""",
                 (cutoff,),
             ).fetchall()
             verified_sources = conn.execute(
                 """SELECT name,url,sports_json,capabilities_json,verified_at
                    FROM source_discoveries
-                   WHERE status='verified' AND verified_at IS NOT NULL AND verified_at>=?
-                   ORDER BY verified_at DESC LIMIT 10""",
+                   WHERE status='verified' AND verified_at IS NOT NULL
+                     AND datetime(verified_at)>=datetime(?)
+                   ORDER BY datetime(verified_at) DESC LIMIT 10""",
                 (cutoff,),
             ).fetchall()
 
@@ -80,10 +84,12 @@ class BlogTriggerService:
                 )
             )
 
-        killers = AdvancedAnalytics(self.db)
-        from sabiai.storage import PerformanceAnalytics as _PA  # avoid circular imports in older runtimes
-        recent_killers = _PA(self.db).ticket_killers(limit=5)
-        fresh_killers = [row for row in recent_killers if str(row.get("created_at") or "") >= cutoff]
+        recent_killers = PerformanceAnalytics(self.db).ticket_killers(limit=5)
+        fresh_killers = [
+            row
+            for row in recent_killers
+            if self._parse_stamp(row.get("created_at"), default_tz=timezone.utc) >= cutoff_dt
+        ]
         if fresh_killers:
             triggers.append(
                 BlogTrigger(
@@ -119,7 +125,7 @@ class BlogTriggerService:
                 )
             )
 
-        disagreements = killers.latest_price_disagreements(limit=10)
+        disagreements = AdvancedAnalytics(self.db).latest_price_disagreements(limit=10)
         meaningful = [row for row in disagreements if float(row.get("latest_gap") or 0) >= 0.10]
         if meaningful:
             triggers.append(
@@ -127,10 +133,29 @@ class BlogTriggerService:
                     key="bookmaker_disagreement",
                     priority="low",
                     title_hint="The bookmakers disagreed more than usual",
-                    reason=f"{len(meaningful)} observed market(s) have a latest recorded decimal-price gap of at least 0.10.",
+                    reason=(
+                        f"{len(meaningful)} observed market(s) have a latest recorded "
+                        "decimal-price gap of at least 0.10."
+                    ),
                     data={"markets": meaningful},
                 )
             )
 
         order = {"high": 0, "medium": 1, "low": 2}
         return sorted(triggers, key=lambda row: (order.get(row.priority, 9), row.key))
+
+    @staticmethod
+    def _parse_stamp(value, *, default_tz=timezone.utc) -> datetime:
+        if not value:
+            return datetime.min.replace(tzinfo=default_tz)
+        text = str(value).strip().replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            try:
+                parsed = datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return datetime.min.replace(tzinfo=default_tz)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=default_tz)
+        return parsed.astimezone(timezone.utc)
