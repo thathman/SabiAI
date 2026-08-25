@@ -1,0 +1,10 @@
+[Unit]
+Description=Sabi Boy V2 verified database backup
+After=default.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/sabi-boy/sabi-boy.env
+WorkingDirectory=%h/.openclaw/workspace
+ExecStart=%h/.openclaw/workspace/.venv/bin/python %h/.openclaw/workspace/scripts/sabi_v2_backup.py create
+ExecStartPost=%h/.openclaw/workspace/.venv/bin/python %h/.openclaw/workspace/scripts/sabi_v2_prune_backups.py --keep 30
