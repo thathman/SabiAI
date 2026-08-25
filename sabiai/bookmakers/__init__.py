@@ -5,6 +5,7 @@ from .adapters import (
     CommandBookmakerAdapter,
     legacy_command_adapters,
 )
+from .browser_health import BookmakerBrowserHealth, BookmakerBrowserHealthService
 from .browser_profiles import (
     BrowserBuildPlaybook,
     BrowserPlaybook,
@@ -27,6 +28,8 @@ from .search_results import BookmakerOfferService, OfferBatch, OfferIssue, Verif
 __all__ = [
     "AdapterRegistry",
     "AdapterStatus",
+    "BookmakerBrowserHealth",
+    "BookmakerBrowserHealthService",
     "BookmakerBrowserProfiles",
     "BookmakerCapability",
     "BookmakerCommandRunner",
