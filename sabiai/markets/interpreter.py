@@ -250,9 +250,9 @@ class MarketInterpreter:
             return home, "home"
         if away and away.casefold() in low:
             return away, "away"
-        if home and re.search(r"\b(handicap\s*1|team\s*1|home team)\b", low):
+        if home and re.search(r"(^home\b|\bhandicap\s*1\b|\bteam\s*1\b|\bhome team\b)", low):
             return home, "home"
-        if away and re.search(r"\b(handicap\s*2|team\s*2|away team)\b", low):
+        if away and re.search(r"(^away\b|\bhandicap\s*2\b|\bteam\s*2\b|\baway team\b)", low):
             return away, "away"
         return None, None
 
