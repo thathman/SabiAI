@@ -31,6 +31,8 @@ An already-settled result may only change through an explicit correction with a 
 
 Ticket result is derived from its legs according to the relevant settlement rules. Preserve ticket/leg identity and bookmaker context.
 
+Use `market.settlement.profile` when the sport/market can depend on overtime, retirement, dead heat, forfeits or event format. If the profile requires bookmaker verification, do not assume two books settle it the same way.
+
 ## Bankroll
 
 Use the ledger. Distinguish:
@@ -63,5 +65,13 @@ Useful breakdowns include:
 - ticket source;
 - ticket killers;
 - original vs edited/conversion lineage.
+
+Use the advanced read models when useful:
+
+- `history.ticket_versions` — parent/child result comparison and odds changes;
+- `history.bookmaker_prices` — recorded price movement by bookmaker/event/market;
+- `history.price_disagreements` — latest recorded cross-book price gaps.
+
+Historical price tools describe what Sabi Boy observed; they do not replace a fresh bookmaker search before building/converting a ticket.
 
 These are records of what actually happened. Never backfill a result from memory when settlement evidence is uncertain.
