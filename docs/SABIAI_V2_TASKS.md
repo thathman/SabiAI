@@ -1,398 +1,385 @@
-# SabiAI V2 — Living Task Board
+# Sabi Boy V2 — Living Task Board
 
 > **Branch:** `v2`  
-> **Rule:** Update this file as implementation progresses. Do not mark a phase complete until its exit gate in `SABIAI_V2_BUILD_PLAN.md` passes.
+> **Human-facing product:** Sabi Boy  
+> **Compatibility identifiers:** SabiAI / `sabiai` / `sabi-ai` remain where changing them would break runtime/data interfaces.  
+> **Rule:** A task may be implemented without its phase being release-ready. Dell/OpenClaw runtime acceptance is a separate gate.
 
-## Status key
+## Status
 
-- [ ] Not started
-- [~] In progress / implementation exists but its phase gate has not passed
-- [x] Complete at task level
-- [!] Blocked / decision needed
+- [x] Implemented at code/task level
+- [~] Implemented/partly implemented; live/runtime/coverage gate remains
+- [ ] Not yet complete
+- [!] Blocked or requires a deliberate live decision
 
 ---
 
-# Phase 0 — Audit / Preserve V1
+## Phase 0 — Preserve V1
 
-- [x] Inventory scripts
-- [x] Inventory OpenClaw skills/tools
-- [x] Inventory repository cron/systemd definitions
-- [x] Inventory repository DBs/tables
-- [x] Inventory dashboard routes/APIs
-- [x] Inventory repository data sources
-- [x] Inventory repository bookmaker integrations
-- [x] Inventory strategies/history surfaces
-- [~] Inventory live secrets/config — repository policy mapped; actual Dell environment still requires secret-free runtime inventory
-- [~] Map V1 -> V2 schema — top-level mapping documented; field-level migration mapping remains
-- [~] Backup all V1 data — verified snapshot tooling implemented; live Dell snapshot not yet executed
-- [ ] Create migration fixture
-- [x] Document rollback
+- [x] Repository/scripts/skills/systemd/dashboard/data-source/bookmaker inventory
+- [x] V1 DB/table inventory and field-level migration mapping
+- [x] V1 → V2 deterministic migration framework
+- [x] Synthetic V1 migration fixture
+- [x] Lossless `legacy_archive` for V1 rows without a direct V2 destination
+- [x] Verified SQLite snapshot/checksum/restore tooling
+- [x] Rollback design and script
+- [~] Actual Dell environment/secrets inventory — must be performed without committing secrets
+- [~] Actual production V1 backup — tooling ready; live snapshot is a release action
+- [~] Actual production migration rehearsal/reconciliation — code ready; Dell run pending
 
-# Phase 1 — Core Domain
+## Phase 1 — Core Domain / Storage
 
-- [x] Create V2 package layout
-- [x] Shared configuration
-- [x] Canonical sport model
-- [x] Competition model
-- [x] Team/player/participant model
-- [x] Alias resolution
-- [x] Canonical event model
-- [x] Canonical market/selection model
-- [x] Bookmaker registry
-- [x] Stable canonical bookmaker identities
-- [x] Pick model
-- [x] Ticket model
-- [x] Ticket leg model
-- [x] Bankroll ledger service
-- [~] Shared repository/data layer — canonical SQLite repository, source cache/logging, ticket persistence, evidence persistence and history reads exist; more repositories remain
-- [x] V2 schema
-- [~] Migration framework — preservation/rollback and schema migration runner exist; V1 data migration is not implemented
-- [~] Core tests — current local V2 harness passes 36 tests; controlled Dell/runtime acceptance remains a release gate
+- [x] V2 package layout and environment-driven settings
+- [x] Canonical sport/competition/participant/event models
+- [x] Canonical market/selection/pick/ticket/ticket-leg models
+- [x] Stable bookmaker identities and aliases
+- [x] Decimal-odds validation
+- [x] Canonical V2 SQLite schema + migrations
+- [x] Source cache/fetch log
+- [x] Research evidence persistence
+- [x] Ticket draft/version lineage persistence
+- [x] Bankroll ledger and reconciliation
+- [x] Blog persistence
+- [x] Legacy archive
+- [~] Full expanded test suite — many tests committed; complete current-suite run on controlled runtime still required
 
-# Phase 2 — OpenClaw Native Sabi
+## Phase 2 — OpenClaw-Native Sabi Boy
 
-- [x] Rewrite Sabi V2 skill
-- [x] Plain-language doctrine
-- [x] Decimal odds doctrine
-- [x] Explicit team/selection wording
-- [x] Free-first doctrine
-- [x] Broad-sports doctrine
-- [x] Read-only dashboard boundary
-- [~] Native `sports.*` tools — list/describe core implemented; live event helpers remain
-- [~] Native `research.*` tools — research plan and evidence save/read implemented; live research orchestration remains
-- [~] Native `bookmaker.*` tools — canonical resolution/capability reporting implemented; search/code import/conversion remain
-- [~] Native `market.*` tools — plain interpreter and rule-aware arbitrage implemented; wider bookmaker mappings and general price comparison remain
-- [~] Native `ticket.*` tools — normalize/from-text/split/split-by-size/trim/remove/keep/change/replace implemented; booking-code import/conversion remain
-- [~] Native `record.*` / `history.*` tools — bankroll write and read-only history summaries implemented; picks/tickets/settlement recording remains
-- [ ] Native `blog.*` tools
-- [~] Native `system.*` tools — V2 initialize/database health implemented; jobs/sources/backups/settlement health remain
-- [~] AI Spine memory integration — existing agent integration retained; V2 research-memory conventions added to runtime doctrine
-- [ ] Temporary specialist-worker pattern
-- [ ] Skeptic/reviewer worker
-- [~] Heartbeat/scheduler review — V2 heartbeat doctrine written; legacy schedules still require live review/migration
+- [x] `SABI_BOY.md`, identity, soul, operating manual, agent rules and heartbeat rewritten
+- [x] Primary Sabi Boy skill rewritten
+- [x] Old football-first scanner/research skills converted to V2 compatibility bridges
+- [x] Old separate betting-record skill converted to canonical V2 history/settlement
+- [x] Dynamic `system.tools` capability truth
+- [x] Modular OpenClaw gateway
+- [x] `system.*` health/readiness/source/economy tools
+- [x] `source.*` free-first tools
+- [x] `sports.*` registry/live lookup tools
+- [x] `research.*` plan/evidence/assess/next/summary/reviewer tools
+- [x] `market.*` interpreter/arbitrage tools
+- [x] `bookmaker.*` capability/import-plan/restore/search/convert/build tools
+- [x] `ticket.*` intake/edit/variant/draft tools
+- [x] `record.*` / `history.*` tools
+- [x] `settlement.*` tools
+- [x] `blog.*` tools
+- [x] Research Scout worker brief
+- [x] Skeptic Reviewer worker brief
+- [x] Ticket Engineer worker brief
+- [~] Actual OpenClaw subagent spawning/swarm acceptance on Dell
+- [~] AI Spine runtime integration acceptance after V2 upgrade
 
-# Phase 3 — Free-First Sources
+## Phase 3 — Free-First Sources
 
-- [x] Source Registry core
-- [x] Cache/freshness engine core — TTL cache and freshness checks implemented in SourceService/SQLite
-- [ ] Official-source adapters
-- [ ] Public endpoint adapters
-- [ ] Public web adapters
-- [ ] Browser fallback
-- [ ] Search fallback
-- [ ] Source discovery
-- [ ] Source health
-- [x] Paid API gate core
-- [x] Paid usage log core — every source attempt can log paid/free, cache use, success/failure and reason
-- [~] Duplicate-request prevention — stable request-key cache prevents repeated fresh fetches; concurrent/in-flight coalescing remains
-- [x] Source fallback tests committed
+- [x] Source Registry
+- [x] Cache/freshness reuse
+- [x] Paid-source gate and reason requirement
+- [x] Fetch logging / cache metrics / paid-call metrics
+- [x] Source-health and API-economy summaries
+- [x] TheSportsDB broad free adapter
+- [x] Optional football-data.org free-tier adapter
+- [x] TheSportsDB team/event/player lookup helpers
+- [x] Partial form/schedule support with explicit coverage limits
+- [x] Event lineup evidence with explicit warning that it is not a full injury feed
+- [x] Event/player statistics helpers
+- [~] Complete recent-form sourcing — current unmetered source is partial
+- [~] Complete injury/suspension/withdrawal sourcing — needs official/team/news fallback execution
+- [~] H2H workflow — research planner/browser/search path exists; dedicated complete source still needed
+- [~] Schedule/rest/travel workflow — partial direct feed + browser/search/official fallback remains
+- [~] Market-specific statistics across all sports — framework exists; source depth varies by sport
+- [~] Official-source discovery and durable source-learning workflow
+- [~] OpenClaw Browser/Search fetcher execution acceptance
+- [ ] In-flight concurrent-request coalescing
 
-# Phase 4 — Sports Framework
+## Phase 4 — Sports Universe
 
-## First wave
-- [~] Football — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Basketball — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Volleyball — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Tennis — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Table tennis — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Baseball — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Ice hockey — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Cricket — sport profile and market-aware research planning exist; dedicated live research adapters remain
-- [~] Esports — patch/roster/map research profile exists; dedicated live research adapters remain
-- [~] Golf — course/weather/tee-time research profile exists; dedicated live research adapters remain
+### Knowledge framework
+- [x] Football
+- [x] Basketball
+- [x] Volleyball
+- [x] Tennis
+- [x] Table tennis
+- [x] Baseball
+- [x] Ice hockey
+- [x] Cricket
+- [x] Esports
+- [x] Golf
+- [x] Handball
+- [x] Rugby
+- [x] Darts
+- [x] Snooker
+- [x] Badminton
+- [x] MMA / boxing
+- [x] Motorsport / cycling
+- [x] Futsal / water polo / beach volleyball / padel / floorball / Aussie rules and additional generic profiles
+- [x] Unknown-sport discovery instead of `unsupported`
 
-## Second wave
-- [~] Handball — generic profile exists
-- [~] Rugby — generic profile exists
-- [~] Darts — generic profile exists
-- [~] Snooker — generic profile exists
-- [~] Badminton — generic profile exists
-- [~] MMA — generic profile exists
-- [~] Boxing — generic profile exists
-- [~] Motorsport — generic profile exists
-- [~] Cycling — generic profile exists
-- [~] Futsal — generic profile exists
-- [~] Water polo — generic profile exists
-- [~] Beach volleyball — generic profile exists
-- [~] Padel — generic profile exists
-- [~] Floorball — generic profile exists
-- [~] Aussie rules — generic profile exists
-- [x] Unknown-sport discovery behavior — unfamiliar sports return a discovery profile instead of `unsupported`
+### Live depth
+- [~] Multi-sport fixture/event/team/player discovery through broad source + OpenClaw fallback
+- [~] Sport-specific deep statistics/availability coverage varies and must keep expanding organically
 
-# Phase 5 — Market Interpreter
+## Phase 5 — Market Interpreter
 
-- [~] Match win/draw/loss — common 1/2/X and named-winner parsing implemented; bookmaker corpus remains
-- [x] Double chance core
-- [x] Handicap core — explicit team names and `Handicap 1/2 +/-line` parsing implemented
-- [x] Totals core
-- [x] Team totals core
-- [~] Set/frame/map markets — totals/period recognition implemented; winner/handicap variants remain
-- [~] Corners — totals/count recognition implemented; bookmaker variants remain
-- [~] Cards — totals/count recognition implemented; bookmaker variants remain
-- [~] Shots / shots on target — totals/player recognition implemented; bookmaker variants remain
-- [~] Player markets — generic named-player over/under stats implemented; richer player market corpus remains
-- [~] General count markets — broad metric vocabulary implemented; bookmaker variants remain
-- [ ] Race/field markets
-- [~] Period/scope support — halves, quarters, sets, maps and periods implemented; broader scope corpus remains
-- [~] Overtime/extra-time rules — rule fingerprint exists for price compatibility; sport/bookmaker mappings remain
-- [ ] Bookmaker label mappings
-- [x] Ambiguity detection core — unresolved markets return explicit reason instead of silent guessing
-- [~] Real market-name test corpus — expanded plain-language tests committed; large bookmaker corpus remains
+- [x] Explicit home/away winner language
+- [x] 1/X/2 translation
+- [x] Double Chance
+- [x] Handicap 1/2 and named handicap
+- [x] Match totals
+- [x] Team totals
+- [x] Corners/cards/shots/shots on target/general count markets
+- [x] Generic player stat totals
+- [x] Half/quarter/set/map/frame/period recognition core
+- [x] Broad metric vocabulary
+- [x] Ambiguity rejection instead of silent guessing
+- [x] Settlement-rule fingerprint for cross-book compatibility
+- [~] Race/field market depth
+- [~] Large real bookmaker-label corpus
+- [~] Bookmaker-specific overtime/retirement/dead-heat rule mappings
 
-# Phase 6 — Research V2
+## Phase 6 — Research Intelligence
 
-- [~] Research request/orchestration — planning and evidence layer exist; live source execution/reviewer orchestration remains
-- [x] Sport-specific checklist selection core
-- [x] Market-specific checklist selection core
-- [ ] Recent form adapter/workflow
-- [ ] Home/away form adapter/workflow
-- [ ] H2H adapter/workflow
-- [ ] Injuries/availability adapter/workflow
-- [ ] Expected lineups/rosters adapter/workflow
-- [ ] Schedule/rest adapter/workflow
-- [ ] Match/competition context adapter/workflow
-- [~] Market-specific stats — planner selects relevant focus; data adapters remain
-- [x] Evidence persistence core
-- [x] Evidence reuse core — freshness-limited reuse implemented
-- [ ] Conflicting source handling
-- [~] Plain-language summaries — evidence model requires a plain summary; full synthesis service remains
-- [ ] Reviewer pass
+- [x] Sport-specific research plan
+- [x] Market-specific research focus
+- [x] Evidence persistence/reuse/freshness
+- [x] Structured conflict detection
+- [x] Research-case assessment: coverage / stale / weak / missing / conflicts
+- [x] Free-first next-task planner
+- [x] Plain-language research synthesis: what I know / worries / still to check
+- [x] Skeptic-review planner
+- [x] Research Scout worker doctrine
+- [~] Persistent named research-case session object — evidence works now; richer case persistence is still being introduced
+- [~] End-to-end multi-worker live research acceptance
+- [~] Automatic official-source conflict resolution
 
-# Phase 7 — Bookmakers
+## Phase 7 — Bookmakers
 
-- [x] Bookmaker adapter base
-- [x] Capability flags core — features are exposed only after an adapter proves them
-- [~] SportyBet adapter — existing browser ticket-build/code-create path registered; runtime revalidation, import and search remain
-- [~] Bet9ja adapter — existing browser ticket-build/code-create path registered; runtime revalidation, import and search remain
-- [ ] 1xBet adapter
-- [ ] Stake adapter
-- [ ] Event search
-- [ ] Market search
-- [ ] Decimal odds extraction
-- [ ] Booking-code import
-- [~] Booking-code creation where possible — compatibility path registered for SportyBet and Bet9ja; V2 runtime validation remains
-- [ ] Slip parsing from bookmaker code/page
-- [~] Bookmaker rule metadata — rule fingerprint exists; bookmaker-specific mappings remain
-- [ ] Browser fallback adapter
-- [~] Adapter fixtures/tests — capability tests committed; live browser fixtures remain
+- [x] Bookmaker adapter contract and capability flags
+- [x] Stable SportyBet / Bet9ja / Stake / 1xBet identities
+- [x] Exact target-book search plan per ticket leg
+- [x] Exact conversion verifier: event / sport / market / line / period / side
+- [x] Controlled legacy builder runner
+- [x] Legacy builder sport/market/period safety gate
+- [x] Verified browser-restoration playbook: SportyBet
+- [x] Verified browser-restoration playbook: Bet9ja
+- [x] Verified browser-restoration playbook: Stake (region/account availability must be checked live)
+- [~] 1xBet booking-code restore flow — intentionally discovery-only until live public flow is verified
+- [x] Browser-restored slip verifier
+- [x] Restored-slip leg-count and combined-odds consistency checks
+- [x] Restored booking-code → draft persistence tool
+- [~] SportyBet legacy booking-code creation — runtime revalidation required
+- [~] Bet9ja legacy booking-code creation — runtime revalidation required
+- [ ] Rich market-aware SportyBet builder beyond legacy proven scope
+- [ ] Rich market-aware Bet9ja builder beyond legacy proven scope
+- [ ] Stake target-ticket builder
+- [ ] 1xBet target-ticket builder
+- [~] Live event/market/odds extraction adapters
 
-# Phase 8 — Ticket Workshop
+## Phase 8 — Ticket Workshop
 
-## Inputs
-- [ ] Booking code
-- [~] Screenshot/image — OpenClaw vision can extract visible ticket text/legs into the canonical normalization path; end-to-end runtime workflow remains
-- [x] Copied text — deterministic importer implemented
-- [~] Bookmaker share text — common copied/share formats supported; bookmaker-specific corpus remains
-- [~] X post — OpenClaw can read/extract post content then use `ticket.from_text`/`ticket.normalize`; end-to-end runtime workflow remains
-- [~] Plain instruction — normalized tool instruction path exists; broader natural-language extraction still required
+### Inputs
+- [x] Copied text
+- [x] Structured browser-restored booking code
+- [~] Screenshot → OpenClaw vision → normalize path; runtime acceptance pending
+- [~] X post/link → OpenClaw read → normalize path; runtime acceptance pending
+- [x] Plain structured instruction
 
-## Normalize
-- [x] Resolve bookmaker name/alias core
-- [ ] Resolve canonical events against live bookmaker/source IDs
-- [~] Resolve home/away — explicit names accepted and visible event labels survive all current ticket edits; live event identity resolution remains
-- [~] Normalize markets — expanded interpreter implemented
-- [x] Normalize decimal odds core
-- [x] Detect duplicate legs
-- [x] Flag unresolved/ambiguous legs without silently discarding them
-
-## Edit
+### Editing
 - [x] Remove games
-- [x] Replace games core + OpenClaw gateway
-- [x] Change markets core
-- [x] Preserve locked picks in trim/remove/keep/change operations
-- [x] Keep only selected games core
-- [ ] Keep strongest N using research strength
-- [ ] Lower-risk version
-- [ ] Higher-odds version
+- [x] Keep games
+- [x] Replace game
+- [x] Change market
+- [x] Split into N slips
+- [x] Split by games-per-slip
+- [x] Trim toward target combined odds
+- [x] Locked-leg protection
+- [x] Strongest-N selection from supplied research ranking
+- [x] Lower-risk market-change planning
+- [~] Higher-odds variant using only live verified replacement prices
+- [~] User-facing comparison of multiple candidate versions
 
-## Split
-- [x] Split by number of slips
-- [x] Split by game count
-- [~] Distribute stronger picks — current balancing uses odds/product, not research strength yet
-- [ ] Preserve groups
+### Lineage
+- [x] Draft persistence
+- [x] Parent/child lineage
+- [x] Original/imported source preservation
+- [x] Booking-code source preservation
+- [~] Full dashboard original-vs-edited/conversion storytelling
 
-## Target odds
-- [x] Trim toward requested odds core
-- [x] Minimum-game constraint
-- [x] Locked-pick constraint
-- [ ] Compare candidate versions in user-facing explanation
+## Phase 9 — Convert / Rebuild
 
-## Lineage
-- [~] Ticket versions — parent/source fields and V2 persistence schema exist; version service remains
-- [x] Parent/child split tracking core
-- [~] Original vs edited tracking — parent lineage exists; history/reports remain
-- [ ] Sabi recommendation notes
+- [x] Booking-code import planning
+- [x] Browser-restored source slip validation
+- [x] Target-book search tasks
+- [x] Exact-market conversion engine
+- [x] Target-book build plan
+- [x] Controlled booking-code creation where legacy adapter scope is proven
+- [x] Conversion/draft lineage foundations
+- [~] Live target-book price discovery
+- [~] First real end-to-end SportyBet ↔ Bet9ja conversion on Dell
+- [~] End-to-end Stake conversion
+- [ ] End-to-end 1xBet conversion after public restore/search flow verification
 
-# Phase 9 — Convert / Rebuild / Booking Codes
+## Phase 10 — Odds Comparison / Arbitrage
 
-- [ ] Source-book code import
-- [ ] Target-book event mapping
-- [ ] Equivalent-market mapping
-- [ ] Missing-market alternatives
-- [ ] Target-book odds
-- [~] Build target slip — existing SportyBet/Bet9ja browser builders registered as compatibility integrations; canonical V2 orchestration remains
-- [~] Create/extract booking code — existing SportyBet/Bet9ja builders can create/extract codes; controlled-runtime V2 validation remains
-- [ ] Verify rebuilt ticket
-- [ ] Conversion history
-- [ ] First end-to-end conversion pair
+- [x] Timestamped price quote model
+- [x] Best compatible price per outcome
+- [x] Stale-price rejection
+- [x] 2-outcome arbitrage math
+- [x] 3-outcome arbitrage math
+- [x] N-outcome arbitrage math
+- [x] Settlement-rule compatibility
+- [x] Stake split / theoretical locked return
+- [~] Live multi-book odds ingestion
+- [~] Price recheck immediately before rebuild/output
+- [~] Opportunity-history persistence and dashboard analytics
 
-# Phase 10 — Odds Comparison / Arbitrage
+## Phase 11 — Settlement / History Reliability
 
-- [~] Odds snapshots — V2 schema exists; bookmaker ingestion not implemented
-- [~] Price timestamps — quote objects/schema support timestamps; bookmaker ingestion not implemented
-- [~] Best price comparison — best compatible price per outcome implemented inside arbitrage; general comparison service remains
-- [x] Stale-price rejection core
-- [x] Two-outcome calculation
-- [x] Three-outcome calculation
-- [x] N-outcome calculation
-- [x] Settlement-rule compatibility check core
-- [x] Stake split calculation core
-- [ ] Price recheck before external result/booking
-- [~] False-match rejection — normalized event/market keys are required; wider identity tests remain
-- [ ] Opportunity history
+- [x] Unified settlement service
+- [x] Won / Lost / Draw / Void / Pending canonical vocabulary
+- [x] Idempotent duplicate settlement protection
+- [x] Ticket settlement derived from legs
+- [x] Manual correction with mandatory reason/audit trail
+- [x] Cancel/void propagation core
+- [x] Duplicate payout protection
+- [x] Settlement-backlog reporting
+- [x] Bankroll reconciliation service
+- [~] Sport/bookmaker-specific settlement-rule library depth
+- [~] Real production history reconciliation
 
-# Phase 11 — Settlement / History Reliability
+## Phase 12 — Historical Insights
 
-- [ ] Unified settlement service
-- [ ] Sport-aware result mapping
-- [~] Won/Lost/Draw/Void/Pending — canonical outcome vocabulary exists; settlement service remains
-- [ ] Ticket settlement
-- [ ] Postponed/cancelled handling
-- [~] Manual correction + audit — audit schema exists; service remains
-- [ ] Backlog monitoring
-- [ ] Duplicate settlement protection
-- [~] Bankroll reconciliation — ledger reconciliation service exists; V1/V2 migration reconciliation remains
-- [ ] Consistency checks
+- [x] Overall record and win percentage
+- [x] Betting P/L separated from deposits/withdrawals
+- [x] Bankroll history
+- [x] Current/best/worst streaks
+- [x] By sport
+- [x] By competition
+- [x] By market
+- [x] By bookmaker
+- [x] By strategy
+- [x] By decimal-odds band
+- [x] By ticket size
+- [x] By combined-odds band
+- [x] Ticket source/type
+- [x] Ticket killers
+- [x] Daily outcome series
+- [x] Bankroll series
+- [~] Original vs edited/conversion comparative outcome analysis
 
-# Phase 12 — Historical Insights
+## Phase 13 — Read-Only Dashboard
 
-- [x] Overall W/L/D/void/pending core
-- [x] Win percentage core
-- [ ] P/L summary service
-- [~] Bankroll — current balance/history implemented; change-over-period insights remain
-- [ ] Current streak
-- [ ] Best/worst streak
-- [x] By sport core
-- [ ] By competition
-- [x] By market core
-- [x] By bookmaker core
-- [ ] By strategy
-- [ ] By decimal-odds range
-- [ ] By ticket size
-- [ ] By combined-odds range
-- [ ] Singles vs tickets
-- [ ] Ticket killers
-- [ ] Original vs edited tickets
-- [ ] Ticket source/type
+- [x] New standalone `dashboard/v2_app.py` instead of extending the V1 monolith
+- [x] GET-only `/api/v2/*`
+- [x] Test forbidding dashboard mutation methods
+- [x] No PIN/write token/localStorage write-key in V2 app
+- [x] Overview
+- [x] Games/Picks
+- [x] Tickets
+- [x] Performance
+- [x] Finance
+- [x] Strategies
+- [x] History
+- [x] Sabi Boy Blog
+- [x] System
+- [x] Bankroll/outcome/performance charts and breakdowns
+- [x] Ticket-killer view
+- [~] Mobile/PWA/browser visual regression on Dell/real phone
+- [~] Production history correctness after migration
 
-# Phase 13 — Read-Only Dashboard
+## Phase 14 — Sabi Boy Blog
 
-- [ ] Refactor monolithic dashboard app
-- [ ] Overview
-- [ ] Games/Picks
-- [ ] Tickets
-- [ ] Performance
-- [ ] Finance
-- [ ] Strategies
-- [ ] History
-- [ ] Blog
-- [ ] System
-- [ ] Bankroll chart
-- [ ] P/L chart
-- [ ] W/L/D trend
-- [ ] Streak chart
-- [ ] Sport chart
-- [ ] Market chart
-- [ ] Bookmaker chart
-- [ ] Strategy chart
-- [ ] Odds-band chart
-- [ ] Ticket-size chart
-- [ ] Combined-odds chart
-- [ ] Ticket-killer chart
-- [ ] Remove browser write-token flow
-- [ ] Read-only APIs
-- [ ] Mobile/PWA regression
+- [x] Blog schema/service
+- [x] Draft/publish/archive
+- [x] Categories/tags/related records
+- [x] OpenClaw blog tools
+- [x] Reflection context based on our recent blog/history
+- [x] V1 diary → published historical blog migration
+- [x] Dashboard blog index/post read path
+- [~] Daily reflection scheduling
+- [~] Weekly reflection scheduling
+- [~] Event-driven post rules
+- [ ] RSS/Atom if still useful after acceptance
 
-# Phase 14 — Sabi Blog
+## Phase 15 — Reliability / Security / Operations
 
-- [~] Blog schema — V2 table exists; service/UI not implemented
-- [ ] Diary migration
-- [ ] Categories/tags
-- [ ] Publication service
-- [ ] OpenClaw blog tool
-- [ ] Daily reflection workflow
-- [ ] Weekly reflection workflow
-- [ ] Event-driven posts
-- [ ] Related picks/tickets
-- [ ] Blog index
-- [ ] Post page
-- [ ] Related posts
-- [ ] RSS/Atom if practical
+- [x] READY / DEGRADED / OBSERVE ONLY / ACTION LOCKED logic
+- [x] DB integrity checks
+- [x] Bankroll integrity checks
+- [x] Source health/API economy
+- [x] Settlement backlog health
+- [x] Verified backup/restore/checksum tooling
+- [x] V2 environment template; secrets server-side only
+- [x] Separate V2 systemd service on 127.0.0.1:8091
+- [x] Checkout-portable runtime preparation
+- [x] Release acceptance runner
+- [x] Guarded staging script
+- [x] External-route cutover verifier
+- [x] Explicit rollback helper
+- [x] Deployment/upgrade runbook
+- [~] Automated scheduled backups on Dell
+- [~] Job retry/failure runtime registration
+- [~] Bookmaker browser-adapter health checks
+- [~] Security review on actual Dell/OpenClaw deployment
 
-# Phase 15 — Reliability / Security / Operations
+## Phase 16 — Release Gate
 
-- [~] Job registry — V2 schema exists; runtime service remains
-- [ ] Retry/failure tracking
-- [ ] Settlement backlog health
-- [ ] Source freshness health summary
-- [ ] Backup freshness
-- [~] DB integrity checks — V1 preservation tool checks snapshots; V2 periodic health remains
-- [ ] Remove default PIN
-- [ ] Remove PIN-in-GET flow
-- [ ] Remove browser localStorage write key
-- [~] Protect internal writes — OpenClaw gateway boundary established; authentication/permissions remain
-- [x] Server-side secrets only for new V2 code
-- [~] Automated backups — preservation tool exists; scheduler not configured
-- [ ] Restore test
-- [ ] Source health metrics
-- [ ] Bookmaker adapter health
-- [~] Paid API usage metrics — raw paid/free usage log exists; dashboard/summary metrics remain
-- [~] Cache metrics — cache-hit events are logged; aggregate metrics remain
+**Do not promote `v2` to `main` and do not issue the final OpenClaw upgrade prompt until the applicable gates below pass.**
 
-# Phase 16 — V2 Release
-
-- [ ] Full V1 -> V2 migration rehearsal
-- [ ] Historical totals reconcile
-- [ ] Bankroll reconciles
-- [ ] Strategy history reconciles
-- [ ] End-to-end OpenClaw acceptance tests
-- [ ] Ticket Workshop acceptance tests
-- [ ] Bookmaker conversion acceptance tests
-- [ ] Multi-sport acceptance tests
-- [ ] Dashboard acceptance tests
-- [ ] Blog acceptance tests
-- [ ] Backup/restore acceptance test
-- [ ] Security review
-- [ ] Local full test suite passes
-- [ ] Deployment runbook complete
+- [ ] Full current pytest suite passes on controlled Dell/runtime
+- [ ] V1 database snapshot taken and verified
+- [ ] V1 → V2 migration rehearsal on actual data passes
+- [ ] Historical pick/ticket totals reconcile
+- [ ] Bankroll reconciles exactly
+- [ ] Strategy/compound/long-shot history reviewed
+- [ ] Sabi Boy OpenClaw tool acceptance
+- [ ] Research Scout/Skeptic/Ticket Engineer OpenClaw acceptance
+- [ ] Multi-sport research acceptance across representative sports
+- [ ] SportyBet browser restoration acceptance
+- [ ] Bet9ja browser restoration acceptance
+- [ ] Stake browser restoration acceptance where region allows
+- [ ] At least one real end-to-end bookmaker conversion/rebuild pair passes
+- [ ] Dashboard mobile/desktop acceptance against migrated data
+- [ ] Blog migration/display acceptance
+- [ ] Settlement duplicate/correction acceptance
+- [ ] Backup/restore drill passes on Dell
+- [ ] External route/cutover rehearsal documented
+- [ ] Security/secrets review
+- [x] Repository deployment runbook exists
 - [ ] Release notes complete
 - [ ] Final V2 acceptance review
-- [ ] Promote `v2` to `main`
+- [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
+- [ ] Provide the user the final one-shot OpenClaw V2 upgrade/setup prompt
 
 ---
 
-## Build log
+## Current release commands
 
-- `479ae37` — V2 core domain, decimal-odds validation, bookmaker registry, market interpreter, free-first source registry, initial tests.
-- `dddd4e8` — V2 canonical SQLite schema, alias resolution and repository layer.
-- `be17779` — OpenClaw JSON gateway plus Ticket Workshop split/trim core.
-- `05c9d62` — V2 OpenClaw runtime doctrine, rewritten Sabi skill, heartbeat rules and tool contract.
-- `4393cb3` — V1 repository audit, verified preservation snapshot tool and rollback runbook.
-- Source/sports/odds slice — broad open-ended sports registry, sport/market research planner, SourceService cache/free-first execution, schema migration runner and rule-aware arbitrage engine.
-- `916c145` / `29b345f` — research evidence package and reusable evidence store.
-- `3b4db05` / `676f18f` / `c01ea35` — bankroll ledger and read-only history services.
-- `3a3d3e2` / `3bcb81f` — explicit event labels plus expanded Ticket Workshop editing/splitting.
-- `945d36b` — OpenClaw gateway exposes research evidence, bankroll/history and expanded ticket tools.
-- `34cf8ce` / `30f5fc9` — expanded plain-language market interpretation and home/away edge-case fix.
-- `6e0e8d6` — stable canonical bookmaker identities.
-- `85e82b7` / `5c80852` — expanded market-language and service regression tests.
-- `83ce209` — OpenClaw V2 tool contract updated to match the foundation build.
-- `e7f91e3` / `5a7adfd` — conservative bookmaker adapter/capability contract with SportyBet and Bet9ja compatibility builders.
-- `c2532a5` / `90a15cc` — canonical ticket normalization with duplicate/ambiguity/invalid-odds checks.
-- `8d44f62` — OpenClaw gateway unified around ticket normalization and bookmaker capability reporting.
-- `d2f6ad1` — ticket normalizer/bookmaker capability regression tests.
-- `7566635` / `ee6741e` — deterministic copied/share ticket text importer.
-- `1ce100b` — OpenClaw `ticket.from_text` path for copied text and text extracted from X/screenshots.
-- `00bc5c3` — copied/extracted ticket-text regression tests.
-- `4abb2c1` — OpenClaw tool contract updated with ticket intake flow.
-- Local V2 harness checkpoint — **36 tests passing** across the currently synced foundation/ticket/service test set.
+Prepare only (no migration/service cutover):
+
+```bash
+bash scripts/sabi_v2_prepare_runtime.sh
+```
+
+Stage safely beside V1:
+
+```bash
+bash scripts/sabi_v2_stage.sh
+```
+
+Run release acceptance directly:
+
+```bash
+.venv/bin/python scripts/sabi_v2_acceptance.py --migrate-v1
+```
+
+After the real external route has been changed and verified by the Dell-side operator/OpenClaw:
+
+```bash
+.venv/bin/python scripts/sabi_v2_finalize_cutover.py --health-url 'https://YOUR-SABI-HOST/health'
+```
+
+Rollback helper:
+
+```bash
+.venv/bin/python scripts/sabi_v2_rollback.py
+```
+
+Detailed runbook: `docs/SABI_BOY_V2_DEPLOYMENT.md`.
