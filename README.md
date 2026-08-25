@@ -1,395 +1,409 @@
-# SabiAI — Personal Betting Analyst
+# Sabi Boy V2
 
-SabiAI is a personal betting intelligence engine. It scans sportsbook odds,
-builds probabilistic models of match outcomes, finds **+EV (positive expected
-value)** bets using the **Kelly criterion**, places them across three
-bookmakers with three distinct bankroll strategies, logs every pick, and
-learns from outcomes to get sharper over time.
+**Sabi Boy** is an OpenClaw-native, multi-sport sports intelligence system.
 
-> **Note:** this repo is the engine. Secrets (API keys, tokens, phone numbers,
-> channel IDs) have been stripped — see [Environment Variables](#environment-variables).
+He researches sports, understands bookmaker markets in plain language, compares prices, checks form/injuries/context, reads and edits tickets, restores booking codes, plans bookmaker conversions, keeps our history, reviews his own work and writes a first-person blog about what he is seeing and learning.
+
+The repository is still named **SabiAI** and technical identifiers such as `sabiai`, `sabi-ai`, existing DB names and environment-variable prefixes remain for compatibility while V2 is built.
+
+> **Development branch:** `v2`  
+> `main` remains the stable V1 line until V2 release acceptance is complete.
 
 ---
 
-## What it does
+## Product rule
 
-- **Scanner tier** — pulls odds from multiple sources (1xBet, SportyBet,
-  Bet9ja, ESPN, API-Football, Sofascore, TheRundown, Exa) and normalizes them
-- **Model tier** — Dixon-Coles / Poisson / ELO / feature-based models estimate
-  true match probabilities
-- **Value tier** — compares model probability vs implied bookmaker probability
-  to find +EV edges, sized with Kelly fraction
-- **Execution tier** — three bookmaker-specific bet types (below)
-- **Logging tier** — every pick, stake, odds, and settlement in SQLite
-- **Learning loop** — periodic retraining (feature refit + model calibration)
-  against settled outcomes
+> **OpenClaw Sabi Boy does the work. The dashboard records our story.**
 
-## Three bet types
+The dashboard is **not** a sports portal. It is read-only and visualizes our own:
 
-| Bet type | Bookmaker | Concept |
-|---|---|---|
-| **Kelly** | 1xBet | Single, mathematically-sized stake on a value edge (`value_bet_finder.py`) |
-| **Chain Compound** | SportyBet | Multi-leg chains where winnings roll forward (accumulator with stake growth) |
-| **Weekly Long Shot** | Bet9ja | One low-probability/high-odds ticket per week, tiny stake, big upside |
+- games/picks;
+- Won / Lost / Draw / Void / Pending history;
+- streaks;
+- tickets and ticket killers;
+- bankroll and betting P/L;
+- performance by sport, market, bookmaker, strategy and odds range;
+- Sabi Boy Blog;
+- source/system health.
+
+Sports research, bookmaker search, booking-code restoration, ticket editing and conversion happen through Sabi Boy/OpenClaw.
+
+---
+
+## User-facing language
+
+Sabi Boy should sound like a knowledgeable sports person, not a technical statistics package.
+
+Use:
+
+- `Arsenal to win — 1.72`
+- `Chelsea or Draw — Double Chance — 1.31`
+- `Over 2.5 goals — 1.84`
+- `Arsenal +1.5 handicap — 1.40`
+- `Over 8.5 corners — 1.76`
+- `LeBron James — Over 7.5 rebounds — 1.90`
+
+Rules:
+
+- decimal odds only;
+- explicit team/player names;
+- home/away where useful;
+- translate 1/X/2, 1X, X2, Handicap 1/2 and bookmaker shorthand;
+- no unexplained American betting language;
+- internal technical implementation stays behind the interface unless specifically requested.
+
+---
+
+## Broad sports
+
+Football is not the coverage boundary.
+
+The V2 sports framework includes knowledge profiles for football, basketball, volleyball, tennis, table tennis, baseball, ice hockey, cricket, golf, esports, handball, rugby, darts, snooker, badminton, MMA, boxing, motorsport, cycling, futsal, water polo, beach volleyball, padel, floorball, Aussie rules and more.
+
+An unfamiliar sport triggers **discovery/research**, not `unsupported`.
+
+---
+
+## Major V2 capabilities
+
+### Sports and research
+
+Sabi Boy can plan/check:
+
+- fixtures/events;
+- team/player identity;
+- recent form;
+- home/away or venue context;
+- H2H where relevant;
+- injuries, suspensions, withdrawals, lineups/rosters;
+- rest/travel/schedule context;
+- market-specific statistics;
+- official/public evidence and source conflicts.
+
+Research is market-aware: corners research is different from cards, player rebounds, volleyball set handicaps, golf matchups or esports map markets.
+
+### Free-first source system
+
+Default order:
+
+1. fresh local/cache/evidence;
+2. open/public data;
+3. official source;
+4. public structured endpoint;
+5. public webpage;
+6. OpenClaw browser;
+7. search/source discovery;
+8. another free source;
+9. paid source only when free paths are insufficient and paid use is explicitly allowed/justified.
+
+Built-in direct sources currently include TheSportsDB and an optional football-data.org adapter. OpenClaw Browser/Search are broader fallbacks.
+
+### Ticket Workshop
+
+Inputs/workflows include:
+
+- booking code;
+- screenshot/image through OpenClaw vision;
+- copied/share text;
+- X post/link content;
+- plain instruction;
+- existing Sabi Boy draft.
+
+Operations include:
+
+- split into smaller slips;
+- remove/keep/replace games;
+- change markets;
+- trim toward target combined odds;
+- preserve locked selections;
+- rank/keep strongest selections from research;
+- plan lower-risk market changes;
+- preserve original/edit/conversion lineage.
+
+### Bookmakers
+
+Canonical bookmaker identities include:
+
+- SportyBet
+- Bet9ja
+- Stake
+- 1xBet
+
+Capability reporting is conservative: recognizing a bookmaker is not the same as having a proven importer/builder for every market.
+
+Current V2 includes:
+
+- booking-code import plans;
+- verified browser-restoration playbooks for SportyBet and Bet9ja;
+- Stake bet-code/shared-bet browser playbook with live region/account verification required;
+- 1xBet discovery-only until its current public restoration flow is verified;
+- browser-restored slip validation;
+- exact target-bookmaker search plans;
+- exact conversion verification;
+- controlled compatibility builders for proven legacy SportyBet/Bet9ja scope.
+
+### Price comparison / arbitrage
+
+V2 can normalize compatible prices, reject stale quotes, compare settlement rules, calculate 2/3/N-outcome price combinations and calculate stake splits. Live multi-book price ingestion is still a release-work item.
+
+### Settlement / history
+
+V2 has one canonical settlement/history path with:
+
+- idempotent settlement;
+- audited corrections;
+- ticket status derived from legs;
+- duplicate payout protection;
+- bankroll reconciliation;
+- settlement backlog monitoring.
+
+### Sabi Boy Blog
+
+The blog is a first-person intelligence journal, not generic sports news. It can cover what changed Sabi Boy's mind, mistakes, recurring ticket killers, bookmaker disagreement, source lessons, new sports/markets and weekly reflections.
 
 ---
 
 ## Architecture
 
-```
-                    ┌──────────────────────────────┐
-                    │         SCANNERS             │
-                    │  1xBet · SportyBet · Bet9ja  │
-                    │  ESPN · API-Football · etc.  │
-                    └──────────────┬───────────────┘
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │         MODEL TIER           │
-                    │  Dixon-Coles · Poisson ·    │
-                    │  ELO · feature model         │
-                    └──────────────┬───────────────┘
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │       VALUE ENGINE           │
-                    │  model prob vs implied odds  │
-                    │  → EV filter → Kelly sizing  │
-                    └──────────────┬───────────────┘
-                                   ▼
-        ┌──────────────┬───────────────┬──────────────┐
-        ▼              ▼               ▼              ▼
-   ┌─────────┐   ┌────────────┐  ┌────────────┐  ┌─────────┐
-   │  KELLY  │   │   CHAIN    │  │  LONG SHOT │  │  LOGGING│
-   │ 1xBet   │   │  SportyBet │  │   Bet9ja   │  │ SQLite  │
-   └─────────┘   └────────────┘  └────────────┘  └────┬────┘
-                                                      ▼
-                                              ┌─────────────┐
-                                              │  LEARNING   │
-                                              │ loop: refit │
-                                              │ + calibrate │
-                                              └─────────────┘
+```text
+                         SABI BOY
+                    OpenClaw Main Agent
+                           │
+        memory • browser • search • tools • skills
+            heartbeat • workers • AI Spine
+                           │
+       ┌───────────────────┼───────────────────┐
+       │                   │                   │
+    RESEARCH            SPORTS             MARKET
+    evidence            knowledge          bookmakers
+    sources             rules              prices
+    context             formats            tickets
+       └───────────────────┼───────────────────┘
+                           │
+                    INTELLIGENCE CORE
+                           │
+       research cases • price comparison • risk
+       ticket workshop • settlement • history
+                           │
+             BET / WATCH / WAIT / PASS
+                           │
+                RECORD / BLOG / LEARN
+                           │
+                 READ-ONLY DASHBOARD
 ```
 
-## File structure
+---
 
-```
-sabiai-engine/
-├── README.md
-├── SABIAI.md                  # engine overview & dashboard docs
-├── SOUL.md / IDENTITY.md      # agent identity
-├── AGENTS.md                  # workspace rules (team coordination)
-├── HEARTBEAT.md               # proactive-check checklist
-├── OPERATING_MANUAL.md        # day-to-day operating procedures
-├── TOOLS.md                   # local tool notes (sanitized)
-├── lessons.md                 # accumulated lessons learned
+## Repository layout
+
+```text
+SabiAI/
+├── SABI_BOY.md                  # canonical V2 product/agent reference
+├── IDENTITY.md
+├── SOUL.md
+├── OPERATING_MANUAL.md
+├── AGENTS.md
+├── HEARTBEAT.md
+├── TOOLS.md
+├── V2.md
+├── sabiai/
+│   ├── domain/
+│   ├── storage/
+│   ├── sports/
+│   ├── research/
+│   ├── sources/
+│   ├── markets/
+│   ├── bookmakers/
+│   ├── tickets/
+│   ├── odds/
+│   ├── settlement/
+│   ├── blog/
+│   ├── system/
+│   ├── dashboard/
+│   ├── migration/
+│   ├── ops/
+│   └── openclaw/
+├── dashboard/
+│   ├── app.py                   # preserved V1 dashboard
+│   ├── v2_app.py                # Sabi Boy read-only dashboard
+│   └── v2/                      # V2 dashboard assets
 ├── scripts/
-│   ├── value_bet_finder.py    # KELLY: scan → model → value picks
-│   ├── continuous_bet.py      # chain compound runner
-│   ├── weekly_long_shot.py    # weekly long-shot ticket builder
-│   ├── record_pick.py         # log / settle / query picks
-│   ├── record_chain.py        # record chain accumulators
-│   ├── record_accumulator.py  # record accumulator bets
-│   ├── backtest*.py           # backtesting harnesses
-│   ├── fast_backtest.py
-│   ├── sabiai_scraper.py      # screenshot/OCR odds scraping
-│   ├── sabiai_analyze.py      # analysis dashboard data
-│   ├── sabiai_data.py / sabiai_init.py / sabiai_v2.py
-│   ├── value_engine.py        # EV + Kelly core math
-│   ├── dixon_coles.py         # Dixon-Coles model
-│   ├── nfl_elo.py / features.py / learn.py
-│   ├── sportsbook.py          # odds API clients (sanitized keys)
-│   ├── sofascore.py / espn_odds.py / apifootball.py
-│   ├── sportybet_odds.py / sportybet_book.py
-│   ├── bet9ja_book.py
-│   ├── filter_high_conf.py / plain_render.py
-│   ├── bet_history.py / live_bets.py / bet9ja_book.py
-│   ├── money.py / expense_heartbeat.sh / monthly_pl_report.sh
-│   ├── backup_bets_db.sh      # DB backup
-│   ├── value_bet_daily.sh     # daily cron entrypoint
-│   └── ... (support scripts)
-├── skills/                    # SKILL.md playbooks (flattened)
-│   ├── sabiai_SKILL.md
-│   ├── value-bet-scanner_SKILL.md
-│   ├── sportybet-researcher_SKILL.md
-│   ├── betting-record_SKILL.md
-│   ├── money_SKILL.md
-│   └── sabiai-onboarding_SKILL.md
-└── data/
-    ├── schema.sql             # full SQLite schema of bets.db + sabiai_v2.db
-    ├── picks.json             # current picks state
-    ├── longshot_weekly.json   # weekly long-shot state
-    ├── scraper_state.json     # scraper dedup state
-    └── risk-review-*.md       # periodic risk reviews
+│   ├── sabiai_v2_tool.py        # OpenClaw JSON gateway bridge
+│   ├── sabi_v2_prepare_runtime.sh
+│   ├── sabi_v2_stage.sh
+│   ├── sabi_v2_acceptance.py
+│   ├── sabi_v2_migrate.py
+│   ├── sabi_v2_backup.py
+│   ├── sabi_v2_finalize_cutover.py
+│   └── sabi_v2_rollback.py
+├── skills/
+│   ├── sabiai_SKILL.md           # primary Sabi Boy skill, compatibility filename
+│   ├── sabi-boy-research-scout_SKILL.md
+│   ├── sabi-boy-skeptic_SKILL.md
+│   └── sabi-boy-ticket-engineer_SKILL.md
+├── docs/
+│   ├── SABIAI_V2_PRODUCT_BIBLE.md
+│   ├── SABIAI_V2_BUILD_PLAN.md
+│   ├── SABIAI_V2_TASKS.md
+│   └── SABI_BOY_V2_DEPLOYMENT.md
+├── tests/
+├── requirements-v2.txt
+└── config/sabi-boy.env.example
+```
+
+Legacy V1 scripts/data remain during migration and are not silently deleted.
+
+---
+
+## OpenClaw tool gateway
+
+Use:
+
+```bash
+printf '%s\n' '{"tool":"system.tools","args":{}}' | \
+  .venv/bin/python scripts/sabiai_v2_tool.py
+```
+
+Never assume a capability from an old document. `system.tools` + the living task board define current implementation truth.
+
+Representative namespaces:
+
+```text
+system.*
+source.*
+sports.*
+research.*
+market.*
+bookmaker.*
+ticket.*
+record.*
+history.*
+settlement.*
+blog.*
 ```
 
 ---
 
-## Setup
+## V2 runtime preparation
 
-### 1. Dependencies
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install requests beautifulsoup4 scrapy scrapy-playwright lxml pandas numpy scikit-learn openpyxl
-# optional: playwright install chromium
-```
-
-Main runtime deps: `requests`, `beautifulsoup4`, `lxml`, `pandas`, `numpy`,
-`scikit-learn`. Scraping additions: `scrapy`, `scrapy-playwright` (or
-scrapling) for JS-heavy bookmaker pages.
-
-### 2. Environment variables
-
-Create `~/.env` (or your secrets file) with **names only** — values are yours
-to supply:
-
-| Variable | Used by |
-|---|---|
-| `RUNDOWN_API_KEY` | TheRundown odds (MLB/WNBA/NHL/NBA/NCAAB) |
-| `EXA_API_KEY` | Exa neural search for injury/news context |
-| `RAPIDAPI_KEY` / `RAPID_API_KEY` | RapidAPI sports endpoints (Sofascore, OddsAPI) |
-| `ODDSAPI_KEY` | The Odds API |
-| `PERFEX_TOKEN` | Perfex CRM API (money script) |
-| `OPENAI_API_KEY` | image/OCR odds extraction in scraper |
-| `ELEVENLABS_API_KEY` | TTS (bedtime story, minor) |
-| `GEMINI_API_KEY` | Gemini synthesis pass in researcher |
-| `SABIAI_PIN` | dashboard write-auth PIN override (default 1234) |
-| `TELEGRAM_BOT_TOKEN` | Telegram delivery |
-| `WA_TARGET` | WhatsApp delivery target (E.164) |
-
-No `~/.env` file is committed or needed for the repo to run — scripts
-already fall back to env vars at runtime.
-
-### 3. Database init
+V2 has its own requirements and environment file.
 
 ```bash
-python3 scripts/sabiai_init.py      # creates picks DB tables
-python3 scripts/sabiai_v2.py        # v2 schema/migration entrypoint
+git checkout v2
+bash scripts/sabi_v2_prepare_runtime.sh
 ```
 
-Reference schema: see `data/schema.sql` (19 tables across `bets.db` and
-`sabiai_v2.db`).
+This prepares `.venv`, dependencies, V2 DB/schema, source catalog and the `sabi-boy-dashboard.service` user unit. It does **not** migrate V1, stop V1, start V2 or change external routing.
+
+Runtime environment:
+
+```text
+~/.config/sabi-boy/sabi-boy.env
+```
+
+Template:
+
+```text
+config/sabi-boy.env.example
+```
+
+Secrets remain outside Git.
 
 ---
 
-## Usage
+## Safe staging / migration
 
-### Kelly value betting (1xBet)
-
-```bash
-# scan + model + print value bets (plain text)
-python3 scripts/value_bet_finder.py --format plain --min-ev 0.03
-
-# high-confidence filter
-python3 scripts/filter_high_conf.py
-
-# log a pick (or use record_pick.py)
-python3 scripts/record_pick.py log --match "ARS vs CHE" --market 1X2 \
-  --pick home --odds 2.30 --stake 50 --ev 0.07 --bookmaker 1xBet
-```
-
-### Chain compound (SportyBet)
+When release gates are ready:
 
 ```bash
-python3 scripts/continuous_bet.py --stake 500 --target-profit 50000
-# each leg's winnings roll into the next; stops at target or on a loss
-python3 scripts/record_chain.py --slip-code CHAIN-2026-06-07-002
+bash scripts/sabi_v2_stage.sh
 ```
 
-### Weekly long shot (Bet9ja)
+The staging flow:
 
-```bash
-python3 scripts/weekly_long_shot.py --stake 200
-# builds one multi-leg acca with high odds, tiny stake, weekly cadence
-```
+1. verifies/snapshots V1 and existing V2 databases;
+2. migrates V1 → V2 deterministically;
+3. reconciles history/bankroll;
+4. runs the complete release acceptance runner;
+5. performs backup/restore drill;
+6. starts Sabi Boy V2 beside V1 on `127.0.0.1:8091`;
+7. checks V2 health/overview;
+8. leaves V1 unchanged.
 
-### Backtesting
+The repository intentionally does not guess Cloudflare/reverse-proxy routing. Final external cutover is performed only after the real Dell route is inspected and pointed at V2.
 
-```bash
-python3 scripts/backtest.py          # full backtest
-python3 scripts/fast_backtest.py     # quick iteration backtest
-python3 scripts/value_engine.py      # EV/Kelly core (importable)
-```
+Full runbook:
 
-### Daily / weekly automation
-
-```bash
-# morning scan for value bets
-scripts/value_bet_daily.sh
-
-# end-of-month P&L report
-scripts/monthly_pl_report.sh
-
-# DB backup
-scripts/backup_bets_db.sh
-```
+`docs/SABI_BOY_V2_DEPLOYMENT.md`
 
 ---
 
-## Workflows explained
+## Read-only V2 dashboard
 
-### Kelly workflow
+V2 app:
 
-1. `scraper` fetches current odds from 1xBet/ESPN/Rundown/etc.
-2. `dixon_coles.py` / `features.py` estimate each team's true win/draw/loss probs.
-3. `value_engine.py` computes `EV = p_true * odds - 1`; filters `EV >= min_ev`.
-4. Stake sized by Kelly: `f* = (b*p - q) / b`, scaled to a fraction of bankroll.
-5. Pick logged with `record_pick.py` → appears in dashboard/history.
-6. On settlement, `record_pick.py settle` marks win/loss → backtest + learning data.
-
-### Chain compound workflow
-
-- Pick a target profit and starter stake.
-- Each leg: single bet on a high-confidence outcome, winnings roll forward.
-- The chain stops automatically at target, or on a loss.
-- Slip recorded with `record_chain.py` for P&L tracking.
-
-### Weekly long shot workflow
-
-- Model identifies low-probability, high-odds combinations.
-- One ticket/week, stake is pocket change relative to bankroll (loss is
-  absorbed; win is a season highlight).
-- State persisted in `data/longshot_weekly.json` (dedup / weekly reset).
-
----
-
-## Database schema
-
-From `data/schema.sql` (tables across both DBs). Key tables:
-
-- `bets` — one row per settled/tracked pick: bet_id, scan_date, week, sport,
-  match, market, pick, odds, bookmaker, ev, our_prob, kelly, model, outcome,
-  settled_at, notes.
-- `picks` — current open picks (dashboard-facing state).
-- `bankroll` / `bankroll_history` — bankroll tracking (Kelly sizing input).
-- `chains` / `chain_legs` — SportyBet chain compound records.
-- `longshots` — weekly long-shot tickets.
-- `learned_*` / `model_*` — learning-loop artifacts (feature weights,
-  calibration bins).
-
-Full DDL: `data/schema.sql`.
-
-## Learning loop
-
-1. Picks settle → outcomes written to `bets` (`outcome` column).
-2. `learn.py` refits feature model weights on the expanded dataset.
-3. Calibration pass re-bins `our_prob` vs realised frequency.
-4. Next scan uses the updated model → probabilities get sharper.
-5. `backtest*.py` verifies the loop improved EV capture before new settings
-   go live.
-
----
-
-## Recommended cron setup
-
-```cron
-# daily value-bet scan (Kelly)
-0 6 * * * cd ~/sabiai-engine && ./scripts/value_bet_daily.sh
-
-# weekly long shot (Monday morning)
-0 7 * * 1 cd ~/sabiai-engine && python3 scripts/weekly_long_shot.py
-
-# daily DB backup
-30 5 * * * cd ~/sabiai-engine && ./scripts/backup_bets_db.sh
-
-# monthly P&L report
-0 8 1 * * cd ~/sabiai-engine && ./scripts/monthly_pl_report.sh
+```text
+dashboard/v2_app.py
 ```
 
+Local staging address:
+
+```text
+http://127.0.0.1:8091
+```
+
+API prefix:
+
+```text
+/api/v2
+```
+
+The V2 browser API is GET-only. No PIN unlock, no localStorage write token and no browser mutation endpoints are part of the V2 dashboard.
+
 ---
 
-## Safety & bankroll
+## Development / tests
 
-- Kelly stakes are computed against **available bankroll** (see
-  `data/finance_context.md` in the workspace and the finance team
-  coordination in `AGENTS.md`).
-- Losses are logged and reflected in the shared bankroll so the food and
-  money agents can adjust budgets.
-- Risk reviews are run periodically — see `data/risk-review-*.md`.
+```bash
+.venv/bin/python -m pytest -q
+```
+
+Release acceptance:
+
+```bash
+.venv/bin/python scripts/sabi_v2_acceptance.py --migrate-v1
+```
+
+The current branch contains a substantially expanded test suite, but **V2 is not release-ready until the full current suite and Dell/OpenClaw acceptance gates in `docs/SABIAI_V2_TASKS.md` pass**.
+
+---
+
+## V1 compatibility
+
+`main` remains the stable V1 line while V2 is built.
+
+On `v2`:
+
+- V1 database is opened read-only by the migration process;
+- raw legacy rows are preserved in `legacy_archive`;
+- V1 dashboard/service can remain live while V2 is staged;
+- legacy scripts/builders are capability-gated rather than assumed safe for new markets;
+- rollback state is recorded before external cutover.
+
+Old operational history/reference material is preserved under `docs/` and legacy files rather than being treated as the V2 product definition.
+
+---
+
+## Current build status
+
+Authoritative living board:
+
+`docs/SABIAI_V2_TASKS.md`
+
+Do not promote `v2` to `main` until Phase 16 passes.
+
+The final one-shot OpenClaw upgrade/setup prompt will be produced only after those release gates are complete, so it can execute real repo tooling instead of improvising the migration.
 
 ## License
 
-Private / personal — not intended for redistribution.
-## Dashboard
-
-The SabiAI dashboard is a FastAPI app served at `localhost:8090` (or `picks.hendrix.com.ng` in production).
-
-**Location:** `dashboard/app.py`
-
-**Systemd service:** `systemd/sabiai-dashboard.service`
-
-**To install the service:**
-```bash
-cp systemd/sabiai-dashboard.service ~/.config/systemd/user/
-# Edit WorkingDirectory to point to your sabiai-engine/dashboard/ path
-systemctl --user daemon-reload
-systemctl --user enable --now sabiai-dashboard
-```
-
-**Environment variables:**
-- `DASHBOARD_FINANCE_PW` — PIN for the finance view (default: set in service file)
-
-**Endpoints:**
-- `/` — Overview
-- `/picks` — All picks
-- `/betchain` — Chain compound tracker
-- `/longshot` — Weekly long shot monitor
-- `/history` — Bet history
-- `/finance` — Financial view (PIN protected)
-- `/diary` — Betting diary
-- `/strategies` — Strategy analysis
-- `/live` — Live bets
-
-**Write auth:** POST endpoints require `X-SabiAI-Key` header. Token is generated at `data/.dashboard_token`. Frontend exchanges PIN via `GET /api/write-key?pin=`.
-
-## Dashboard
-
-The SabiAI dashboard is a FastAPI app served at `localhost:8090` (or `picks.hendrix.com.ng` in production).
-
-**Location:** `dashboard/app.py`
-
-**Systemd service:** `systemd/sabiai-dashboard.service`
-
-**To install the service:**
-```bash
-cp systemd/sabiai-dashboard.service ~/.config/systemd/user/
-# Edit WorkingDirectory to point to your sabiai-engine/dashboard/ path
-systemctl --user daemon-reload
-systemctl --user enable --now sabiai-dashboard
-```
-
-**Environment variables:**
-- `DASHBOARD_FINANCE_PW` — PIN for the finance view (default: set in service file)
-
-**Endpoints:**
-- `/` — Overview
-- `/picks` — All picks
-- `/betchain` — Chain compound tracker
-- `/longshot` — Weekly long shot monitor
-- `/history` — Bet history
-- `/finance` — Financial view (PIN protected)
-- `/diary` — Betting diary
-- `/strategies` — Strategy analysis
-- `/live` — Live bets
-
-**Write auth:** POST endpoints require `X-SabiAI-Key` header. Token is generated at `data/.dashboard_token`. Frontend exchanges PIN via `GET /api/write-key?pin=`.
-
-## Dashboard
-
-The SabiAI dashboard is a FastAPI app served at `localhost:8090` (or `picks.hendrix.com.ng`).
-
-**Location:** `dashboard/app.py`  
-**Service:** `systemd/sabiai-dashboard.service`
-
-**Setup:**
-```bash
-cp systemd/sabiai-dashboard.service ~/.config/systemd/user/
-# Edit WorkingDirectory to point to your sabiai-engine/dashboard/ path
-systemctl --user daemon-reload
-systemctl --user enable --now sabiai-dashboard
-```
-
-**Env:** `DASHBOARD_FINANCE_PW` — PIN for finance view
-
-**Endpoints:** `/` overview, `/picks`, `/betchain`, `/longshot`, `/history`, `/finance` (PIN), `/diary`, `/strategies`, `/live`
-
-**Auth:** POST endpoints need `X-SabiAI-Key` header. Token at `data/.dashboard_token`. PIN exchange: `GET /api/write-key?pin=`.
+Private / personal.
