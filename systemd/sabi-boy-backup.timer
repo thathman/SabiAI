@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule daily Sabi Boy V2 verified database backups
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=sabi-boy-backup.service
+
+[Install]
+WantedBy=timers.target
