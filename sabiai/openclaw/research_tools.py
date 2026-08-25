@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from sabiai.research import Evidence, EvidenceStore, ResearchCaseService, ResearchTaskPlanner
+from sabiai.research import (
+    Evidence,
+    EvidenceStore,
+    ResearchCaseService,
+    ResearchSynthesizer,
+    ResearchTaskPlanner,
+    SkepticReviewPlanner,
+)
 
 from .serializers import json_value
 
@@ -10,6 +17,8 @@ class ResearchTools:
         self.app = app
         self.case_service = ResearchCaseService(app.sports, app.research_planner)
         self.task_planner = ResearchTaskPlanner()
+        self.synthesizer = ResearchSynthesizer()
+        self.skeptic = SkepticReviewPlanner()
 
     def handlers(self) -> dict:
         return {
@@ -18,6 +27,8 @@ class ResearchTools:
             "research.evidence.list": self.evidence_list,
             "research.case.assess": self.case_assess,
             "research.case.next": self.case_next,
+            "research.case.summary": self.case_summary,
+            "research.review.plan": self.review_plan,
         }
 
     def plan(self, args: dict) -> dict:
@@ -67,20 +78,45 @@ class ResearchTools:
         }
 
     def case_assess(self, args: dict) -> dict:
-        evidence = self._evidence(args)
-        assessment = self.case_service.assess(
-            sport=str(args.get("sport", "")),
-            event=str(args.get("event", "")),
-            market=args.get("market"),
-            home=args.get("home"),
-            away=args.get("away"),
-            evidence=evidence,
-        )
+        assessment, _ = self._assessment(args)
         data = json_value(assessment)
         data["skeptic_required"] = assessment.skeptic_required
         return data
 
     def case_next(self, args: dict) -> dict:
+        assessment, _ = self._assessment(args)
+        tasks = self.task_planner.plan(assessment)
+        return {
+            "assessment": json_value(assessment),
+            "tasks": [json_value(task) for task in tasks],
+        }
+
+    def case_summary(self, args: dict) -> dict:
+        assessment, evidence = self._assessment(args)
+        summary = self.synthesizer.summarize(
+            assessment,
+            evidence,
+            max_points=int(args.get("max_points", 10)),
+        )
+        data = json_value(summary)
+        data["plain_text"] = summary.plain_text()
+        return data
+
+    def review_plan(self, args: dict) -> dict:
+        assessment, _ = self._assessment(args)
+        plan = self.skeptic.plan(
+            assessment,
+            ticket_legs=int(args.get("ticket_legs", 0)),
+            stake=args.get("stake"),
+            bankroll=args.get("bankroll"),
+            bookmaker_conversion=bool(args.get("bookmaker_conversion", False)),
+            arbitrage=bool(args.get("arbitrage", False)),
+            single_source_case=bool(args.get("single_source_case", False)),
+            user_asked_strongest=bool(args.get("user_asked_strongest", False)),
+        )
+        return json_value(plan)
+
+    def _assessment(self, args: dict):
         evidence = self._evidence(args)
         assessment = self.case_service.assess(
             sport=str(args.get("sport", "")),
@@ -90,11 +126,7 @@ class ResearchTools:
             away=args.get("away"),
             evidence=evidence,
         )
-        tasks = self.task_planner.plan(assessment)
-        return {
-            "assessment": json_value(assessment),
-            "tasks": [json_value(task) for task in tasks],
-        }
+        return assessment, evidence
 
     def _evidence(self, args: dict) -> list[dict]:
         supplied = args.get("evidence")
