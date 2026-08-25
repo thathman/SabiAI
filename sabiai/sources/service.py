@@ -18,6 +18,7 @@ class SourceRequest:
     sport: str | None = None
     ttl_seconds: int = 900
     metadata: dict = field(default_factory=dict)
+    source_names: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.request_key.strip():
@@ -26,6 +27,7 @@ class SourceRequest:
             raise ValueError("Source request needs a capability.")
         if self.ttl_seconds < 0:
             raise ValueError("ttl_seconds cannot be negative.")
+        self.source_names = tuple(str(name).strip() for name in self.source_names if str(name).strip())
 
 
 @dataclass(slots=True)
@@ -48,6 +50,10 @@ class SourceService:
     A caller may set metadata.require_complete=true. In that mode a source can be healthy
     and useful yet still be too partial for the request; Sabi Boy records that fetch and
     continues to the next free source instead of treating partial coverage as complete.
+
+    `source_names` is an explicit allow-list for cases where request metadata contains a
+    provider-specific ID. This prevents a TheSportsDB team ID, for example, from being handed
+    to ESPN simply because the first provider returned partial data.
     """
 
     def __init__(self, database: SabiDatabase, registry: SourceRegistry):
@@ -65,27 +71,31 @@ class SourceService:
     ) -> SourceResponse:
         now = now or datetime.now(timezone.utc)
         require_complete = bool((request.metadata or {}).get("require_complete", False))
+        allowed_names = {name.casefold() for name in request.source_names}
         cached = self.database.get_cache(request.request_key, now=now)
-        if cached is not None and not (require_complete and self._is_partial(cached.get("payload"))):
-            source = self._source_by_name(cached["source_name"])
-            paid = bool(source and source.cost is SourceCost.PAID)
-            self.database.log_source_fetch(
-                source_name=cached["source_name"],
-                sport=request.sport,
-                capability=request.capability,
-                request_key=request.request_key,
-                cache_hit=True,
-                success=True,
-                paid=paid,
-                reason="Fresh cached result reused.",
-            )
-            return SourceResponse(
-                payload=cached["payload"],
-                source_name=cached["source_name"],
-                cache_hit=True,
-                paid=paid,
-                fetched_at=datetime.fromisoformat(cached["fetched_at"]),
-            )
+        if cached is not None:
+            cached_allowed = not allowed_names or str(cached.get("source_name") or "").casefold() in allowed_names
+            cached_complete = not (require_complete and self._is_partial(cached.get("payload")))
+            if cached_allowed and cached_complete:
+                source = self._source_by_name(cached["source_name"])
+                paid = bool(source and source.cost is SourceCost.PAID)
+                self.database.log_source_fetch(
+                    source_name=cached["source_name"],
+                    sport=request.sport,
+                    capability=request.capability,
+                    request_key=request.request_key,
+                    cache_hit=True,
+                    success=True,
+                    paid=paid,
+                    reason="Fresh cached result reused.",
+                )
+                return SourceResponse(
+                    payload=cached["payload"],
+                    source_name=cached["source_name"],
+                    cache_hit=True,
+                    paid=paid,
+                    fetched_at=datetime.fromisoformat(cached["fetched_at"]),
+                )
 
         failures: list[str] = []
         candidates = self.registry.candidates(
@@ -93,6 +103,13 @@ class SourceService:
             capability=request.capability,
             include_paid=True,
         )
+        if allowed_names:
+            candidates = [source for source in candidates if source.name.casefold() in allowed_names]
+        if request.source_names and not candidates:
+            raise RuntimeError(
+                "No registered source matched the explicit source selection: " + ", ".join(request.source_names)
+            )
+
         for source in candidates:
             self.database.upsert_source(source)
             fetcher = fetchers.get(source.name)
