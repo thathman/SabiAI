@@ -29,6 +29,7 @@ from .source_tools import SourceTools
 from .sports_insight_tools import SportsInsightTools
 from .sports_tools import SportsTools
 from .system_tools import SystemTools
+from .ticket_candidate_tools import TicketCandidateTools
 from .ticket_research_tools import TicketResearchTools
 from .ticket_tools import TicketTools
 
@@ -81,6 +82,7 @@ class SabiToolGateway:
             BookmakerBrowserBuildTools(self),
             BookmakerHealthTools(self),
             TicketTools(self),
+            TicketCandidateTools(self),
             TicketResearchTools(self),
             RecordTools(self),
             SettlementTools(self),
