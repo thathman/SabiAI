@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sabiai import __version__
-from sabiai.bookmakers import default_bookmakers
+from sabiai.bookmakers import default_bookmakers, legacy_command_adapters
 from sabiai.config import Settings
 from sabiai.domain.models import Market, Selection, Ticket, TicketLeg
 from sabiai.markets import MarketInterpreter
@@ -13,7 +13,7 @@ from sabiai.odds import ArbitrageEngine, PriceQuote, SettlementRules
 from sabiai.research import Evidence, EvidenceStore
 from sabiai.sports import ResearchPlanner, default_sports
 from sabiai.storage import BankrollLedger, HistoryService, SabiDatabase
-from sabiai.tickets import TicketWorkshop
+from sabiai.tickets import TicketNormalizer, TicketWorkshop
 
 
 class SabiToolGateway:
@@ -21,8 +21,10 @@ class SabiToolGateway:
         self.settings = settings or Settings.from_env()
         self.market_interpreter = MarketInterpreter()
         self.bookmakers = default_bookmakers()
+        self.bookmaker_adapters = legacy_command_adapters()
         self.sports = default_sports()
         self.research_planner = ResearchPlanner(self.sports)
+        self.ticket_normalizer = TicketNormalizer(self.bookmakers, self.market_interpreter)
         self.ticket_workshop = TicketWorkshop()
         self.arbitrage = ArbitrageEngine()
 
@@ -38,12 +40,15 @@ class SabiToolGateway:
             "market.interpret": self.market_interpret,
             "market.arbitrage": self.market_arbitrage,
             "bookmaker.resolve": self.bookmaker_resolve,
+            "bookmaker.capabilities": self.bookmaker_capabilities,
+            "ticket.normalize": self.ticket_normalize,
             "ticket.split": self.ticket_split,
             "ticket.split_by_size": self.ticket_split_by_size,
             "ticket.trim": self.ticket_trim,
             "ticket.remove": self.ticket_remove,
             "ticket.keep": self.ticket_keep,
             "ticket.change_market": self.ticket_change_market,
+            "ticket.replace": self.ticket_replace,
             "record.bankroll": self.record_bankroll,
             "history.summary": self.history_summary,
             "history.by_sport": self.history_by_sport,
@@ -104,7 +109,10 @@ class SabiToolGateway:
 
     def sports_list(self, args: dict) -> dict:
         return {
-            "sports": [{"name": profile.name, "slug": profile.slug} for profile in self.sports.all()],
+            "sports": [
+                {"name": profile.name, "slug": profile.slug}
+                for profile in self.sports.all()
+            ],
             "open_ended": True,
             "note": "This registry is a starting knowledge set, not a coverage limit.",
         }
@@ -150,7 +158,9 @@ class SabiToolGateway:
             source_name=args.get("source_name"),
             source_url=args.get("source_url"),
             observed_at=args.get("observed_at"),
-            freshness_seconds=int(args["freshness_seconds"]) if args.get("freshness_seconds") is not None else None,
+            freshness_seconds=int(args["freshness_seconds"])
+            if args.get("freshness_seconds") is not None
+            else None,
             reliability=args.get("reliability"),
             raw=args.get("raw"),
             id=args.get("id"),
@@ -163,7 +173,9 @@ class SabiToolGateway:
         store = EvidenceStore(db)
         return {
             "event_id": event_id,
-            "evidence": store.for_event(event_id, evidence_type=args.get("evidence_type")),
+            "evidence": store.for_event(
+                event_id, evidence_type=args.get("evidence_type")
+            ),
         }
 
     def market_interpret(self, args: dict) -> dict:
@@ -189,7 +201,9 @@ class SabiToolGateway:
                     event_key=str(raw["event_key"]),
                     market_key=str(raw["market_key"]),
                     selection_key=str(raw["selection_key"]),
-                    selection_label=str(raw.get("selection_label") or raw["selection_key"]),
+                    selection_label=str(
+                        raw.get("selection_label") or raw["selection_key"]
+                    ),
                     bookmaker=str(raw["bookmaker"]),
                     odds=Decimal(str(raw["odds"])),
                     captured_at=captured_at,
@@ -214,12 +228,44 @@ class SabiToolGateway:
         bookmaker = self.bookmakers.resolve(str(args.get("name", "")))
         if bookmaker is None:
             return {"found": False, "name": args.get("name")}
+        adapter = self.bookmaker_adapters.get(bookmaker.slug)
+        proven = sorted(cap.value for cap in adapter.capabilities()) if adapter else []
         return {
             "found": True,
             "id": bookmaker.id,
             "name": bookmaker.name,
             "slug": bookmaker.slug,
-            "capabilities": sorted(bookmaker.capabilities),
+            "proven_capabilities": proven,
+        }
+
+    def bookmaker_capabilities(self, args: dict) -> dict:
+        name = args.get("name")
+        if name:
+            bookmaker = self.bookmakers.resolve(str(name))
+            if bookmaker is None:
+                return {"found": False, "name": name}
+            adapter = self.bookmaker_adapters.get(bookmaker.slug)
+            return {
+                "found": True,
+                "bookmaker": bookmaker.name,
+                "slug": bookmaker.slug,
+                "adapter": asdict(adapter.status()) if adapter else None,
+            }
+        return {
+            "bookmakers": [asdict(status) for status in self.bookmaker_adapters.statuses()]
+        }
+
+    def ticket_normalize(self, args: dict) -> dict:
+        result = self.ticket_normalizer.normalize(
+            args.get("legs", []),
+            bookmaker=args.get("bookmaker"),
+            source_type=str(args.get("source_type", "instruction")),
+            source_reference=args.get("source_reference"),
+        )
+        return {
+            "usable": result.usable,
+            "ticket": self._ticket_to_dict(result.ticket),
+            "issues": [asdict(issue) for issue in result.issues],
         }
 
     def ticket_split(self, args: dict) -> dict:
@@ -232,7 +278,9 @@ class SabiToolGateway:
 
     def ticket_split_by_size(self, args: dict) -> dict:
         ticket = self._ticket_from_args(args)
-        children = self.ticket_workshop.split_by_size(ticket, int(args["games_per_slip"]))
+        children = self.ticket_workshop.split_by_size(
+            ticket, int(args["games_per_slip"])
+        )
         return {
             "original_odds": str(ticket.combined_odds),
             "slips": [self._ticket_to_dict(child) for child in children],
@@ -307,6 +355,31 @@ class SabiToolGateway:
             "ticket": self._ticket_to_dict(child),
         }
 
+    def ticket_replace(self, args: dict) -> dict:
+        ticket = self._ticket_from_args(args)
+        target = self._find_leg(ticket, args.get("leg_id"), args.get("event"))
+        if target is None:
+            raise ValueError("The requested game was not found on the ticket.")
+        replacement_raw = args.get("replacement")
+        if not isinstance(replacement_raw, dict):
+            raise ValueError("replacement must be one ticket leg object.")
+        normalized = self.ticket_normalizer.normalize(
+            [replacement_raw],
+            bookmaker=args.get("bookmaker"),
+            source_type="replacement",
+        )
+        errors = [issue.message for issue in normalized.issues if issue.level == "error"]
+        if errors or not normalized.ticket.legs:
+            raise ValueError("; ".join(errors) or "Replacement leg is not usable.")
+        child = self.ticket_workshop.replace_leg(
+            ticket, target.id, normalized.ticket.legs[0]
+        )
+        return {
+            "original_odds": str(ticket.combined_odds),
+            "ticket": self._ticket_to_dict(child),
+            "issues": [asdict(issue) for issue in normalized.issues],
+        }
+
     def record_bankroll(self, args: dict) -> dict:
         db = self._db(initialize=True)
         ledger = BankrollLedger(db)
@@ -342,54 +415,16 @@ class SabiToolGateway:
         }
 
     def _ticket_from_args(self, args: dict) -> Ticket:
-        bookmaker_id = None
-        if args.get("bookmaker"):
-            book = self.bookmakers.resolve(str(args["bookmaker"]))
-            bookmaker_id = book.id if book else None
-        ticket = Ticket(
-            bookmaker_id=bookmaker_id,
+        normalized = self.ticket_normalizer.normalize(
+            args.get("legs", []),
+            bookmaker=args.get("bookmaker"),
             source_type=str(args.get("source_type", "instruction")),
             source_reference=args.get("source_reference"),
         )
-        for index, raw in enumerate(args.get("legs", []), start=1):
-            home = raw.get("home")
-            away = raw.get("away")
-            parsed = self.market_interpreter.interpret(
-                str(raw.get("market") or raw.get("pick") or ""),
-                home=home,
-                away=away,
-            )
-            market = Market(
-                kind=parsed.kind,
-                label=parsed.plain_label,
-                metric=parsed.metric,
-                line=parsed.line,
-                period=parsed.period,
-            )
-            selection = Selection(
-                market_id=market.id,
-                label=parsed.plain_label,
-                side=parsed.side,
-            )
-            event_label = raw.get("event") or raw.get("match")
-            if not event_label and home and away:
-                event_label = f"{home} vs {away}"
-            kwargs = {
-                "event_id": str(raw.get("event_id") or f"draft_event_{index}"),
-                "event_label": str(event_label) if event_label else None,
-                "market": market,
-                "selection": selection,
-                "odds": Decimal(str(raw["odds"])),
-                "bookmaker_id": bookmaker_id,
-                "locked": bool(raw.get("locked", False)),
-                "note": raw.get("note"),
-            }
-            if raw.get("id"):
-                kwargs["id"] = str(raw["id"])
-            ticket.add_leg(TicketLeg(**kwargs))
-        if not ticket.legs:
-            raise ValueError("Ticket needs at least one leg.")
-        return ticket
+        errors = [issue.message for issue in normalized.issues if issue.level == "error"]
+        if errors or not normalized.ticket.legs:
+            raise ValueError("; ".join(errors) or "Ticket needs at least one usable leg.")
+        return normalized.ticket
 
     @staticmethod
     def _find_leg(ticket: Ticket, leg_id, event_label) -> TicketLeg | None:
@@ -399,7 +434,11 @@ class SabiToolGateway:
         if event_label:
             target = str(event_label).strip().casefold()
             return next(
-                (leg for leg in ticket.legs if (leg.event_label or "").strip().casefold() == target),
+                (
+                    leg
+                    for leg in ticket.legs
+                    if (leg.event_label or "").strip().casefold() == target
+                ),
                 None,
             )
         return None
@@ -419,6 +458,8 @@ class SabiToolGateway:
         return {
             "id": ticket.id,
             "parent_ticket_id": ticket.parent_ticket_id,
+            "source_type": ticket.source_type,
+            "source_reference": ticket.source_reference,
             "combined_odds": str(ticket.combined_odds),
             "legs": [
                 {
@@ -441,7 +482,9 @@ class SabiToolGateway:
             "occurred_at": entry.occurred_at,
             "kind": entry.kind,
             "amount": str(entry.amount),
-            "balance_after": str(entry.balance_after) if entry.balance_after is not None else None,
+            "balance_after": str(entry.balance_after)
+            if entry.balance_after is not None
+            else None,
             "pick_id": entry.pick_id,
             "ticket_id": entry.ticket_id,
             "legacy_bet_id": entry.legacy_bet_id,
@@ -455,11 +498,21 @@ class SabiToolGateway:
             "reason": result.reason,
             "event_key": result.event_key,
             "market_key": result.market_key,
-            "implied_total_pct": str(result.implied_total_pct) if result.implied_total_pct is not None else None,
-            "profit_pct": str(result.profit_pct) if result.profit_pct is not None else None,
-            "total_stake": str(result.total_stake) if result.total_stake is not None else None,
-            "locked_return": str(result.locked_return) if result.locked_return is not None else None,
-            "locked_profit": str(result.locked_profit) if result.locked_profit is not None else None,
+            "implied_total_pct": str(result.implied_total_pct)
+            if result.implied_total_pct is not None
+            else None,
+            "profit_pct": str(result.profit_pct)
+            if result.profit_pct is not None
+            else None,
+            "total_stake": str(result.total_stake)
+            if result.total_stake is not None
+            else None,
+            "locked_return": str(result.locked_return)
+            if result.locked_return is not None
+            else None,
+            "locked_profit": str(result.locked_profit)
+            if result.locked_profit is not None
+            else None,
             "prices": [
                 {
                     "selection": quote.selection_label,
