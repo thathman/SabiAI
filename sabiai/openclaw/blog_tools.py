@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sabiai.blog import BlogService
+from sabiai.blog import BlogService, BlogTriggerService
 from sabiai.storage import HistoryService
 
 from .serializers import json_value
@@ -19,6 +19,7 @@ class BlogTools:
             "blog.get": self.get,
             "blog.list": self.list_posts,
             "blog.reflection.context": self.reflection_context,
+            "blog.triggers": self.triggers,
         }
 
     def _service(self) -> BlogService:
@@ -82,11 +83,16 @@ class BlogTools:
         blog = BlogService(db)
         history = HistoryService(db)
         recent_posts = blog.list(limit=int(args.get("post_limit", 8)))
+        triggers = BlogTriggerService(db).evaluate(
+            hours=int(args.get("trigger_hours", 24)),
+            streak_milestone=int(args.get("streak_milestone", 3)),
+        )
         return {
             "purpose": "Use this context to write a first-person Sabi Boy reflection grounded in our own history and previous thinking, not generic sports news.",
             "history": history.summary(),
             "by_sport": history.by_sport(),
             "by_market": history.by_market(),
+            "triggers": [json_value(item) for item in triggers],
             "recent_posts": [
                 {
                     "id": post.id,
@@ -100,4 +106,15 @@ class BlogTools:
                 }
                 for post in recent_posts
             ],
+        }
+
+    def triggers(self, args: dict) -> dict:
+        items = BlogTriggerService(self.app._db(initialize=True)).evaluate(
+            hours=int(args.get("hours", 24)),
+            streak_milestone=int(args.get("streak_milestone", 3)),
+        )
+        return {
+            "triggers": [json_value(item) for item in items],
+            "should_reflect": bool(items),
+            "highest_priority": items[0].priority if items else None,
         }
