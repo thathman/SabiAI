@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from sabiai.bookmakers import BookmakerBrowserProfiles, TargetOffer
+from sabiai.bookmakers import BookmakerBrowserProfiles, BookmakerOfferService, TargetOffer
 from sabiai.system import SystemReadinessService
 from sabiai.tickets import RestoredSlipService
 
@@ -14,6 +14,7 @@ class BookmakerTools:
     def __init__(self, app):
         self.app = app
         self.browser_profiles = BookmakerBrowserProfiles()
+        self.offer_service = BookmakerOfferService(app.bookmakers)
 
     def handlers(self) -> dict:
         return {
@@ -21,10 +22,12 @@ class BookmakerTools:
             "bookmaker.capabilities": self.capabilities,
             "bookmaker.browser.playbook": self.browser_playbook,
             "bookmaker.market_search.playbook": self.market_search_playbook,
+            "bookmaker.market_search.ingest": self.market_search_ingest,
             "bookmaker.booking_code.import_plan": self.booking_code_import_plan,
             "bookmaker.booking_code.restore": self.booking_code_restore,
             "bookmaker.search.plan": self.search_plan,
             "bookmaker.convert.plan": self.convert_plan,
+            "bookmaker.convert.from_search": self.convert_from_search,
             "bookmaker.build.plan": self.build_plan,
             "bookmaker.build.execute": self.build_execute,
         }
@@ -108,6 +111,20 @@ class BookmakerTools:
             "slug": bookmaker.slug,
             "playbook": json_value(profile) if profile else None,
         }
+
+    def market_search_ingest(self, args: dict) -> dict:
+        target = str(args.get("target_bookmaker") or args.get("bookmaker") or "").strip()
+        rows = args.get("offers")
+        if not target:
+            raise ValueError("bookmaker.market_search.ingest needs target_bookmaker.")
+        if not isinstance(rows, list):
+            raise ValueError("bookmaker.market_search.ingest needs offers as a list.")
+        batch = self.offer_service.normalize(
+            target_bookmaker=target,
+            rows=rows,
+            source=str(args.get("source") or "openclaw_browser"),
+        )
+        return self._offer_batch(batch)
 
     def booking_code_import_plan(self, args: dict) -> dict:
         plan = self.app.bookmaker_execution.import_booking_code(
@@ -197,12 +214,61 @@ class BookmakerTools:
             )
             for raw in args.get("target_offers", [])
         ]
+        return self._convert_ticket(
+            source_ticket,
+            target_name=target.name,
+            offers=offers,
+            source_bookmaker=args.get("bookmaker"),
+        )
 
+    def convert_from_search(self, args: dict) -> dict:
+        source_ticket = ticket_from_args(self.app, args)
+        target_name = str(args.get("target_bookmaker") or "").strip()
+        rows = args.get("offers")
+        if not target_name:
+            raise ValueError("bookmaker.convert.from_search needs target_bookmaker.")
+        if not isinstance(rows, list):
+            raise ValueError("bookmaker.convert.from_search needs offers as a list.")
+        batch = self.offer_service.normalize(
+            target_bookmaker=target_name,
+            rows=rows,
+            source=str(args.get("source") or "openclaw_browser"),
+        )
+        search = self._offer_batch(batch)
+        if not batch.offers:
+            return {
+                "ready": False,
+                "search": search,
+                "conversion": None,
+                "reason": "No valid target-bookmaker offers survived browser-result validation.",
+            }
+        conversion = self._convert_ticket(
+            source_ticket,
+            target_name=target_name,
+            offers=self.offer_service.as_conversion_offers(batch),
+            source_bookmaker=args.get("bookmaker"),
+        )
+        return {
+            "ready": bool(conversion.get("ready")),
+            "search": search,
+            "conversion": conversion,
+        }
+
+    def _convert_ticket(
+        self,
+        source_ticket,
+        *,
+        target_name: str,
+        offers: list[TargetOffer],
+        source_bookmaker=None,
+    ) -> dict:
+        target = self.app.bookmakers.resolve(target_name)
+        if target is None:
+            raise ValueError(f"Unknown target bookmaker: {target_name}")
         source_book = None
-        if args.get("bookmaker"):
-            resolved = self.app.bookmakers.resolve(str(args["bookmaker"]))
-            source_book = resolved.slug if resolved else str(args["bookmaker"])
-
+        if source_bookmaker:
+            resolved = self.app.bookmakers.resolve(str(source_bookmaker))
+            source_book = resolved.slug if resolved else str(source_bookmaker)
         plan = self.app.ticket_converter.plan(
             source_ticket,
             target_bookmaker=target.name,
@@ -238,4 +304,28 @@ class BookmakerTools:
             "executed": True,
             "plan": json_value(plan),
             "result": json_value(result),
+        }
+
+    @staticmethod
+    def _offer_batch(batch) -> dict:
+        return {
+            "usable": batch.usable,
+            "target_bookmaker_slug": batch.target_bookmaker_slug,
+            "offers": [
+                {
+                    "event": item.offer.event,
+                    "market": item.offer.market,
+                    "odds": str(item.offer.odds),
+                    "bookmaker_slug": item.offer.bookmaker_slug,
+                    "event_ref": item.offer.event_ref,
+                    "market_ref": item.offer.market_ref,
+                    "home": item.offer.home,
+                    "away": item.offer.away,
+                    "sport": item.offer.sport,
+                    "observed_at": item.observed_at,
+                    "source": item.source,
+                }
+                for item in batch.offers
+            ],
+            "issues": [asdict(issue) for issue in batch.issues],
         }
