@@ -11,10 +11,11 @@ This runbook is for the eventual Dell/OpenClaw upgrade from SabiAI V1 to Sabi Bo
 3. Every deployment starts with verified SQLite snapshots.
 4. V1 → V2 migration is deterministic and repeatable.
 5. Migration must reconcile before V2 starts.
-6. Full acceptance must pass before external routing changes.
-7. The repository does not guess Cloudflare/OpenClaw routing.
-8. External cutover is verified against the actual routed `/health` URL.
-9. Rollback state is recorded before cutover.
+6. Full application acceptance must pass before OpenClaw activation.
+7. OpenClaw must prove it is using this exact V2 workspace and current-format Sabi Boy skills before external cutover.
+8. The repository does not guess Cloudflare/external routing.
+9. External cutover is verified against the actual routed `/health` URL.
+10. Rollback state is recorded before cutover.
 
 ## Runtime layout
 
@@ -27,6 +28,7 @@ Important variables:
 - `SABIAI_LEGACY_DB`
 - `SABIAI_V2_DB`
 - `SABIAI_TIMEZONE`
+- `SABIAI_OPENCLAW_AGENT_ID` — defaults to compatibility id `sabi-ai`
 - `SABIAI_THESPORTSDB_KEY`
 - `SABIAI_FOOTBALL_DATA_TOKEN` (optional)
 - `SABIAI_PAID_SOURCES`
@@ -39,6 +41,8 @@ V2 dashboard service:
 - dashboard/API: read-only
 
 Legacy V1 dashboard is intentionally not reused as the V2 process.
+
+Human-facing identity: **Sabi Boy**. The technical OpenClaw/AI Spine agent id remains `sabi-ai` unless a later deliberate compatibility migration changes it.
 
 ## Step 1 — Get the correct branch
 
@@ -83,6 +87,8 @@ It does **not**:
 - migrate V1 history;
 - stop V1;
 - start V2;
+- change the OpenClaw agent;
+- install OpenClaw scheduled jobs;
 - change Cloudflare routing.
 
 Review `~/.config/sabi-boy/sabi-boy.env` after first creation. Secrets/tokens stay outside Git.
@@ -103,7 +109,7 @@ The stage command performs the release-critical order:
 6. start/restart `sabi-boy-dashboard.service`;
 7. verify `http://127.0.0.1:8091/health`;
 8. verify `/api/v2/overview`;
-9. write staging state.
+9. write commit-pinned staging state.
 
 State/report locations:
 
@@ -116,7 +122,7 @@ If a required gate fails, V2 is not started (or is stopped if the process check 
 
 ## Step 4 — Inspect V2 locally
 
-Before touching external routing:
+Before touching OpenClaw identity/jobs or external routing:
 
 ```bash
 systemctl --user status sabi-boy-dashboard.service --no-pager
@@ -137,30 +143,84 @@ Also inspect:
 
 Compare key values to V1. Do not proceed when history or bankroll differs unexpectedly.
 
-## Step 5 — Validate OpenClaw
+## Step 5 — Activate and verify OpenClaw
 
-From the actual OpenClaw workspace/runtime, verify the V2 bridge:
+Current OpenClaw discovers workspace skills from directories containing `SKILL.md` with frontmatter. Sabi Boy V2 includes current-format packages such as:
+
+- `skills/sabi-boy-core/SKILL.md`
+- `skills/sabi-boy-bookmaker-workflows/SKILL.md`
+- `skills/sabi-boy-research-scout/SKILL.md`
+- `skills/sabi-boy-skeptic/SKILL.md`
+- `skills/sabi-boy-ticket-engineer/SKILL.md`
+- `skills/sabi-boy-records/SKILL.md`
+- `skills/sabi-boy-blog/SKILL.md`
+
+The historical flat `*_SKILL.md` files remain compatibility/reference material and are not the only runtime skill source.
+
+Run:
 
 ```bash
+bash scripts/sabi_v2_activate_openclaw.sh
+```
+
+The guarded activation command:
+
+1. requires a green commit-pinned V2 staging state;
+2. rechecks the live local V2 dashboard;
+3. preserves the existing `sabi-ai` agent if it already points at this checkout;
+4. creates the `sabi-ai` agent at this checkout if it is genuinely missing;
+5. **refuses to silently retarget** an existing same-id agent that points somewhere else;
+6. verifies the agent workspace through `openclaw agents list --json`;
+7. verifies required Sabi Boy skills through the OpenClaw skills CLI;
+8. verifies the V2 gateway exposes required sports/research/ticket/bookmaker/blog/system tools;
+9. applies the human-visible Sabi Boy identity from `IDENTITY.md` while retaining the machine id;
+10. installs/updates the daily and weekly Sabi Boy reflection automations;
+11. reruns OpenClaw acceptance and records it in staging state.
+
+Reports include:
+
+- `data/release/openclaw-agent-latest.json`
+- `data/release/openclaw-pre-activation.json`
+- `data/release/openclaw-identity-latest.json`
+- `data/release/openclaw-activation-latest.json`
+
+The reflection jobs are installed with OpenClaw's persistent automation scheduler and are pinned to `SABIAI_OPENCLAW_AGENT_ID`. They publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
+
+Manual verification commands:
+
+```bash
+openclaw agents list --json
+openclaw skills check --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --json
+openclaw skills list --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --json
+openclaw automations list --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --all --json
 printf '%s\n' '{"tool":"system.tools","args":{}}' | .venv/bin/python scripts/sabiai_v2_tool.py
 printf '%s\n' '{"tool":"system.readiness","args":{}}' | .venv/bin/python scripts/sabiai_v2_tool.py
 ```
 
-Required checks include:
+Do not proceed to external cutover if OpenClaw activation is not green.
 
-- Sabi Boy identity/instructions are loaded;
-- plain-language output;
-- decimal odds only;
-- sports registry and unknown-sport discovery;
-- research/source tools;
-- ticket normalization/editing;
-- history/settlement/blog tools;
-- bookmaker capability truth;
-- no dashboard mutation surface.
+## Step 6 — Controlled functional acceptance
 
-Bookmaker browser builders need their own controlled-runtime acceptance before they are considered release-ready.
+Before external routing changes, exercise the real Sabi Boy workflows from the OpenClaw agent, including representative multi-sport research and bookmaker/ticket work required by Phase 16.
 
-## Step 6 — Inspect the real external routing
+At minimum validate:
+
+- plain-language and decimal-odds output;
+- unknown-sport discovery behavior;
+- form/H2H/injury/match snapshot research;
+- Research Scout + Skeptic + Ticket Engineer worker flows;
+- booking-code restoration where supported;
+- fresh multi-book price comparison;
+- strict conversion with no line/period substitutions;
+- SportyBet/Bet9ja rich booking-code browser plan in the controlled environment;
+- reload and `bookmaker.build.verify` on at least one end-to-end rebuilt code;
+- settlement duplicate/correction behavior;
+- Blog create/publish/display path;
+- dashboard desktop/mobile display against migrated data.
+
+Do not mark the release gate complete from mocked/unit behavior alone.
+
+## Step 7 — Inspect the real external routing
 
 This repo intentionally does not assume whether the live endpoint is provided by:
 
@@ -181,7 +241,7 @@ Do not change unrelated tunnel/routes.
 
 Keep a copy/diff of the previous routing configuration for rollback.
 
-## Step 7 — Verify and finalize external cutover
+## Step 8 — Verify and finalize external cutover
 
 After changing routing, provide the actual routed health URL:
 
@@ -190,12 +250,14 @@ After changing routing, provide the actual routed health URL:
   --health-url 'https://YOUR-SABI-HOST/health'
 ```
 
-The finalizer requires both local and external responses to identify:
+The finalizer now requires:
 
-- product: `Sabi Boy`
-- dashboard: `v2`
-- read-only: `true`
-- health: OK
+- current checkout exactly matches the staged commit;
+- green OpenClaw activation recorded in staging state;
+- required skills verified;
+- Sabi Boy reflection automations installed;
+- local V2 health identifies Sabi Boy/read-only;
+- external route identifies Sabi Boy/read-only.
 
 Only after that verification may the legacy dashboard be stopped:
 
@@ -233,31 +295,51 @@ If the V2 DB itself must be returned to its pre-staging snapshot:
 
 The backup manifest is checksum/integrity verified before restore.
 
-## Acceptance runner
+OpenClaw identity/automation rollback should be handled from the recorded pre-cutover OpenClaw state when a release actually changes those runtime settings. Do not delete unrelated agents or automations during rollback.
 
-The release gate runner can also be called directly:
+## Acceptance runners
+
+Application/repository acceptance:
 
 ```bash
 .venv/bin/python scripts/sabi_v2_acceptance.py --migrate-v1
 ```
 
-It checks:
+OpenClaw acceptance only:
+
+```bash
+.venv/bin/python scripts/sabi_v2_openclaw_acceptance.py \
+  --report data/release/openclaw-manual-check.json
+```
+
+Application acceptance checks include:
 
 - branch/commit;
 - V2 DB initialization/integrity;
 - V1 migration/reconciliation;
 - full pytest suite;
-- OpenClaw gateway and readiness;
+- V2 gateway and readiness;
 - V2 dashboard HTTP behavior;
 - absence of mutation routes under `/api/v2`;
 - backup/restore drill.
 
-Any failed gate produces a non-zero exit status.
+OpenClaw acceptance checks include:
+
+- exact repo root and agent workspace;
+- required current-format skill packages;
+- required skill visibility to the selected agent;
+- required V2 tool surface;
+- runtime readiness;
+- optionally automation installation after all checks pass.
+
+Any failed required gate produces a non-zero exit status.
 
 ## Promotion to `main`
 
 Do not merge/promote `v2` merely because the service is running.
 
-Promotion requires Phase 16 release gates in `docs/SABIAI_V2_TASKS.md`, including real Dell/OpenClaw acceptance and bookmaker/multi-sport checks.
+Promotion requires Phase 16 release gates in `docs/SABIAI_V2_TASKS.md`, including real Dell/OpenClaw acceptance, multi-sport checks and at least one real verified bookmaker conversion/rebuild.
 
 Once V2 is accepted in production, `v2` can be promoted/merged to `main` according to the project's Forgejo-first release workflow.
+
+Only after the V2 acceptance/promotion state is genuinely ready should the final one-shot OpenClaw upgrade/setup prompt be issued to the user.
