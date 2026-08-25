@@ -5,6 +5,8 @@ from .adapters import (
     CommandBookmakerAdapter,
     legacy_command_adapters,
 )
+from .conversion import ConversionLeg, ConversionPlan, TargetOffer, TicketConversionService
+from .execution import BookingCodeImportPlan, BookmakerExecutionPlanner, BuildExecutionPlan
 from .registry import BookmakerRegistry, default_bookmakers
 
 __all__ = [
@@ -12,7 +14,14 @@ __all__ = [
     "AdapterStatus",
     "BookmakerCapability",
     "BookmakerRegistry",
+    "BookingCodeImportPlan",
+    "BookmakerExecutionPlanner",
+    "BuildExecutionPlan",
     "CommandBookmakerAdapter",
+    "ConversionLeg",
+    "ConversionPlan",
+    "TargetOffer",
+    "TicketConversionService",
     "default_bookmakers",
     "legacy_command_adapters",
 ]
