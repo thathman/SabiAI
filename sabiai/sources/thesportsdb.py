@@ -39,8 +39,9 @@ SPORT_NAMES = {
 class TheSportsDBAdapter:
     """Documented free v1 adapter for broad sports discovery/schedules/profiles.
 
-    The free API has endpoint-specific result limits. The adapter keeps that limitation in
-    its summaries/raw metadata so Sabi Boy does not mistake a partial feed for complete form.
+    The free API has endpoint-specific result limits. Every partial endpoint keeps that
+    limitation in its summary/raw metadata so Sabi Boy does not mistake a one-row free
+    response for complete form, lineup or schedule coverage.
     """
 
     http_get: HttpGet | None = None
@@ -62,15 +63,25 @@ class TheSportsDBAdapter:
             capabilities={
                 "fixtures",
                 "event_search",
+                "event_lookup",
+                "team_search",
                 "team_profile",
+                "player_search",
                 "player_profile",
                 "player_stats",
                 "league_table",
+                "form",
+                "schedule",
+                "availability",
+                "lineup",
+                "stats",
+                "event_stats",
+                "event_results",
             },
             priority_bias=0,
             notes=(
-                "Documented TheSportsDB v1 free API. Free endpoints are rate/result limited; "
-                "use as one evidence source, not as a complete injury/lineup feed."
+                "Documented TheSportsDB v1 free API. Free endpoints have request/result limits; "
+                "schedule/form may expose only one home event and lineup is not an injury feed."
             ),
         )
 
@@ -81,14 +92,34 @@ class TheSportsDBAdapter:
             return self._fixtures(request)
         if capability == "event_search":
             return self._event_search(metadata)
+        if capability == "event_lookup":
+            return self._event_lookup(metadata)
+        if capability == "team_search":
+            return self._team_search(metadata)
         if capability == "team_profile":
             return self._team_profile(metadata)
+        if capability == "player_search":
+            return self._player_search(metadata)
         if capability == "player_profile":
             return self._player_profile(metadata)
         if capability == "player_stats":
             return self._player_stats(metadata)
         if capability == "league_table":
             return self._league_table(metadata)
+        if capability == "form":
+            return self._team_previous(metadata)
+        if capability == "schedule":
+            return self._team_next(metadata)
+        if capability in {"availability", "lineup"}:
+            return self._event_lineup(metadata)
+        if capability in {"stats", "event_stats"}:
+            if metadata.get("event_id"):
+                return self._event_stats(metadata)
+            if metadata.get("player_id"):
+                return self._player_stats(metadata)
+            raise ValueError("TheSportsDB stats request needs metadata.event_id or metadata.player_id.")
+        if capability == "event_results":
+            return self._event_results(metadata)
         raise ValueError(f"TheSportsDB does not implement capability: {request.capability}")
 
     def _url(self, endpoint: str) -> str:
@@ -114,7 +145,7 @@ class TheSportsDBAdapter:
             "reliability": "medium",
             "raw": {
                 "events": events,
-                "coverage_note": "TheSportsDB free Schedule Day endpoint has a documented per-request result limit.",
+                "coverage_note": "TheSportsDB free schedule endpoints have documented per-request result limits.",
             },
         }
 
@@ -142,7 +173,45 @@ class TheSportsDBAdapter:
             "reliability": "medium",
             "raw": {
                 "events": events,
-                "coverage_note": "TheSportsDB free event search has a documented result limit.",
+                "coverage_note": "TheSportsDB free event search is result-limited.",
+            },
+        }
+
+    def _event_lookup(self, metadata: dict) -> dict:
+        event_id = metadata.get("event_id")
+        if not event_id:
+            raise ValueError("TheSportsDB event lookup needs metadata.event_id.")
+        payload = self.http_get(self._url("lookupevent.php"), params={"id": event_id})
+        events = self._list(payload, "events")
+        if not events:
+            raise RuntimeError(f"No TheSportsDB event found for id {event_id}.")
+        event = events[0]
+        name = event.get("strEvent") or str(event_id)
+        return {
+            "summary": f"Loaded event details for {name} from TheSportsDB.",
+            "subject": name,
+            "observed_at": str(event.get("strTimestamp") or event.get("dateEvent") or ""),
+            "reliability": "medium",
+            "raw": {"event": event},
+        }
+
+    def _team_search(self, metadata: dict) -> dict:
+        team = str(metadata.get("team") or metadata.get("query") or "").strip()
+        if not team:
+            raise ValueError("TheSportsDB team search needs metadata.team or metadata.query.")
+        payload = self.http_get(self._url("searchteams.php"), params={"t": team})
+        teams = self._list(payload, "teams")
+        if not teams:
+            raise RuntimeError(f"No TheSportsDB team found for {team}.")
+        first = teams[0]
+        name = first.get("strTeam") or team
+        return {
+            "summary": f"Found {name} via TheSportsDB team search.",
+            "subject": name,
+            "reliability": "medium",
+            "raw": {
+                "teams": teams,
+                "coverage_note": "TheSportsDB free team-name search is documented as returning a very limited result set.",
             },
         }
 
@@ -162,6 +231,23 @@ class TheSportsDBAdapter:
             "subject": name,
             "reliability": "medium",
             "raw": {"team": team},
+        }
+
+    def _player_search(self, metadata: dict) -> dict:
+        player = str(metadata.get("player") or metadata.get("query") or "").strip()
+        if not player:
+            raise ValueError("TheSportsDB player search needs metadata.player or metadata.query.")
+        payload = self.http_get(self._url("searchplayers.php"), params={"p": player})
+        players = self._list(payload, "player") or self._list(payload, "players")
+        if not players:
+            raise RuntimeError(f"No TheSportsDB player found for {player}.")
+        first = players[0]
+        name = first.get("strPlayer") or player
+        return {
+            "summary": f"Found {name} via TheSportsDB player search.",
+            "subject": name,
+            "reliability": "medium",
+            "raw": {"players": players},
         }
 
     def _player_profile(self, metadata: dict) -> dict:
@@ -213,6 +299,101 @@ class TheSportsDBAdapter:
             "subject": str(league_id),
             "reliability": "medium",
             "raw": {"table": table},
+        }
+
+    def _team_previous(self, metadata: dict) -> dict:
+        team_id = metadata.get("team_id")
+        if not team_id:
+            raise ValueError("TheSportsDB form request needs metadata.team_id.")
+        payload = self.http_get(self._url("eventslast.php"), params={"id": team_id})
+        events = self._list(payload, "results") or self._list(payload, "events")
+        if not events:
+            raise RuntimeError(f"No TheSportsDB previous event returned for team id {team_id}.")
+        return {
+            "summary": (
+                f"TheSportsDB returned {len(events)} recent event row(s) for team id {team_id}. "
+                "The free endpoint is partial and must not be treated as complete recent form."
+            ),
+            "subject": str(team_id),
+            "reliability": "medium",
+            "raw": {
+                "events": events,
+                "partial": True,
+                "coverage_note": "TheSportsDB documents the free previous-team schedule as one home event; use another source for complete form.",
+            },
+        }
+
+    def _team_next(self, metadata: dict) -> dict:
+        team_id = metadata.get("team_id")
+        if not team_id:
+            raise ValueError("TheSportsDB schedule request needs metadata.team_id.")
+        payload = self.http_get(self._url("eventsnext.php"), params={"id": team_id})
+        events = self._list(payload, "events")
+        if not events:
+            raise RuntimeError(f"No TheSportsDB next event returned for team id {team_id}.")
+        return {
+            "summary": (
+                f"TheSportsDB returned {len(events)} upcoming event row(s) for team id {team_id}. "
+                "The free endpoint is partial and must not be treated as a complete schedule."
+            ),
+            "subject": str(team_id),
+            "reliability": "medium",
+            "raw": {
+                "events": events,
+                "partial": True,
+                "coverage_note": "TheSportsDB documents the free next-team schedule as one home event; use another source for complete schedule/rest analysis.",
+            },
+        }
+
+    def _event_lineup(self, metadata: dict) -> dict:
+        event_id = metadata.get("event_id")
+        if not event_id:
+            raise ValueError("TheSportsDB lineup/availability request needs metadata.event_id.")
+        payload = self.http_get(self._url("lookuplineup.php"), params={"id": event_id})
+        rows = self._list(payload, "lineup") or self._list(payload, "lineups")
+        if not rows:
+            raise RuntimeError(f"No TheSportsDB lineup returned for event id {event_id}.")
+        return {
+            "summary": (
+                f"TheSportsDB returned {len(rows)} lineup row(s) for event id {event_id}. "
+                "This confirms listed lineup data but is not a complete injury/availability feed."
+            ),
+            "subject": str(event_id),
+            "reliability": "medium",
+            "raw": {
+                "lineup": rows,
+                "coverage_note": "Lineup evidence only; verify injuries, withdrawals and expected starters separately when material.",
+            },
+        }
+
+    def _event_stats(self, metadata: dict) -> dict:
+        event_id = metadata.get("event_id")
+        if not event_id:
+            raise ValueError("TheSportsDB event stats needs metadata.event_id.")
+        payload = self.http_get(self._url("lookupeventstats.php"), params={"id": event_id})
+        rows = self._list(payload, "eventstats") or self._list(payload, "stats")
+        if not rows:
+            raise RuntimeError(f"No TheSportsDB event statistics returned for event id {event_id}.")
+        return {
+            "summary": f"TheSportsDB returned {len(rows)} event-stat row(s) for event id {event_id}.",
+            "subject": str(event_id),
+            "reliability": "medium",
+            "raw": {"stats": rows},
+        }
+
+    def _event_results(self, metadata: dict) -> dict:
+        event_id = metadata.get("event_id")
+        if not event_id:
+            raise ValueError("TheSportsDB event results needs metadata.event_id.")
+        payload = self.http_get(self._url("eventresults.php"), params={"id": event_id})
+        rows = self._list(payload, "results") or self._list(payload, "eventresults")
+        if not rows:
+            raise RuntimeError(f"No TheSportsDB event results returned for event id {event_id}.")
+        return {
+            "summary": f"TheSportsDB returned {len(rows)} result row(s) for event id {event_id}.",
+            "subject": str(event_id),
+            "reliability": "medium",
+            "raw": {"results": rows},
         }
 
     @staticmethod
