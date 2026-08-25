@@ -5,6 +5,7 @@ from sabiai.research import (
     EvidencePacketService,
     EvidenceStore,
     ResearchCaseService,
+    ResearchCaseStore,
     ResearchSynthesizer,
     ResearchTaskPlanner,
     SkepticReviewPlanner,
@@ -27,11 +28,19 @@ class ResearchTools:
             "research.evidence.save": self.evidence_save,
             "research.evidence.ingest": self.evidence_ingest,
             "research.evidence.list": self.evidence_list,
+            "research.case.create": self.case_create,
+            "research.case.get": self.case_get,
+            "research.case.list": self.case_list,
+            "research.case.update": self.case_update,
+            "research.case.attach": self.case_attach,
             "research.case.assess": self.case_assess,
             "research.case.next": self.case_next,
             "research.case.summary": self.case_summary,
             "research.review.plan": self.review_plan,
         }
+
+    def _case_store(self) -> ResearchCaseStore:
+        return ResearchCaseStore(self.app._db(initialize=True))
 
     def plan(self, args: dict) -> dict:
         plan = self.app.research_planner.plan(
@@ -67,13 +76,20 @@ class ResearchTools:
             raw=args.get("raw"),
             id=args.get("id"),
         )
-        return {"id": store.save(evidence)}
+        evidence_id = store.save(evidence)
+        case_id = str(args.get("case_id") or "").strip()
+        case = None
+        if case_id:
+            case = self._case_store().attach_evidence(case_id, [evidence_id])
+        return {"id": evidence_id, "case": json_value(case) if case else None}
 
     def evidence_ingest(self, args: dict) -> dict:
         items = args.get("items")
         if not isinstance(items, list):
             raise ValueError("research.evidence.ingest needs an items list.")
-        persist = bool(args.get("persist", False))
+        case_id = str(args.get("case_id") or "").strip() or None
+        # Evidence attached to a durable case must itself be durable.
+        persist = bool(args.get("persist", False) or case_id)
         store = EvidenceStore(self.app._db(initialize=True)) if persist else None
         result = EvidencePacketService(store).ingest(
             items,
@@ -91,28 +107,41 @@ class ResearchTools:
             persist=persist,
         )
         evidence_rows = [item.as_dict() for item in result.items]
+        case = None
+        if case_id and result.persisted_ids:
+            case = self._case_store().attach_evidence(case_id, list(result.persisted_ids))
+            evidence_rows = self._case_store().evidence(case_id)
         response = {
             "usable": result.usable,
             "items": evidence_rows,
             "rejected": list(result.rejected),
             "persisted_ids": list(result.persisted_ids),
             "persisted": persist,
+            "case": json_value(case) if case else None,
         }
-        if args.get("sport") and args.get("event"):
+        context = self._case_context(args, allow_missing=True)
+        if context is not None:
             assessment = self.case_service.assess(
-                sport=str(args.get("sport")),
-                event=str(args.get("event")),
-                market=args.get("market"),
-                home=args.get("home"),
-                away=args.get("away"),
+                sport=context["sport"],
+                event=context["event"],
+                market=context.get("market"),
+                home=context.get("home"),
+                away=context.get("away"),
                 evidence=evidence_rows,
             )
             summary = self.synthesizer.summarize(assessment, evidence_rows)
             response["assessment"] = json_value(assessment)
             response["summary"] = {**json_value(summary), "plain_text": summary.plain_text()}
+            if case_id:
+                response["case"] = json_value(
+                    self._case_store().update(case_id, assessment=json_value(assessment))
+                )
         return response
 
     def evidence_list(self, args: dict) -> dict:
+        case_id = str(args.get("case_id") or "").strip()
+        if case_id:
+            return {"case_id": case_id, "evidence": self._case_store().evidence(case_id)}
         event_id = str(args["event_id"])
         store = EvidenceStore(self.app._db(initialize=True))
         return {
@@ -122,33 +151,97 @@ class ResearchTools:
             ),
         }
 
+    def case_create(self, args: dict) -> dict:
+        case = self._case_store().create(
+            sport=str(args.get("sport") or ""),
+            event=str(args.get("event") or ""),
+            market=args.get("market"),
+            home=args.get("home"),
+            away=args.get("away"),
+            event_id=args.get("event_id"),
+            title=args.get("title"),
+            objective=args.get("objective"),
+            notes=args.get("notes") or [],
+            case_id=args.get("case_id"),
+        )
+        return json_value(case)
+
+    def case_get(self, args: dict) -> dict:
+        case_id = str(args.get("case_id") or "").strip()
+        if not case_id:
+            raise ValueError("research.case.get needs case_id.")
+        case = self._case_store().get(case_id)
+        return {
+            "found": case is not None,
+            "case": json_value(case) if case else None,
+            "evidence": self._case_store().evidence(case_id) if case else [],
+        }
+
+    def case_list(self, args: dict) -> dict:
+        cases = self._case_store().list(
+            status=args.get("status"),
+            limit=int(args.get("limit", 50)),
+        )
+        return {"cases": [json_value(case) for case in cases]}
+
+    def case_update(self, args: dict) -> dict:
+        case_id = str(args.get("case_id") or "").strip()
+        if not case_id:
+            raise ValueError("research.case.update needs case_id.")
+        case = self._case_store().update(
+            case_id,
+            status=args.get("status"),
+            title=args.get("title"),
+            objective=args.get("objective"),
+            notes=args.get("notes") if "notes" in args else None,
+            append_note=args.get("append_note"),
+        )
+        return json_value(case)
+
+    def case_attach(self, args: dict) -> dict:
+        case_id = str(args.get("case_id") or "").strip()
+        evidence_ids = args.get("evidence_ids")
+        if not case_id or not isinstance(evidence_ids, list):
+            raise ValueError("research.case.attach needs case_id and evidence_ids list.")
+        return json_value(self._case_store().attach_evidence(case_id, evidence_ids))
+
     def case_assess(self, args: dict) -> dict:
-        assessment, _ = self._assessment(args)
+        assessment, _, case_id = self._assessment(args)
         data = json_value(assessment)
         data["skeptic_required"] = assessment.skeptic_required
+        if case_id:
+            data["case"] = json_value(
+                self._case_store().update(case_id, assessment=json_value(assessment))
+            )
         return data
 
     def case_next(self, args: dict) -> dict:
-        assessment, _ = self._assessment(args)
+        assessment, _, case_id = self._assessment(args)
         tasks = self.task_planner.plan(assessment)
+        if case_id:
+            self._case_store().update(case_id, assessment=json_value(assessment))
         return {
+            "case_id": case_id,
             "assessment": json_value(assessment),
             "tasks": [json_value(task) for task in tasks],
         }
 
     def case_summary(self, args: dict) -> dict:
-        assessment, evidence = self._assessment(args)
+        assessment, evidence, case_id = self._assessment(args)
         summary = self.synthesizer.summarize(
             assessment,
             evidence,
             max_points=int(args.get("max_points", 10)),
         )
+        if case_id:
+            self._case_store().update(case_id, assessment=json_value(assessment))
         data = json_value(summary)
         data["plain_text"] = summary.plain_text()
+        data["case_id"] = case_id
         return data
 
     def review_plan(self, args: dict) -> dict:
-        assessment, _ = self._assessment(args)
+        assessment, _, case_id = self._assessment(args)
         plan = self.skeptic.plan(
             assessment,
             ticket_legs=int(args.get("ticket_legs", 0)),
@@ -159,19 +252,53 @@ class ResearchTools:
             single_source_case=bool(args.get("single_source_case", False)),
             user_asked_strongest=bool(args.get("user_asked_strongest", False)),
         )
-        return json_value(plan)
+        data = json_value(plan)
+        data["case_id"] = case_id
+        return data
 
     def _assessment(self, args: dict):
+        context = self._case_context(args)
         evidence = self._evidence(args)
         assessment = self.case_service.assess(
-            sport=str(args.get("sport", "")),
-            event=str(args.get("event", "")),
-            market=args.get("market"),
-            home=args.get("home"),
-            away=args.get("away"),
+            sport=context["sport"],
+            event=context["event"],
+            market=context.get("market"),
+            home=context.get("home"),
+            away=context.get("away"),
             evidence=evidence,
         )
-        return assessment, evidence
+        return assessment, evidence, context.get("case_id")
+
+    def _case_context(self, args: dict, *, allow_missing: bool = False) -> dict | None:
+        case_id = str(args.get("case_id") or "").strip()
+        if case_id:
+            case = self._case_store().get(case_id)
+            if case is None:
+                raise ValueError(f"Unknown persistent research case: {case_id}")
+            return {
+                "case_id": case.id,
+                "sport": case.sport,
+                "event": case.event,
+                "market": case.market,
+                "home": case.home,
+                "away": case.away,
+                "event_id": case.event_id,
+            }
+        sport = str(args.get("sport") or "").strip()
+        event = str(args.get("event") or "").strip()
+        if not sport or not event:
+            if allow_missing:
+                return None
+            raise ValueError("Research case needs sport/event or a persistent case_id.")
+        return {
+            "case_id": None,
+            "sport": sport,
+            "event": event,
+            "market": args.get("market"),
+            "home": args.get("home"),
+            "away": args.get("away"),
+            "event_id": args.get("event_id"),
+        }
 
     def _evidence(self, args: dict) -> list[dict]:
         supplied = args.get("evidence")
@@ -179,6 +306,9 @@ class ResearchTools:
             if not isinstance(supplied, list):
                 raise ValueError("evidence must be a list of evidence objects.")
             return [dict(item) for item in supplied]
+        case_id = str(args.get("case_id") or "").strip()
+        if case_id:
+            return self._case_store().evidence(case_id)
         event_id = args.get("event_id")
         if event_id:
             return EvidenceStore(self.app._db(initialize=True)).for_event(str(event_id))
