@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Iterable
 
 from .conversion import TargetOffer
@@ -20,7 +19,10 @@ class OfferIssue:
 class VerifiedOffer:
     offer: TargetOffer
     observed_at: str | None
+    age_seconds: int | None
+    fresh: bool | None
     source: str
+    raw: dict
 
 
 @dataclass(slots=True)
@@ -28,6 +30,8 @@ class OfferBatch:
     target_bookmaker_slug: str
     offers: list[VerifiedOffer] = field(default_factory=list)
     issues: list[OfferIssue] = field(default_factory=list)
+    max_age_seconds: int | None = None
+    freshness_required: bool = False
 
     @property
     def usable(self) -> bool:
@@ -35,7 +39,12 @@ class OfferBatch:
 
 
 class BookmakerOfferService:
-    """Normalize browser/adapter market-search results before conversion uses them."""
+    """Normalize browser/adapter market-search results before conversion uses them.
+
+    Plain ingestion may accept an unstamped price with a warning so OpenClaw can inspect the
+    extraction. Conversion/build paths should call with require_fresh=True; in that mode a
+    missing/unparseable/stale timestamp is an error and the price never reaches conversion.
+    """
 
     def __init__(self, bookmakers: BookmakerRegistry | None = None):
         self.bookmakers = bookmakers or default_bookmakers()
@@ -46,12 +55,25 @@ class BookmakerOfferService:
         target_bookmaker: str,
         rows: Iterable[dict],
         source: str = "openclaw_browser",
+        require_fresh: bool = False,
+        max_age_seconds: int = 180,
+        now: datetime | None = None,
     ) -> OfferBatch:
         target = self.bookmakers.resolve(target_bookmaker)
         if target is None:
             raise ValueError(f"Unknown target bookmaker: {target_bookmaker}")
+        if max_age_seconds < 0:
+            raise ValueError("max_age_seconds cannot be negative.")
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        now = now.astimezone(timezone.utc)
 
-        batch = OfferBatch(target_bookmaker_slug=target.slug)
+        batch = OfferBatch(
+            target_bookmaker_slug=target.slug,
+            max_age_seconds=max_age_seconds if require_fresh else None,
+            freshness_required=require_fresh,
+        )
         seen: set[tuple[str, str, str, str | None]] = set()
         for index, raw_value in enumerate(rows, start=1):
             if not isinstance(raw_value, dict):
@@ -97,11 +119,35 @@ class BookmakerOfferService:
                 batch.issues.append(OfferIssue(index, "error", f"{event} — {market}: {exc}"))
                 continue
 
-            observed_at = self._timestamp(raw.get("observed_at"))
-            if raw.get("observed_at") and observed_at is None:
+            observed_at, age_seconds = self._observed(raw.get("observed_at"), now=now)
+            if observed_at is None:
+                level = "error" if require_fresh else "warning"
                 batch.issues.append(
-                    OfferIssue(index, "warning", f"{event} — {market}: observed_at could not be parsed; recheck price freshness before building.")
+                    OfferIssue(
+                        index,
+                        level,
+                        f"{event} — {market}: observed_at is missing or invalid; re-read the bookmaker price before conversion/building.",
+                    )
                 )
+                if require_fresh:
+                    continue
+            fresh = age_seconds is not None and age_seconds <= max_age_seconds
+            if age_seconds is not None and age_seconds < -15:
+                level = "error" if require_fresh else "warning"
+                batch.issues.append(
+                    OfferIssue(index, level, f"{event} — {market}: observed_at is in the future; re-read the price with a correct clock.")
+                )
+                if require_fresh:
+                    continue
+            if require_fresh and age_seconds is not None and age_seconds > max_age_seconds:
+                batch.issues.append(
+                    OfferIssue(
+                        index,
+                        "error",
+                        f"{event} — {market}: price is {age_seconds}s old; maximum allowed age is {max_age_seconds}s. Recheck the bookmaker.",
+                    )
+                )
+                continue
 
             key = (
                 self._norm(event),
@@ -117,7 +163,10 @@ class BookmakerOfferService:
                 VerifiedOffer(
                     offer=offer,
                     observed_at=observed_at,
+                    age_seconds=max(age_seconds, 0) if age_seconds is not None else None,
+                    fresh=fresh if observed_at is not None else None,
                     source=source,
+                    raw=raw,
                 )
             )
 
@@ -128,17 +177,19 @@ class BookmakerOfferService:
         return [item.offer for item in batch.offers]
 
     @staticmethod
-    def _timestamp(value) -> str | None:
+    def _observed(value, *, now: datetime) -> tuple[str | None, int | None]:
         if value is None or str(value).strip() == "":
-            return None
+            return None, None
         text = str(value).strip().replace("Z", "+00:00")
         try:
             dt = datetime.fromisoformat(text)
         except ValueError:
-            return None
+            return None, None
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).isoformat()
+        dt = dt.astimezone(timezone.utc)
+        age = int((now - dt).total_seconds())
+        return dt.isoformat(), age
 
     @staticmethod
     def _text(value) -> str | None:
