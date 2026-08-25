@@ -20,6 +20,7 @@ from .bookmaker_tools import BookmakerTools
 from .market_tools import MarketTools
 from .record_tools import RecordTools
 from .research_tools import ResearchTools
+from .settlement_tools import SettlementTools
 from .sports_tools import SportsTools
 from .system_tools import SystemTools
 from .ticket_tools import TicketTools
@@ -68,6 +69,7 @@ class SabiToolGateway:
             BookmakerTools(self),
             TicketTools(self),
             RecordTools(self),
+            SettlementTools(self),
             BlogTools(self),
         )
         self._handlers: dict[str, callable] = {}
