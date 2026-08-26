@@ -104,13 +104,6 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
             )
         }
 
-    @router.get("/tickets/{ticket_id}")
-    def ticket_detail(ticket_id: str):
-        row = reads().ticket(ticket_id)
-        if row is None:
-            raise HTTPException(status_code=404, detail="Ticket not found.")
-        return row
-
     @router.get("/filters")
     def filters():
         service = reads()
@@ -162,6 +155,13 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
     @router.get("/tickets/version-outcomes")
     def ticket_version_outcomes(limit: int = Query(250, ge=1, le=1000)):
         return advanced().ticket_version_outcomes(limit)
+
+    @router.get("/tickets/{ticket_id}")
+    def ticket_detail(ticket_id: str):
+        row = reads().ticket(ticket_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Ticket not found.")
+        return row
 
     @router.get("/bookmakers/price-history")
     def bookmaker_price_history(limit: int = Query(100, ge=1, le=1000)):

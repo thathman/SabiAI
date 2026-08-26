@@ -1,5 +1,8 @@
 from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from sabiai.config import Settings
 from sabiai.dashboard import create_v2_dashboard_router
 from sabiai.storage import SabiDatabase
@@ -57,3 +60,19 @@ def test_dashboard_router_exposes_detailed_ticket_and_performance_reads(tmp_path
         "/api/v2/series/bankroll",
     }
     assert expected.issubset(paths)
+
+
+def test_static_ticket_analytics_routes_are_not_shadowed_by_ticket_detail(tmp_path):
+    settings = _settings(tmp_path)
+    SabiDatabase(settings.v2_db).initialize()
+    app = FastAPI()
+    app.include_router(create_v2_dashboard_router(settings))
+    client = TestClient(app)
+
+    for path in (
+        "/api/v2/tickets/sources",
+        "/api/v2/tickets/killers",
+        "/api/v2/tickets/version-outcomes",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200, response.text
