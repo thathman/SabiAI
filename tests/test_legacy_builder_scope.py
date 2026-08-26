@@ -35,6 +35,12 @@ def test_bet9ja_allows_only_proven_full_event_football_1x2_scope():
     plan = BookmakerExecutionPlanner().build(_ticket(), bookmaker="Bet9ja")
     assert plan.ready is True
 
+    named_team = BookmakerExecutionPlanner().build(
+        _ticket(kind=MarketKind.WINNER, label="Arsenal to win"),
+        bookmaker="Bet9ja",
+    )
+    assert named_team.ready is True
+
     basketball = BookmakerExecutionPlanner().build(
         _ticket(sport="basketball", kind=MarketKind.WIN_DRAW_LOSE, label="Lakers to win"),
         bookmaker="Bet9ja",

@@ -129,7 +129,11 @@ def legacy_command_adapters() -> AdapterRegistry:
                 BookmakerCapability.BOOKING_CODE_CREATE,
             },
             supported_sports={"football", "soccer"},
-            supported_market_kinds={"win_draw_lose"},
+            # The legacy selector clicks Bet9ja's football 1X2 market. In the
+            # canonical model an explicit team selection is ``winner`` while
+            # Draw remains ``win_draw_lose``; both are the same proven 1X2 UI
+            # surface for this adapter.
+            supported_market_kinds={"win_draw_lose", "winner"},
             supported_periods={"full_event"},
             notes=(
                 "V1 Playwright builder clicks Bet9ja's 1X2 market id. V2 restricts it to full-event football 1X2 until "
