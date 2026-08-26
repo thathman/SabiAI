@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -20,8 +22,39 @@ app = FastAPI(
     description="Read-only dashboard for our Sabi Boy history, performance and journal.",
     docs_url=None,
     redoc_url=None,
+    openapi_url=None,
 )
+allowed_hosts = [
+    host.strip()
+    for host in os.environ.get(
+        "SABIAI_DASHBOARD_ALLOWED_HOSTS",
+        "127.0.0.1,localhost,picks.hendrix.com.ng,testserver",
+    ).split(",")
+    if host.strip()
+]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.include_router(create_v2_dashboard_router())
+
+
+@app.middleware("http")
+async def dashboard_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    )
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; "
+        "frame-ancestors 'none'; form-action 'none'",
+    )
+    if request.url.path.startswith("/api/v2") or request.url.path == "/health":
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
 
 
 @app.get("/health")
@@ -74,6 +107,8 @@ def asset(name: str):
 @app.get("/{page:path}")
 def shell(page: str = ""):
     # API/static/health routes match before this catch-all. All UI routes share one shell.
+    if page in {"docs", "redoc", "openapi.json"}:
+        return Response(status_code=404)
     index = ASSET_DIR / "index.html"
     if not index.is_file():
         return HTMLResponse("<h1>Sabi Boy V2</h1><p>Dashboard assets are missing.</p>", status_code=503)
