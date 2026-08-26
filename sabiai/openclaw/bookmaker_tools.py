@@ -337,7 +337,7 @@ class BookmakerTools:
 
     def build_plan(self, args: dict) -> dict:
         ticket = ticket_from_args(self.app, args)
-        target = str(args.get("target_bookmaker") or args.get("bookmaker") or "")
+        target = self._build_target(args)
         return json_value(self.app.bookmaker_execution.build(ticket, bookmaker=target))
 
     def build_execute(self, args: dict) -> dict:
@@ -350,7 +350,7 @@ class BookmakerTools:
             }
 
         ticket = ticket_from_args(self.app, args)
-        target = str(args.get("target_bookmaker") or args.get("bookmaker") or "")
+        target = self._build_target(args)
         plan = self.app.bookmaker_execution.build(ticket, bookmaker=target)
         result = self.app.bookmaker_runner.execute(
             plan,
@@ -363,6 +363,15 @@ class BookmakerTools:
             "plan": json_value(plan),
             "result": json_value(result),
         }
+
+    def _build_target(self, args: dict) -> str:
+        target = str(args.get("target_bookmaker") or args.get("bookmaker") or "").strip()
+        if target or not args.get("draft_id"):
+            return target
+        draft = self.app._draft_store().get(str(args["draft_id"]))
+        if draft is None:
+            return ""
+        return str(draft.target_bookmaker_slug or draft.source_bookmaker_slug or "")
 
     def build_verify(self, args: dict) -> dict:
         bookmaker = str(args.get("bookmaker") or args.get("target_bookmaker") or "").strip()

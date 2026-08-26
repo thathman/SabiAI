@@ -133,3 +133,39 @@ def test_browser_build_infers_target_from_converted_draft_and_blocks_mismatch(tm
     )
     assert mismatch["ok"] is False
     assert "refusing to build it on Bet9ja" in mismatch["error"]
+
+
+def test_legacy_build_plan_and_execute_infer_target_from_converted_draft(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    saved = gateway.dispatch(
+        "ticket.draft.save",
+        {
+            "source_type": "conversion",
+            "target_bookmaker": "Bet9ja",
+            "status": "converted",
+            "legs": [
+                {
+                    "sport": "Football",
+                    "event": "Vietnam vs Thailand",
+                    "home": "Vietnam",
+                    "away": "Thailand",
+                    "market": "Vietnam to win",
+                    "odds": "1.77",
+                }
+            ],
+        },
+    )
+    draft_id = saved["data"]["id"]
+
+    planned = gateway.dispatch("bookmaker.build.plan", {"draft_id": draft_id})
+    executed = gateway.dispatch(
+        "bookmaker.build.execute",
+        {"draft_id": draft_id, "dry_run": True},
+    )
+
+    assert planned["ok"] is True
+    assert planned["data"]["bookmaker_slug"] == "bet9ja"
+    assert planned["data"]["ready"] is True
+    assert executed["ok"] is True
+    assert executed["data"]["plan"]["bookmaker_slug"] == "bet9ja"
+    assert "Unknown bookmaker" not in executed["data"]["result"]["message"]
