@@ -14,7 +14,14 @@ DEFAULT_STATE = ROOT / "data" / "release" / "staging-latest.json"
 
 
 def fetch_json(url: str) -> tuple[int, dict]:
-    with urllib.request.urlopen(url, timeout=10) as response:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "Sabi-Boy-V2-Cutover/2.0",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
         payload = json.loads(response.read().decode("utf-8"))
         return int(response.status), payload
 
