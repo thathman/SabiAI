@@ -399,43 +399,59 @@
 
 **Repository development is frozen. Do not promote `v2` to `main` until the applicable runtime gates below pass.**
 
-- [ ] Full current pytest suite passes on controlled Dell/runtime
-- [ ] V1 database snapshot taken and verified
-- [ ] V1 → V2 migration rehearsal on actual data passes
-- [ ] Historical pick/ticket totals reconcile
-- [ ] Bankroll reconciles exactly
-- [ ] Strategy/compound/long-shot history reviewed
-- [ ] Sabi Boy OpenClaw final-tool-surface acceptance
-- [ ] Current-format Sabi Boy skill visibility acceptance on the real agent
-- [ ] Research Scout/Skeptic/Ticket Engineer OpenClaw acceptance
-- [ ] Persistent research-case resume across OpenClaw sessions verified
-- [ ] Learned-source discovery/verify/reuse workflow verified
-- [ ] Multi-sport research acceptance across representative sports
-- [ ] SportyBet browser restoration acceptance
-- [ ] Bet9ja browser restoration acceptance
-- [ ] Stake browser restoration acceptance where region allows
-- [ ] SportyBet rich booking-code build/reload verification acceptance
-- [ ] Bet9ja rich booking-number build/reload verification acceptance
-- [ ] At least one real end-to-end bookmaker conversion/rebuild pair passes
-- [ ] Multi-book fresh-price comparison acceptance
-- [ ] Bookmaker browser-health observations reflect live tests correctly
-- [ ] Settlement profile/live-bookmaker rule verification tested for at least tennis/racquet, golf/field and overtime sport cases
-- [ ] Dashboard mobile/desktop acceptance against migrated data
-- [ ] Advanced History ticket-version/price panels verified against real data
-- [ ] Blog migration/display acceptance
-- [ ] Daily/weekly OpenClaw reflection automation acceptance
-- [ ] Event-driven `blog.triggers` behavior acceptance
-- [ ] Job success/failure/retry/readiness behavior acceptance
-- [ ] Settlement duplicate/correction acceptance
-- [ ] Backup timer + backup/restore drill passes on Dell
-- [ ] External route/cutover rehearsal documented
-- [ ] Security/secrets review
+- [x] Full current pytest suite passes on controlled Dell/runtime
+- [x] V1 database snapshot taken and verified
+- [x] V1 → V2 migration rehearsal on actual data passes
+- [x] Historical pick/ticket totals reconcile
+- [x] Bankroll reconciles exactly
+- [x] Strategy/compound/long-shot history reviewed
+- [x] Sabi Boy OpenClaw final-tool-surface acceptance
+- [x] Current-format Sabi Boy skill visibility acceptance on the real agent
+- [~] Research Scout/Skeptic/Ticket Engineer OpenClaw acceptance — tool and workflow acceptance passed, but a final live multi-worker fan-out was not proven
+- [x] Persistent research-case resume across OpenClaw sessions verified
+- [x] Learned-source discovery/verify/reuse workflow verified
+- [x] Multi-sport research acceptance across representative sports
+- [~] SportyBet browser restoration acceptance — restore UI, invalid-code rejection, search and selection were proven; a valid reusable code was unavailable
+- [x] Bet9ja browser restoration acceptance
+- [!] Stake browser restoration acceptance where region allows — regional browser reached Cloudflare verification and no access-control bypass was attempted
+- [!] SportyBet rich booking-code build/reload verification acceptance — a real code could not be created or extracted
+- [x] Bet9ja rich booking-number build/reload verification acceptance
+- [x] At least one real end-to-end bookmaker conversion/rebuild pair passes
+- [x] Multi-book fresh-price comparison acceptance
+- [x] Bookmaker browser-health observations reflect live tests correctly
+- [~] Settlement profile/live-bookmaker rule verification tested for at least tennis/racquet, golf/field and overtime sport cases — profile/correction behavior passed; current live policy pages remain incomplete
+- [x] Dashboard mobile/desktop acceptance against migrated data
+- [x] Advanced History ticket-version/price panels verified against real data
+- [~] Blog migration/display acceptance — complete draft/publish/display/archive lifecycle passed, but the reset V1 source contained no diary post to migrate
+- [x] Daily/weekly OpenClaw reflection automation acceptance
+- [x] Event-driven `blog.triggers` behavior acceptance
+- [x] Job success/failure/retry/readiness behavior acceptance
+- [x] Settlement duplicate/correction acceptance
+- [x] Backup timer + backup/restore drill passes on Dell
+- [x] External route/cutover rehearsal documented
+- [x] Security/secrets review
 - [x] Repository deployment runbook exists
 - [x] Release-candidate notes exist
 - [x] ChatGPT Work installation/testing handoff exists
-- [ ] Final V2 acceptance review
+- [!] Final V2 acceptance review — installed replacement is operational, but unresolved live bookmaker gates block final release
 - [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
-- [ ] Produce the final production OpenClaw/cutover instruction only after runtime acceptance is green
+- [!] Produce the final production OpenClaw/cutover instruction only after runtime acceptance is green
+
+### Phase 16 Dell evidence — 2026-08-26
+
+- The final exact commit is recorded in `data/release/staging-latest.json` and `data/release/openclaw-activation-latest.json`; the same commit must be green in the stage, activation and external finalizer reports.
+- Full Dell suite: 225 passed with one known Starlette deprecation warning.
+- Verified private recovery archives: `~/sabi-boy-migration-archives/20260826T071240Z/v1-prediction-workspace.tar.gz` and `v1-repository-and-service.tar.gz`; both gzip checks and recorded SHA-256 checksums passed.
+- Migration/reconciliation: source and V2 both contained zero picks/tickets after the intentional V1 reset; the bankroll reconciled exactly at ₦30,000 with no migration warnings. The separate pre-reset private archive was reviewed for historical strategy/compound/long-shot records.
+- Active runtime: the existing OpenClaw agent ID is `prediction`, with name/identity Sabi Boy, seven required current-format skills, 131 V2 tools, five preserved bindings and READY status.
+- Live research: one case resumed across independent OpenClaw sessions; an official FIVB source was verified and reused without rediscovery; football, basketball, tennis and volleyball examples passed.
+- Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet valid-code creation/reload remains unproven; Stake was access-blocked; 1xBet remains discovery-only.
+- Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Exact current bookmaker-specific policy values remain live-verification data.
+- Dashboard: all read-only routes passed; desktop and mobile layouts were accepted; Advanced History displayed the real 1.70/1.72 bookmaker observations.
+- Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed; the enabled backup timer created an integrity-checked backup and a temporary restore passed.
+- Security: loopback-only application binding, disabled API docs, host validation, security headers, private file permissions, secret scan and installed-package audit passed. The external Cloudflare route was not reconfigured.
+- V1 service and active V1 working copies were removed only after archive verification. The V2 service now owns the original port and external route; `main` remains unmerged.
+- Release blocker status: **NOT READY** until the deliberately incomplete live gates above are either passed or explicitly waived by the owner.
 
 ---
 

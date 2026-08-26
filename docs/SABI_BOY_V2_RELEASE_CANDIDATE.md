@@ -1,12 +1,12 @@
 # Sabi Boy V2 — Installation/Test Release Candidate
 
-**Branch:** `v2`  
-**Human-facing product:** Sabi Boy  
+**Branch:** `v2`
+**Human-facing product:** Sabi Boy
 **OpenClaw agent ID:** `prediction`
-**Candidate status:** Repository development complete; Dell/OpenClaw/live-browser acceptance pending.  
+**Candidate status:** Installed on the Dell as the V1 replacement; core acceptance is green, with remaining live bookmaker gates recorded in Phase 16.
 **Promotion status:** **Do not merge to `main` yet.**
 
-This document describes the V2 code candidate that is ready to enter installation and runtime testing. It is not a claim that production acceptance has passed.
+This document describes the installed V2 candidate and its release boundary. It is operational as Sabi Boy, but it is not a claim that every final-release gate has passed.
 
 ## Product boundary
 
@@ -171,29 +171,21 @@ The human-facing identity is Sabi Boy. The existing machine identity remains `pr
 
 A broad regression suite is committed for the V2 code, including migration, source service/coalescing, learned sources, persistent research cases, market language, settlement profiles, ticket candidates, bookmaker conversion/build verification, advanced analytics, Blog triggers, job tracking, dashboard read-only behavior and OpenClaw acceptance parsing/tool requirements.
 
-**The full current suite has not been declared green on the Dell in this development phase.** That is the first installation/testing gate. The candidate must not be promoted based only on committed tests.
+**The full current suite is green on the Dell: 225 passed with one known Starlette deprecation warning.** The authoritative exact tested commit is recorded in the latest staging and OpenClaw activation reports. Passing tests alone does not waive unresolved live-browser or policy-verification gates.
 
-## Required runtime acceptance before promotion
+## Runtime acceptance and remaining promotion gates
 
-The authoritative checklist is Phase 16 in `docs/SABIAI_V2_TASKS.md`. It includes:
+The authoritative evidence and pass/partial/blocker state is Phase 16 in `docs/SABIAI_V2_TASKS.md`. The installed candidate has passed migration/reconciliation, OpenClaw tool/skill visibility, persistent research, representative multi-sport research, Bet9ja restore/build/reload, a real SportyBet-to-Bet9ja conversion, fresh multi-book comparison, dashboard, Blog/job/settlement drills, backup/restore and security acceptance.
 
-- full current pytest suite;
-- verified V1 snapshot and migration rehearsal on actual data;
-- exact history and bankroll reconciliation;
-- real OpenClaw final-tool/skill/subagent acceptance;
-- persistent research case and learned-source resume/reuse tests;
-- representative multi-sport research;
-- real SportyBet/Bet9ja restore/search/build/reload checks;
-- Stake restore/search where accessible;
-- at least one real booking-code conversion/rebuild pair without placing a wager;
-- fresh multi-book price comparison;
-- settlement-policy verification examples;
-- desktop/mobile dashboard acceptance against migrated history;
-- Blog automation/trigger checks;
-- job failure/readiness checks;
-- backup timer + restore drill;
-- security/secrets review;
-- cutover rehearsal.
+The remaining final-release gates are:
+
+- a real reusable SportyBet booking-code creation/reload round trip;
+- Stake restoration only if the regional flow becomes accessible without bypassing verification or access controls;
+- final current bookmaker-policy evidence for the variable tennis/racquet, golf/field and overtime rules;
+- a final live multi-worker Research Scout/Skeptic/Ticket Engineer fan-out;
+- owner review or explicit waiver of the partial Blog migration condition caused by the reset V1 source containing no diary post.
+
+Until those items are passed or explicitly waived, the release status is **NOT READY** even though V2 is the operational Dell replacement.
 
 ## Failure policy
 
