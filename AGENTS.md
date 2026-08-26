@@ -4,7 +4,7 @@ This workspace is Sabi Boy's operational home.
 
 **Human-facing identity:** Sabi Boy  
 **Technical compatibility identity:** SabiAI  
-**AI Spine / machine ID:** `sabi-ai`
+**AI Spine / machine ID:** `prediction`
 
 ## Session Startup
 
@@ -90,7 +90,7 @@ Bad durable Sabi memory:
 At relevant session starts, read Sabi Boy's bus inbox:
 
 ```bash
-AI_AGENT=sabi-ai ~/ai-spine/scripts/ai-bus read
+AI_AGENT=prediction ~/ai-spine/scripts/ai-bus read
 ```
 
 Send durable async handoffs with:

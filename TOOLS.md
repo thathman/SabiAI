@@ -6,12 +6,12 @@ This file records Sabi Boy-specific runtime/tool locations and operational conve
 
 - Human-facing name: **Sabi Boy**
 - Technical repo/package compatibility: `SabiAI` / `sabiai`
-- AI Spine agent ID: `sabi-ai`
+- OpenClaw / AI Spine agent ID: `prediction`
 - Matrix identity currently remains the existing SabiAI account until infrastructure is deliberately renamed.
 
 ## Primary Runtime
 
-- OpenClaw workspace: `~/.openclaw/workspace/`
+- OpenClaw workspace: `~/.openclaw/workspace-prediction/`
 - OpenClaw config: `~/.openclaw/openclaw.json`
 - Primary machine: Dell / Ubuntu
 - Remote shell convention: `ssh dell` / configured local alias
@@ -22,32 +22,39 @@ This file records Sabi Boy-specific runtime/tool locations and operational conve
 Preferred bridge for canonical V2 behavior:
 
 ```bash
-python3 ~/.openclaw/workspace/scripts/sabiai_v2_tool.py
+cd ~/.openclaw/workspace-prediction
+.venv/bin/python scripts/sabiai_v2_tool.py --request '{"tool":"system.health","args":{}}'
+.venv/bin/python scripts/sabiai_v2_tool.py --request '{"tool":"system.tools","args":{}}'
 ```
 
 The gateway is the boundary for sports profiles, market interpretation, ticket normalization/editing, bookmaker capability resolution, bankroll/history and future V2 operations.
+
+Every request is a JSON object with `tool` and `args`. Do not pass a tool name as a bare
+positional argument. Use the V2 virtual environment shown above so browser and HTTP
+dependencies resolve consistently.
 
 Do not bypass it with ad hoc SQLite writes when a domain operation exists.
 
 ## Databases
 
-### V2 development database
+### Active V2 database
 
 Default:
 
-`~/.openclaw/workspace/data/sabiai_v2_core.db`
+`~/.openclaw/workspace-prediction/data/sabiai_v2_core.db`
 
-This remains separate during migration.
+This is Sabi Boy's canonical runtime database after the controlled V2 replacement.
 
 ### V1 legacy database
 
 `~/.openclaw/workspace/data/bets.db`
 
-Treat as authoritative legacy history until reconciliation passes.
+This is the reconciled legacy source owned by the main workspace. It is not Sabi Boy's
+runtime database and must never be used as a substitute when the V2 gateway is available.
 
 ### Legacy football-oriented database
 
-`~/.openclaw/workspace/data/sabiai_v2.db`
+The retired Prediction/V1 stores are held only in the private migration archive.
 
 Despite the name, this is a legacy store, not the canonical new V2 database.
 
@@ -56,7 +63,7 @@ Despite the name, this is a legacy store, not the canonical new V2 database.
 V1 preservation utility:
 
 ```bash
-python3 scripts/v2_preserve.py --label before-v2-migration
+.venv/bin/python scripts/v2_preserve.py --label before-v2-migration
 ```
 
 Verify a snapshot before rehearsal/restore. Never use a live V1 database as migration scratch space.
@@ -174,7 +181,7 @@ Structured/cached sources are preferable when they provide reliable equivalent d
 Read Sabi Boy inbox:
 
 ```bash
-AI_AGENT=sabi-ai ~/ai-spine/scripts/ai-bus read
+AI_AGENT=prediction ~/ai-spine/scripts/ai-bus read
 ```
 
 Search memory:

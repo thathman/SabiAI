@@ -43,3 +43,17 @@ def test_openclaw_scripts_use_current_cron_cli_and_explicit_human_identity():
     assert '--name "Sabi Boy"' in activation
     assert '--emoji "🧠⚽"' in activation
     assert "--from-identity" not in activation
+
+
+def test_openclaw_bootstrap_targets_prediction_v2_runtime():
+    tools = (ROOT / "TOOLS.md").read_text(encoding="utf-8")
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    identity = (ROOT / "IDENTITY.md").read_text(encoding="utf-8")
+
+    assert "~/.openclaw/workspace-prediction/" in tools
+    assert ".venv/bin/python scripts/sabiai_v2_tool.py --request" in tools
+    assert "~/.openclaw/workspace/scripts/sabiai_v2_tool.py" not in tools
+    assert "~/.openclaw/workspace/data/sabiai_v2_core.db" not in tools
+    assert "AI_AGENT=prediction" in tools
+    assert "AI_AGENT=prediction" in agents
+    assert "machine agent ID:** `prediction`" in identity
