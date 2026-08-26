@@ -31,7 +31,9 @@ The gateway is the boundary for sports profiles, market interpretation, ticket n
 
 Every request is a JSON object with `tool` and `args`. Do not pass a tool name as a bare
 positional argument. Use the V2 virtual environment shown above so browser and HTTP
-dependencies resolve consistently.
+dependencies resolve consistently. The bridge safely loads the installed private
+`~/.config/sabi-boy/sabi-boy.env` file automatically; do not reimplement or bypass that
+configuration lookup in an OpenClaw turn.
 
 Do not bypass it with ad hoc SQLite writes when a domain operation exists.
 
