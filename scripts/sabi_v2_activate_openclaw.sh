@@ -93,9 +93,23 @@ fi
   --env-file "$ENV_FILE" \
   --report "$RELEASE_DIR/openclaw-pre-activation.json"
 
-# Update only the human-visible identity. The existing machine id (`prediction` on the Dell)
-# and all of its bindings remain unchanged. Explicit values avoid depending on IDENTITY.md
-# parser conventions that differ between OpenClaw releases.
+# Update both OpenClaw's configured label and its human-visible identity. The existing machine
+# id (`prediction` on the Dell) and all of its bindings remain unchanged. Explicit values avoid
+# depending on IDENTITY.md parser conventions that differ between OpenClaw releases.
+agent_index="$($OPENCLAW_BIN config get agents.list --json | python3 -c '
+import json, sys
+rows = json.load(sys.stdin)
+wanted = sys.argv[1]
+for index, row in enumerate(rows):
+    if isinstance(row, dict) and row.get("id") == wanted:
+        print(index)
+        break
+' "$AGENT_ID")"
+if [[ -z "$agent_index" ]]; then
+  echo "Could not resolve OpenClaw config index for agent '$AGENT_ID'." >&2
+  exit 12
+fi
+$OPENCLAW_BIN config set "agents.list[$agent_index].name" '"Sabi Boy"' --strict-json >/dev/null
 identity_json="$($OPENCLAW_BIN agents set-identity --agent "$AGENT_ID" --name "Sabi Boy" --emoji "🧠⚽" --json)"
 printf '%s\n' "$identity_json" > "$RELEASE_DIR/openclaw-identity-latest.json"
 
