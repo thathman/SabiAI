@@ -20,3 +20,20 @@ def test_release_scripts_do_not_hardcode_the_default_dashboard_url():
     ):
         text = (ROOT / relative).read_text(encoding="utf-8")
         assert "http://127.0.0.1:8091" not in text
+
+
+def test_openclaw_scripts_use_current_cron_cli_and_explicit_human_identity():
+    installer = (ROOT / "scripts" / "sabi_v2_install_openclaw_automations.sh").read_text(
+        encoding="utf-8"
+    )
+    activation = (ROOT / "scripts" / "sabi_v2_activate_openclaw.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert '"$OPENCLAW_BIN" cron list --all --json' in installer
+    assert '"$OPENCLAW_BIN" cron add' in installer
+    assert '"$OPENCLAW_BIN" cron edit' in installer
+    assert '"$OPENCLAW_BIN" automations' not in installer
+    assert '--name "Sabi Boy"' in activation
+    assert '--emoji "🧠⚽"' in activation
+    assert "--from-identity" not in activation

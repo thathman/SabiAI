@@ -93,8 +93,10 @@ fi
   --env-file "$ENV_FILE" \
   --report "$RELEASE_DIR/openclaw-pre-activation.json"
 
-# Update only the human-visible identity. The machine id remains `sabi-ai` for compatibility.
-identity_json="$($OPENCLAW_BIN agents set-identity --agent "$AGENT_ID" --from-identity --json)"
+# Update only the human-visible identity. The existing machine id (`prediction` on the Dell)
+# and all of its bindings remain unchanged. Explicit values avoid depending on IDENTITY.md
+# parser conventions that differ between OpenClaw releases.
+identity_json="$($OPENCLAW_BIN agents set-identity --agent "$AGENT_ID" --name "Sabi Boy" --emoji "🧠⚽" --json)"
 printf '%s\n' "$identity_json" > "$RELEASE_DIR/openclaw-identity-latest.json"
 
 # Re-run all OpenClaw/V2 acceptance checks and install/update Sabi Boy's scheduled reflection

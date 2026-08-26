@@ -22,7 +22,7 @@ if ! command -v "$OPENCLAW_BIN" >/dev/null 2>&1; then
 fi
 
 jobs_json() {
-  "$OPENCLAW_BIN" automations list --all --json
+  "$OPENCLAW_BIN" cron list --all --json
 }
 
 job_id_by_name() {
@@ -63,7 +63,7 @@ upsert_agent_job() {
 
   if [[ -n "$existing" ]]; then
     echo "Updating OpenClaw automation: $name ($existing)"
-    "$OPENCLAW_BIN" automations edit "$existing" \
+    "$OPENCLAW_BIN" cron edit "$existing" \
       --cron "$cron_expr" \
       --tz "$TZ_NAME" \
       --session isolated \
@@ -74,7 +74,7 @@ upsert_agent_job() {
     echo "Creating OpenClaw automation: $name"
     # Current OpenClaw create/add syntax takes the schedule and agent prompt as positional
     # arguments. Keep flags for identity/session/delivery only.
-    "$OPENCLAW_BIN" automations create \
+    "$OPENCLAW_BIN" cron add \
       "$cron_expr" \
       "$prompt" \
       --name "$name" \
@@ -100,4 +100,4 @@ upsert_agent_job "sabi-boy-daily-reflection" "30 22 * * *" "$DAILY_PROMPT"
 upsert_agent_job "sabi-boy-weekly-reflection" "0 20 * * 0" "$WEEKLY_PROMPT"
 
 echo "Sabi Boy OpenClaw automations installed/updated for agent '$AGENT_ID' in timezone '$TZ_NAME'."
-"$OPENCLAW_BIN" automations list --all
+"$OPENCLAW_BIN" cron list --all
