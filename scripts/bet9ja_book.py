@@ -245,6 +245,29 @@ def _get_booking_code(page) -> str | None:
     return None
 
 
+def _search_current_event(page, leg: dict) -> bool:
+    """Use Bet9ja's current public search when a guessed league page misses an event."""
+    home_team, _ = _parse_teams(leg.get("match", ""))
+    query = home_team.strip()
+    if not query:
+        return False
+    try:
+        page.goto(BET9JA_URL, wait_until="domcontentloaded", timeout=NAV_TIMEOUT)
+        page.wait_for_timeout(WAIT_MS)
+        _dismiss_overlay(page)
+        search = page.locator("#right_search_input")
+        if not search.count() or not search.first.is_visible():
+            print("  [!] Bet9ja public event search is not available", file=sys.stderr)
+            return False
+        print(f"  Retrying through Bet9ja search: {query}", file=sys.stderr)
+        search.first.fill(query)
+        page.wait_for_timeout(WAIT_MS)
+        return _find_and_click_odds(page, leg)
+    except Exception as e:
+        print(f"  [!] Bet9ja search fallback failed: {e}", file=sys.stderr)
+        return False
+
+
 def book_bet9ja(legs: list, dry_run: bool = False) -> str | None:
     """Main booking function. Returns booking code or None."""
     from playwright.sync_api import sync_playwright
@@ -291,6 +314,8 @@ def book_bet9ja(legs: list, dry_run: bool = False) -> str | None:
             for leg in slug_legs:
                 print(f"\n  → {leg.get('match')} | {leg.get('pick')}", file=sys.stderr)
                 ok = _find_and_click_odds(page, leg)
+                if not ok:
+                    ok = _search_current_event(page, leg)
                 if ok:
                     added += 1
                 page.wait_for_timeout(500)
