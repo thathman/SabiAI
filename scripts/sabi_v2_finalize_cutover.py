@@ -11,6 +11,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATE = ROOT / "data" / "release" / "staging-latest.json"
+LEGACY_SERVICE = "sabiai-dashboard.service"
 
 
 def fetch_json(url: str) -> tuple[int, dict]:
@@ -24,6 +25,30 @@ def fetch_json(url: str) -> tuple[int, dict]:
     with urllib.request.urlopen(request, timeout=10) as response:
         payload = json.loads(response.read().decode("utf-8"))
         return int(response.status), payload
+
+
+def stop_legacy_service() -> tuple[bool, str]:
+    status = subprocess.run(
+        ["systemctl", "--user", "is-active", LEGACY_SERVICE],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    service_state = status.stdout.strip()
+    if service_state in {"inactive", "failed", "unknown"}:
+        return True, f"{LEGACY_SERVICE} is already {service_state}."
+    if status.returncode != 0:
+        return False, status.stdout or f"Could not determine {LEGACY_SERVICE} state."
+
+    proc = subprocess.run(
+        ["systemctl", "--user", "stop", LEGACY_SERVICE],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    return proc.returncode == 0, proc.stdout
 
 
 def main() -> int:
@@ -113,15 +138,9 @@ def main() -> int:
 
     v1_stopped = False
     if args.stop_v1:
-        proc = subprocess.run(
-            ["systemctl", "--user", "stop", "sabiai-dashboard.service"],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=False,
-        )
-        if proc.returncode != 0:
-            print(proc.stdout, file=sys.stderr)
+        stopped, detail = stop_legacy_service()
+        if not stopped:
+            print(detail, file=sys.stderr)
             return 13
         v1_stopped = True
 

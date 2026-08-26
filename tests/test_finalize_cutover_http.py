@@ -35,3 +35,23 @@ def test_cutover_health_fetch_uses_explicit_json_headers(monkeypatch):
     assert captured["timeout"] == 10
     assert captured["request"].get_header("Accept") == "application/json"
     assert captured["request"].get_header("User-agent") == "Sabi-Boy-V2-Cutover/2.0"
+
+
+def test_stop_legacy_service_accepts_already_absent_unit(monkeypatch):
+    calls = []
+
+    class _Process:
+        returncode = 3
+        stdout = "inactive\n"
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return _Process()
+
+    monkeypatch.setattr(finalizer.subprocess, "run", fake_run)
+
+    stopped, detail = finalizer.stop_legacy_service()
+
+    assert stopped is True
+    assert "already inactive" in detail
+    assert calls == [["systemctl", "--user", "is-active", "sabiai-dashboard.service"]]
