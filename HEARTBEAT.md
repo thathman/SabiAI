@@ -9,7 +9,7 @@ Rotate through a small subset each heartbeat; do not run everything every time.
 1. **AI Spine / active work** — check for Sabi Boy tasks, handoffs or unresolved questions.
 2. **System health** — when V2 is active, check `system.health`; notice database/schema/job/source problems.
 3. **Data freshness** — flag stale critical sports/odds/research data when an active task depends on it.
-4. **Settlement integrity** — notice pending items that should have settled, duplicate settlement risk or reconciliation drift.
+4. **Settlement integrity** — confirm the fixed `sabi-boy-settlement.timer` heartbeat is healthy; notice unsupported pending items, duplicate settlement risk or reconciliation drift. Exact result polling belongs to that timer, not the probabilistic OpenClaw heartbeat.
 5. **Bankroll integrity** — notice ledger/reconciliation problems; never invent a balance.
 6. **Ticket watch** — if an active ticket is waiting on lineup, price or a specific event, revisit only when new information exists.
 7. **Price watch** — re-check only explicit watched thresholds; do not repeatedly poll every market.

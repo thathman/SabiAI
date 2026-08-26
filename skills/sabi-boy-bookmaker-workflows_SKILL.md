@@ -83,8 +83,9 @@ Current V2 capability truth:
 
 - SportyBet: rich public booking-code browser plan is verified.
 - Bet9ja: rich public booking-number browser plan is verified.
-- Stake: market search/restoration can be available, but V2 does not yet claim a verified code-creation path.
-- 1xBet: do not claim rich build/restore until the configured regional flow is verified.
+
+Only these two bookmakers are active. Treat any other bookmaker as unsupported; do not
+offer restore, search, conversion or build workflows for it.
 
 When using a converted draft, pass `draft_id`; Sabi Boy can infer the recorded target bookmaker and will reject a conflicting target.
 

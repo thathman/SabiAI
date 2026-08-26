@@ -36,7 +36,9 @@ class DomainTests(unittest.TestCase):
     def test_bookmaker_aliases(self):
         registry = default_bookmakers()
         self.assertEqual(registry.resolve("Sporty Bet").slug, "sportybet")
-        self.assertEqual(registry.resolve("1X Bet").slug, "1xbet")
+        self.assertEqual(registry.resolve("Bet 9ja").slug, "bet9ja")
+        self.assertIsNone(registry.resolve("1X Bet"))
+        self.assertIsNone(registry.resolve("Stake"))
 
 
 class MarketTests(unittest.TestCase):

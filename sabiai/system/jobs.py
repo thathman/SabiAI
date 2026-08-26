@@ -118,6 +118,7 @@ class JobService:
     def seed_defaults(self) -> list[JobState]:
         defaults = (
             ("verified-backup", "Verified V1/V2 SQLite snapshot and retention run.", 86400),
+            ("auto-settlement", "Poll live/final event results and settle supported pending selections.", 600),
             ("settlement-review", "Review pending outcomes and settlement backlog.", 3600),
             ("source-health", "Refresh source health and stale-source awareness.", 3600),
             ("sabi-boy-daily-reflection", "Daily Sabi Boy Blog reflection automation.", 86400),

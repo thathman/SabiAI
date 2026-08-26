@@ -510,9 +510,6 @@ class V1Migrator:
             "sporty-bet": ("bookmaker_sportybet", "sportybet", "SportyBet"),
             "bet9ja": ("bookmaker_bet9ja", "bet9ja", "Bet9ja"),
             "bet-9ja": ("bookmaker_bet9ja", "bet9ja", "Bet9ja"),
-            "1xbet": ("bookmaker_1xbet", "1xbet", "1xBet"),
-            "1x-bet": ("bookmaker_1xbet", "1xbet", "1xBet"),
-            "stake": ("bookmaker_stake", "stake", "Stake"),
         }
         canonical = aliases.get(norm)
         slug = canonical[1] if canonical else norm

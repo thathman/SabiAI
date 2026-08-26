@@ -52,19 +52,4 @@ def default_bookmakers() -> BookmakerRegistry:
             aliases={"Bet 9ja"},
         )
     )
-    registry.register(
-        Bookmaker(
-            id="bookmaker_1xbet",
-            name="1xBet",
-            slug="1xbet",
-            aliases={"1 x bet", "1X Bet"},
-        )
-    )
-    registry.register(
-        Bookmaker(
-            id="bookmaker_stake",
-            name="Stake",
-            slug="stake",
-        )
-    )
     return registry

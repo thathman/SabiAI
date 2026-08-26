@@ -114,36 +114,6 @@ class BookmakerBrowserProfiles:
                 ),
                 source_reference="Bet9ja official Book-a-Bet help/public guest page",
             ),
-            "stake": BrowserPlaybook(
-                bookmaker_slug="stake",
-                restoration_mode="bet_code_or_shared_bet",
-                entry_url="https://stake.com/sports/home",
-                public_restore=True,
-                code_prompt="Use Bet Code",
-                load_action="Use Bet Code / load the copied or shared bet",
-                extraction_fields=DEFAULT_EXTRACTION_FIELDS,
-                verified_on="2026-08-25",
-                verification_note=(
-                    "Stake's current sportsbook UI exposes Use Bet Code, and official Stake guidance documents copy/share flows that recreate bets. "
-                    "Availability may be region/account dependent, so verify the visible control before claiming restoration succeeded."
-                ),
-                source_reference="Stake sportsbook/help copy-share flow",
-            ),
-            "1xbet": BrowserPlaybook(
-                bookmaker_slug="1xbet",
-                restoration_mode="discover_current_flow",
-                entry_url=None,
-                public_restore=False,
-                code_prompt=None,
-                load_action=None,
-                extraction_fields=DEFAULT_EXTRACTION_FIELDS,
-                verified_on=None,
-                verification_note=(
-                    "No current public booking-code restoration flow has been verified for the configured 1xBet region. "
-                    "OpenClaw must discover/verify the live public flow before using a code importer."
-                ),
-                source_reference=None,
-            ),
         }
 
         self._search_profiles = {
@@ -181,37 +151,6 @@ class BookmakerBrowserProfiles:
                 verification_note=(
                     "The existing Sabi Bet9ja browser integration uses the current public sportsbook root at sports.bet9ja.com. "
                     "Do not reuse its old hard-coded league guesses as authoritative market discovery; inspect the live page instead."
-                ),
-            ),
-            "stake": MarketSearchPlaybook(
-                bookmaker_slug="stake",
-                entry_url="https://stake.com/sports/home",
-                ready=True,
-                search_method=(
-                    "Use Stake Sportsbook's current sports menu or search bar to find the exact team/event, then open the event. "
-                    "If region/account restrictions hide an event, report it unavailable rather than substituting another region or market."
-                ),
-                event_navigation="Search exact participants or browse Sport → competition → event; verify both participants and event date/context.",
-                market_navigation="Open the event and locate the exact market/line/period; set/read decimal odds rather than converting American prices.",
-                odds_format="decimal",
-                extraction_fields=MARKET_SEARCH_FIELDS,
-                verified_on="2026-08-25",
-                verification_note=(
-                    "Stake's current official sportsbook exposes sports browsing/search and a bet slip; availability is region/account dependent and must be verified at runtime."
-                ),
-            ),
-            "1xbet": MarketSearchPlaybook(
-                bookmaker_slug="1xbet",
-                entry_url=None,
-                ready=False,
-                search_method="Discover and verify the configured regional sportsbook entry/search flow before automating market discovery.",
-                event_navigation="Not yet verified for the configured region.",
-                market_navigation="Not yet verified for the configured region.",
-                odds_format="decimal",
-                extraction_fields=MARKET_SEARCH_FIELDS,
-                verified_on=None,
-                verification_note=(
-                    "Sabi Boy knows 1xBet as a bookmaker but does not yet claim a verified V2 public market-search playbook for the configured region."
                 ),
             ),
         }
@@ -257,34 +196,6 @@ class BookmakerBrowserProfiles:
                     "Bet9ja's current official help documents logged-out market selection followed by Book Bet/booking-number creation. "
                     "Odds may change, so the generated booking number must be reloaded and structurally verified."
                 ),
-            ),
-            "stake": BrowserBuildPlaybook(
-                bookmaker_slug="stake",
-                entry_url="https://stake.com/sports/home",
-                ready=False,
-                build_mode="discover_share_or_bet_code_creation",
-                event_navigation="Use the verified market-search playbook only after regional/account availability is confirmed.",
-                selection_action="Do not claim ticket-code creation until the current account/region visibly exposes a supported copy/share/bet-code creation action.",
-                booking_action=None,
-                booking_code_field=None,
-                verification_tool="bookmaker.build.verify",
-                verified_on="2026-08-25",
-                verification_note=(
-                    "Stake currently exposes Use Bet Code for restoration, but Sabi Boy has not yet verified a public unauthenticated code-creation flow suitable for the V2 builder."
-                ),
-            ),
-            "1xbet": BrowserBuildPlaybook(
-                bookmaker_slug="1xbet",
-                entry_url=None,
-                ready=False,
-                build_mode="discover_current_flow",
-                event_navigation="Not yet verified for the configured region.",
-                selection_action="Do not automate building until the configured regional market and code-generation flow is verified.",
-                booking_action=None,
-                booking_code_field=None,
-                verification_tool="bookmaker.build.verify",
-                verified_on=None,
-                verification_note="No verified V2 rich browser builder exists for the configured 1xBet region yet.",
             ),
         }
 

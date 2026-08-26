@@ -6,6 +6,7 @@ VENV="${ROOT}/.venv"
 ENV_FILE="${HOME}/.config/sabi-boy/sabi-boy.env"
 SERVICE="sabi-boy-dashboard.service"
 BACKUP_TIMER="sabi-boy-backup.timer"
+SETTLEMENT_TIMER="sabi-boy-settlement.timer"
 RELEASE_DIR="${ROOT}/data/release"
 BACKUP_DIR="${ROOT}/data/backups/sabi-boy"
 STATE_FILE="${RELEASE_DIR}/staging-latest.json"
@@ -111,6 +112,12 @@ if ! systemctl --user enable --now "$BACKUP_TIMER"; then
 fi
 backup_timer_enabled=true
 
+if ! systemctl --user enable --now "$SETTLEMENT_TIMER"; then
+  systemctl --user stop "$SERVICE" || true
+  echo "Could not enable the Sabi Boy settlement heartbeat. V2 stopped." >&2
+  exit 24
+fi
+
 "$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$DASHBOARD_HOST" "$DASHBOARD_PORT" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" <<'PY'
 from datetime import datetime, timezone
 import json, pathlib, sys
@@ -129,6 +136,7 @@ data = {
     'v1_service_was_active': v1_active.lower() == 'true',
     'backup_timer_was_enabled': backup_was_enabled.lower() == 'true',
     'backup_timer_enabled': backup_enabled.lower() == 'true',
+    'settlement_timer_enabled': True,
     'v1_changed': False,
     'external_cutover_performed': False,
 }
@@ -141,6 +149,7 @@ cat <<EOF
 Sabi Boy V2 is staged and running on ${DASHBOARD_HOST}:${DASHBOARD_PORT}.
 V1 has not been stopped or modified.
 Verified daily backups are enabled through $BACKUP_TIMER.
+Automatic result settlement is enabled through $SETTLEMENT_TIMER.
 Backup manifest: $manifest
 Acceptance:     $RELEASE_DIR/acceptance-latest.json
 Staging state:  $STATE_FILE

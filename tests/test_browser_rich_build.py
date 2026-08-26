@@ -22,8 +22,8 @@ def test_rich_build_profiles_are_explicit_about_verified_code_creation():
     profiles = BookmakerBrowserProfiles()
     assert profiles.browser_build("sportybet").ready is True
     assert profiles.browser_build("bet9ja").ready is True
-    assert profiles.browser_build("stake").ready is False
-    assert profiles.browser_build("1xbet").ready is False
+    assert profiles.browser_build("stake") is None
+    assert profiles.browser_build("1xbet") is None
     assert profiles.browser_build("sportybet").verification_tool == "bookmaker.build.verify"
 
 
@@ -76,7 +76,7 @@ def test_bet9ja_browser_build_plan_can_prepare_handicap_without_legacy_1x2_const
     assert any("booking" in step.casefold() for step in data["steps"])
 
 
-def test_unverified_stake_code_creation_does_not_claim_ready(tmp_path: Path):
+def test_removed_bookmaker_code_creation_is_rejected(tmp_path: Path):
     gateway = _gateway(tmp_path)
     result = gateway.dispatch(
         "bookmaker.browser_build.plan",
@@ -93,9 +93,8 @@ def test_unverified_stake_code_creation_does_not_claim_ready(tmp_path: Path):
         },
     )
 
-    assert result["ok"] is True
-    assert result["data"]["ready"] is False
-    assert any("verified rich browser build profile" in reason for reason in result["data"]["reasons_not_ready"])
+    assert result["ok"] is False
+    assert "Unknown target bookmaker" in result["error"]
 
 
 def test_browser_build_infers_target_from_converted_draft_and_blocks_mismatch(tmp_path: Path):

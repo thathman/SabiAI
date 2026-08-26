@@ -32,13 +32,24 @@ Important variables:
 - `SABIAI_THESPORTSDB_KEY`
 - `SABIAI_FOOTBALL_DATA_TOKEN` (optional)
 - `SABIAI_PAID_SOURCES`
+- `SABIAI_DASHBOARD_ALLOWED_ORIGINS`
+- `SABIAI_VAPID_PUBLIC_KEY`
+- `SABIAI_VAPID_PRIVATE_KEY_FILE` — mode-600 key outside the repository
+- `SABIAI_VAPID_SUBJECT`
 
 V2 dashboard service:
 
 - unit: `sabi-boy-dashboard.service`
 - local bind: `127.0.0.1:8091`
 - app: `dashboard.v2_app:app`
-- dashboard/API: read-only
+- sports/history dashboard/API: read-only; isolated push subscribe/unsubscribe is the only browser-write boundary
+
+Automatic result settlement:
+
+- service: `sabi-boy-settlement.service`
+- timer: `sabi-boy-settlement.timer`
+- interval: ten minutes, persistent across downtime
+- scope: audited/idempotent score-derived outcomes only; no inferred payouts or unsupported props
 
 Verified backup schedule:
 
@@ -84,9 +95,10 @@ This:
 - installs `requirements-v2.txt`;
 - installs the Playwright Chromium runtime unless `--no-browser` is supplied;
 - creates the secret-free environment template if needed;
+- generates/reuses a mode-600 VAPID private key outside the repository;
 - initializes the V2 schema;
 - registers the source catalog;
-- renders the dashboard and verified-backup systemd user units to the actual checkout path;
+- renders the dashboard, verified-backup and automatic-settlement systemd user units to the actual checkout path;
 - reloads user systemd.
 
 It does **not**:
@@ -118,7 +130,8 @@ The stage command performs the release-critical order:
 7. verify `http://127.0.0.1:8091/health`;
 8. verify `/api/v2/overview`;
 9. enable the V2 backup timer only after the required V2 acceptance gates succeed;
-10. write commit-pinned staging state.
+10. enable the automatic result-settlement heartbeat;
+11. write commit-pinned staging state.
 
 State/report locations:
 
@@ -136,6 +149,7 @@ Before touching OpenClaw identity/jobs or external routing:
 ```bash
 systemctl --user status sabi-boy-dashboard.service --no-pager
 systemctl --user status sabi-boy-backup.timer --no-pager
+systemctl --user status sabi-boy-settlement.timer --no-pager
 curl -fsS http://127.0.0.1:8091/health
 curl -fsS http://127.0.0.1:8091/api/v2/overview
 ```
@@ -236,6 +250,8 @@ At minimum validate:
 - `blog.triggers` plus reflection automation behavior;
 - Blog create/publish/display path;
 - dashboard desktop/mobile display against migrated data, including advanced History panels;
+- PWA installation/offline shell, drawer X/backdrop close behavior and opt-in push on a real HTTPS device;
+- automatic result heartbeat, audit idempotence, unsupported-market safety and one real push delivery;
 - backup timer and safe restore drill.
 
 Do not mark the release gate complete from mocked/unit behavior alone.

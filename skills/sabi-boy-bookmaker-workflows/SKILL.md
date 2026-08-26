@@ -67,8 +67,9 @@ Current rich-code creation truth:
 
 - SportyBet — V2 browser build playbook exists; runtime acceptance must still prove the live page.
 - Bet9ja — V2 browser build playbook exists; runtime acceptance must still prove the live page.
-- Stake — restoration/search may work, code creation not yet claimed.
-- 1xBet — regional restore/search/build flow still requires live verification before being claimed.
+
+Only these two bookmakers are active. Treat any other bookmaker as unsupported; do not
+offer restore, search, conversion or build workflows for it.
 
 Legacy `bookmaker.build.plan` / `bookmaker.build.execute` are compatibility paths only and must obey their declared sport/market limits.
 

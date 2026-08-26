@@ -37,7 +37,7 @@ Do not revive V1 architecture simply because it is already installed.
 5. **No external cutover at the beginning.** V2 runs on a separate loopback port first. The approved final replacement moves V2 to V1's existing `127.0.0.1:8090` target without editing Cloudflare routing.
 6. **No wager placement or spending.** Booking-code creation/rebuild tests may prepare reusable codes only. Do not press a final wager/place-bet action and do not spend account funds.
 7. **No access-control bypass.** Do not evade CAPTCHA, authentication, regional restrictions or anti-bot controls.
-8. **Do not fake bookmaker support.** Stake code creation and 1xBet restore/search/build remain unclaimed until a real accessible flow is verified.
+8. **Do not fake bookmaker support.** The active V2 runtime supports SportyBet and Bet9ja only; removed bookmaker targets must remain absent from capability, restore, search and build surfaces.
 9. **Do not guess bookmaker settlement policy.** Use current rule pages/browser evidence where `market.settlement.profile` says verification is required.
 10. **Dashboard remains read-only and about our data only.** Do not add general fixtures/scores/news/sports-site functionality during acceptance.
 11. **Do not weaken release gates to make them pass.** A red gate is a defect or environment finding to investigate.
@@ -505,14 +505,6 @@ Verify:
 
 Perform the same restore/search/build/reload/verify sequence where available.
 
-## Stake
-
-Verify restoration/search where the accessible region/account permits. Do **not** mark target reusable-code creation supported unless an actual current reusable-code creation flow is found and verified.
-
-## 1xBet
-
-Treat as discovery-only until the configured regional public site is verified. Inspect the current accessible flow and update capability status only with evidence. Do not copy selectors/workflows from another region and claim they work.
-
 After each real browser exercise, check:
 
 ```text
@@ -777,7 +769,7 @@ At the end of the installation/testing session, provide a concise but complete r
 - representative multi-sport research result;
 - persistent research-case result;
 - learned-source result;
-- SportyBet/Bet9ja/Stake/1xBet capability results **separately**;
+- SportyBet and Bet9ja capability results, plus evidence that removed bookmakers are absent from the active surface;
 - fresh multi-book comparison result;
 - end-to-end conversion/rebuild result;
 - settlement-profile and settlement-write results;

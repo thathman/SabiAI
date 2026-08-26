@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Sabi Boy result heartbeat every ten minutes
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=10m
+AccuracySec=30s
+RandomizedDelaySec=30s
+Persistent=true
+Unit=sabi-boy-settlement.service
+
+[Install]
+WantedBy=timers.target

@@ -71,7 +71,7 @@ Research source access is governed separately by the V2 `SourceService`: cache f
 - `bookmaker.build.plan` — turn a normalized target ticket into the structured payload expected by a proven bookmaker builder.
 - `bookmaker.build.execute` — execute only the allow-listed SportyBet/Bet9ja ticket-builder command from `SABIAI_REPO_ROOT`, capture its result and return the booking code when verified.
 
-The compatibility layer currently recognizes the existing SportyBet and Bet9ja browser builders as ticket-build/booking-code-create integrations. Stake and 1xBet remain known bookmakers but do not falsely advertise builder capabilities until a verified adapter exists.
+The active compatibility layer recognizes SportyBet and Bet9ja. Other bookmakers are not registered and cannot enter restore/search/build or current-price workflows without a deliberate future adapter change and evidence.
 
 ### Booking-code flow
 

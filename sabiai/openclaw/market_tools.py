@@ -105,10 +105,12 @@ class MarketTools:
         )
         return arbitrage_to_dict(result)
 
-    @staticmethod
-    def _quotes(rows, *, now: datetime) -> list[PriceQuote]:
+    def _quotes(self, rows, *, now: datetime) -> list[PriceQuote]:
         quotes = []
         for raw in rows:
+            bookmaker = self.app.bookmakers.resolve(str(raw["bookmaker"]))
+            if bookmaker is None:
+                raise ValueError(f"Unknown bookmaker: {raw['bookmaker']}")
             rule_data = raw.get("rules") or {}
             captured = raw.get("captured_at") or raw.get("observed_at")
             if captured:
@@ -123,7 +125,7 @@ class MarketTools:
                     market_key=str(raw["market_key"]),
                     selection_key=str(raw["selection_key"]),
                     selection_label=str(raw.get("selection_label") or raw["selection_key"]),
-                    bookmaker=str(raw["bookmaker"]),
+                    bookmaker=bookmaker.name,
                     odds=Decimal(str(raw["odds"])),
                     captured_at=captured_at,
                     rules=SettlementRules(

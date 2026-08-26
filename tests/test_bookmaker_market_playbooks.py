@@ -21,13 +21,10 @@ def test_verified_market_search_profiles_are_separate_from_code_restore_profiles
 
     sporty = profiles.market_search("sportybet")
     bet9ja = profiles.market_search("bet9ja")
-    stake = profiles.market_search("stake")
-    one_x = profiles.market_search("1xbet")
-
     assert sporty and sporty.ready and sporty.entry_url.endswith("/ng/lite")
     assert bet9ja and bet9ja.ready and bet9ja.entry_url == "https://sports.bet9ja.com/"
-    assert stake and stake.ready and "stake.com/sports/home" in stake.entry_url
-    assert one_x and one_x.ready is False and one_x.entry_url is None
+    assert profiles.market_search("stake") is None
+    assert profiles.market_search("1xbet") is None
 
 
 def test_openclaw_search_plan_includes_target_browser_playbook(tmp_path: Path):
@@ -56,7 +53,7 @@ def test_openclaw_search_plan_includes_target_browser_playbook(tmp_path: Path):
     assert result["data"]["browser_playbook"]["extraction_fields"]
 
 
-def test_unverified_1xbet_market_search_is_not_promoted_to_ready(tmp_path: Path):
+def test_removed_1xbet_market_search_is_rejected(tmp_path: Path):
     gateway = SabiToolGateway(_settings(tmp_path))
     result = gateway.dispatch(
         "bookmaker.search.plan",
@@ -75,6 +72,5 @@ def test_unverified_1xbet_market_search_is_not_promoted_to_ready(tmp_path: Path)
         },
     )
 
-    assert result["ok"] is True
-    assert result["data"]["browser_ready"] is False
-    assert result["data"]["browser_playbook"]["ready"] is False
+    assert result["ok"] is False
+    assert "Unknown target bookmaker" in result["error"]

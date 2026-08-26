@@ -189,7 +189,7 @@
 ## Phase 7 — Bookmakers
 
 - [x] Bookmaker adapter contract and capability flags
-- [x] Stable SportyBet / Bet9ja / Stake / 1xBet identities
+- [x] Stable SportyBet / Bet9ja identities; other bookmaker targets removed from the active registry and browser playbooks by owner direction
 - [x] Exact target-book search plan per ticket leg
 - [x] Multi-book exact-search planner
 - [x] Browser price-result normalization / wrong-book / duplicate / invalid-odds rejection
@@ -199,10 +199,8 @@
 - [x] Legacy builder sport/market/period safety gate
 - [x] Verified browser-restoration playbook: SportyBet
 - [x] Verified browser-restoration playbook: Bet9ja
-- [x] Verified browser-restoration playbook: Stake (region/account availability must be checked live)
 - [x] Verified market-search browser playbook: SportyBet
 - [x] Verified market-search browser playbook: Bet9ja
-- [x] Verified market-search browser playbook: Stake (region/account availability runtime check)
 - [x] Browser-restored slip verifier
 - [x] Restored-slip leg-count and combined-odds consistency checks
 - [x] Restored booking-code → draft persistence tool
@@ -213,8 +211,7 @@
 - [~] SportyBet legacy/rich booking-code creation — real browser revalidation required
 - [~] Bet9ja legacy/rich booking-code creation — real browser revalidation required
 - [~] Live event/market/odds extraction — playbooks/validation ready; controlled runtime acceptance pending
-- [!] 1xBet restore/search/build remains discovery-only until Work verifies the configured regional public flow; do not invent selectors or claim support before then
-- [!] Stake target booking-code creation remains unclaimed until Work confirms that a current reusable-code creation flow exists for the accessible region/account state
+- [x] Removed bookmaker names are rejected by resolve, health, restore, search, build, conversion and current-price comparison paths
 
 ## Phase 8 — Ticket Workshop
 
@@ -266,8 +263,6 @@
 - [x] Generated-code reload/structural verification tool
 - [x] Build-plan target inferred from converted draft with cross-book mismatch protection
 - [~] First real end-to-end SportyBet ↔ Bet9ja conversion/rebuild on Dell
-- [~] End-to-end Stake restoration/search/conversion where region permits
-- [!] End-to-end 1xBet conversion is live-dependent on verifying its current regional restore/search/build flow
 
 ## Phase 10 — Odds Comparison / Arbitrage
 
@@ -328,7 +323,7 @@
 ## Phase 13 — Read-Only Dashboard
 
 - [x] New standalone `dashboard/v2_app.py` instead of extending the V1 monolith
-- [x] GET-only `/api/v2/*`
+- [x] GET-only sports/history `/api/v2/*` surface, with a separate narrow origin-checked push subscribe/unsubscribe boundary
 - [x] Tests forbidding dashboard mutation methods
 - [x] No PIN/write token/localStorage write-key in V2 app
 - [x] Overview
@@ -344,7 +339,11 @@
 - [x] Ticket-killer view
 - [x] Advanced ticket-version comparison on History
 - [x] Recorded bookmaker price movement/disagreement on History
-- [~] Mobile/PWA/browser visual regression on Dell/real phone
+- [x] Installable PWA manifest with PNG/maskable icons and install affordance
+- [x] Service-worker offline application shell and update lifecycle
+- [x] Opt-in Web Push subscription/delivery path with private VAPID key outside the repository
+- [x] Mobile drawer X, backdrop click, Escape close and focus restoration
+- [~] Final PWA install/push/mobile visual regression on Dell/real phone
 - [~] Production history correctness after migration
 
 ## Phase 14 — Sabi Boy Blog
@@ -392,14 +391,16 @@
 - [x] External finalizer requires green OpenClaw activation and the exact staged commit
 - [x] Explicit rollback helper
 - [x] Deployment/upgrade runbook
+- [x] Fixed ten-minute automatic-result systemd heartbeat service/timer
+- [x] Runtime preparation generates VAPID keys outside the repository and installs the settlement timer
 - [~] Backup timer/job/browser-health behavior must be observed on the real Dell runtime
 - [~] Security review on actual Dell/OpenClaw deployment
 
 ## Phase 16 — Installation / Test / Release Gate
 
-**Repository development is frozen. Do not promote `v2` to `main` until the applicable runtime gates below pass.**
+**The requested V2.1 repository changes are now frozen for controlled Dell acceptance. Do not promote `v2` to `main` until the applicable runtime gates below pass.**
 
-- [x] Full current pytest suite passes on controlled Dell/runtime
+- [~] Full current V2.1 pytest suite — 234 pass locally; Dell/runtime rerun pending
 - [x] V1 database snapshot taken and verified
 - [x] V1 → V2 migration rehearsal on actual data passes
 - [x] Historical pick/ticket totals reconcile
@@ -413,7 +414,6 @@
 - [x] Multi-sport research acceptance across representative sports
 - [~] SportyBet browser restoration acceptance — restore UI, invalid-code rejection, search and selection were proven; a valid reusable code was unavailable
 - [x] Bet9ja browser restoration acceptance
-- [!] Stake browser restoration acceptance where region allows — regional browser reached Cloudflare verification and no access-control bypass was attempted
 - [!] SportyBet rich booking-code build/reload verification acceptance — a real code could not be created or extracted
 - [x] Bet9ja rich booking-number build/reload verification acceptance
 - [x] At least one real end-to-end bookmaker conversion/rebuild pair passes
@@ -427,6 +427,9 @@
 - [x] Event-driven `blog.triggers` behavior acceptance
 - [x] Job success/failure/retry/readiness behavior acceptance
 - [x] Settlement duplicate/correction acceptance
+- [x] Automatic result heartbeat settles supported score-derived picks/ticket legs idempotently and audits every change
+- [x] Automatic settlement leaves unsupported props/rule-sensitive cases pending and never infers payouts
+- [~] PWA install/offline/push acceptance — repository tests pass; Dell HTTPS install and a real-device push delivery remain to be proven
 - [x] Backup timer + backup/restore drill passes on Dell
 - [x] External route/cutover rehearsal documented
 - [x] Security/secrets review
@@ -445,7 +448,8 @@
 - Migration/reconciliation: source and V2 both contained zero picks/tickets after the intentional V1 reset; the bankroll reconciled exactly at ₦30,000 with no migration warnings. The separate pre-reset private archive was reviewed for historical strategy/compound/long-shot records.
 - Active runtime: the existing OpenClaw agent ID is `prediction`, with name/identity Sabi Boy, seven required current-format skills, 131 V2 tools, five preserved bindings and READY status.
 - Live research: one case resumed across independent OpenClaw sessions; an official FIVB source was verified and reused without rediscovery; football, basketball, tennis and volleyball examples passed.
-- Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet valid-code creation/reload remains unproven; Stake was access-blocked; 1xBet remains discovery-only.
+- Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet valid-code creation/reload remains unproven. By later owner direction, all other bookmaker targets were removed from the active registry/playbooks.
+- V2.1 repository validation: 234 tests pass locally, including PWA manifest/service worker/push-origin controls, secure VAPID key generation, removed-bookmaker rejection, automatic result settlement, audit idempotence and fixed-timer installation. Dell runtime evidence is still required for the new V2.1 gates.
 - Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Exact current bookmaker-specific policy values remain live-verification data.
 - Dashboard: all read-only routes passed; desktop and mobile layouts were accepted; Advanced History displayed the real 1.70/1.72 bookmaker observations.
 - Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed; the enabled backup timer created an integrity-checked backup and a temporary restore passed.

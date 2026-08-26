@@ -1,6 +1,7 @@
 fastapi>=0.110,<1
 uvicorn>=0.29,<1
 playwright>=1.40,<2
+pywebpush>=2,<3
 
 # Local development / acceptance testing
 pytest>=8,<10

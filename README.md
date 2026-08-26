@@ -126,8 +126,6 @@ Canonical bookmaker identities include:
 
 - SportyBet
 - Bet9ja
-- Stake
-- 1xBet
 
 Capability reporting is conservative: recognizing a bookmaker is not the same as having a proven importer/builder for every market.
 
@@ -135,8 +133,6 @@ Current V2 includes:
 
 - booking-code import plans;
 - verified browser-restoration playbooks for SportyBet and Bet9ja;
-- Stake bet-code/shared-bet browser playbook with live region/account verification required;
-- 1xBet discovery-only until its current public restoration flow is verified;
 - browser-restored slip validation;
 - exact target-bookmaker search plans;
 - exact conversion verification;
@@ -156,6 +152,14 @@ V2 has one canonical settlement/history path with:
 - duplicate payout protection;
 - bankroll reconciliation;
 - settlement backlog monitoring.
+- a fixed ten-minute free-result heartbeat for deterministic score-derived markets;
+- audited, idempotent automatic pick/ticket-leg outcomes without inferred payouts;
+- Web Push notifications when automatic settlement changes recorded outcomes.
+
+The V2 dashboard is an installable PWA with 192/512 and maskable icons, a service worker,
+offline shell, install controls, mobile drawer close/backdrop controls and opt-in Web Push.
+Sports/history data remains read-only; only the narrow push subscribe/unsubscribe endpoints
+accept browser writes.
 
 ### Sabi Boy Blog
 

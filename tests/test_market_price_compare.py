@@ -44,8 +44,7 @@ def test_market_compare_returns_best_decimal_price(tmp_path: Path):
         {
             "quotes": [
                 _quote("SportyBet", "1.82", now),
-                _quote("Bet9ja", "1.78", now),
-                _quote("Stake", "1.86", now),
+                _quote("Bet9ja", "1.86", now),
             ],
             "max_age_seconds": 180,
         },
@@ -54,9 +53,9 @@ def test_market_compare_returns_best_decimal_price(tmp_path: Path):
     assert result["ok"] is True
     row = result["data"]["selections"][0]
     assert row["selection"] == "Over 2.5 goals"
-    assert row["best_bookmaker"] == "Stake"
+    assert row["best_bookmaker"] == "Bet9ja"
     assert row["best_odds"] == "1.86"
-    assert [price["bookmaker"] for price in row["prices"]] == ["Stake", "SportyBet", "Bet9ja"]
+    assert [price["bookmaker"] for price in row["prices"]] == ["Bet9ja", "SportyBet"]
 
 
 def test_market_compare_rejects_stale_and_incompatible_rules(tmp_path: Path):
@@ -70,7 +69,7 @@ def test_market_compare_rejects_stale_and_incompatible_rules(tmp_path: Path):
             "quotes": [
                 _quote("SportyBet", "1.82", fresh),
                 _quote("Bet9ja", "1.90", stale),
-                _quote("Stake", "1.95", fresh, overtime=True),
+                _quote("Bet9ja", "1.95", fresh, overtime=True),
             ],
             "max_age_seconds": 180,
         },
@@ -105,5 +104,14 @@ def test_bookmaker_compare_plan_covers_multiple_books_without_claiming_unverifie
     plans = {row["slug"]: row for row in result["data"]["plans"]}
     assert plans["sportybet"]["browser_ready"] is True
     assert plans["bet9ja"]["browser_ready"] is True
-    assert plans["stake"]["browser_ready"] is True
-    assert plans["1xbet"]["browser_ready"] is False
+    assert result["data"]["unknown_bookmakers"] == ["Stake", "1xBet"]
+
+
+def test_market_compare_rejects_removed_bookmakers(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    result = gateway.dispatch(
+        "market.compare",
+        {"quotes": [_quote("Stake", "1.82", datetime.now(timezone.utc).isoformat())]},
+    )
+    assert result["ok"] is False
+    assert "Unknown bookmaker: Stake" in result["error"]

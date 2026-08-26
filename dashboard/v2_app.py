@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from sabiai.dashboard import create_v2_dashboard_router
+from sabiai.dashboard import create_push_router, create_v2_dashboard_router
 
 ASSET_DIR = Path(__file__).with_name("v2")
 
@@ -34,6 +34,7 @@ allowed_hosts = [
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.include_router(create_v2_dashboard_router())
+app.include_router(create_push_router())
 
 
 @app.middleware("http")
@@ -52,7 +53,7 @@ async def dashboard_security_headers(request: Request, call_next):
         "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; "
         "frame-ancestors 'none'; form-action 'none'",
     )
-    if request.url.path.startswith("/api/v2") or request.url.path == "/health":
+    if request.url.path.startswith("/api/v2") or request.url.path in {"/health", "/sw.js"}:
         response.headers.setdefault("Cache-Control", "no-store")
     return response
 
@@ -65,17 +66,29 @@ def health():
 @app.get("/manifest.json")
 def manifest():
     return {
+        "id": "/",
         "name": "Sabi Boy",
         "short_name": "Sabi Boy",
         "description": "Our sports intelligence history, performance and journal.",
-        "start_url": "/",
+        "start_url": "/?source=pwa",
         "scope": "/",
         "display": "standalone",
+        "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
         "orientation": "portrait-primary",
         "background_color": "#0b0b0d",
         "theme_color": "#111216",
         "categories": ["sports", "finance"],
-        "icons": [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}],
+        "icons": [
+            {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "/assets/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+            {"src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+        "shortcuts": [
+            {"name": "Games and picks", "short_name": "Picks", "url": "/picks", "icons": [{"src": "/assets/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Tickets", "short_name": "Tickets", "url": "/tickets", "icons": [{"src": "/assets/icon-192.png", "sizes": "192x192"}]},
+            {"name": "System health", "short_name": "System", "url": "/system", "icons": [{"src": "/assets/icon-192.png", "sizes": "192x192"}]},
+        ],
     }
 
 
@@ -89,6 +102,18 @@ def icon():
     return Response(svg, media_type="image/svg+xml")
 
 
+@app.get("/sw.js")
+def service_worker():
+    path = ASSET_DIR / "sw.js"
+    if not path.is_file():
+        return Response(status_code=404)
+    return FileResponse(
+        path,
+        media_type="text/javascript; charset=utf-8",
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
+    )
+
+
 @app.get("/assets/{name}")
 def asset(name: str):
     safe = Path(name).name
@@ -99,6 +124,7 @@ def asset(name: str):
         ".css": "text/css; charset=utf-8",
         ".js": "text/javascript; charset=utf-8",
         ".svg": "image/svg+xml",
+        ".png": "image/png",
     }.get(path.suffix.lower(), "application/octet-stream")
     return FileResponse(path, media_type=media)
 

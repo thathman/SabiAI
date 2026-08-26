@@ -7,7 +7,14 @@
   const readinessChip = document.getElementById('readiness-chip');
   const refreshButton = document.getElementById('refresh-button');
   const menuButton = document.getElementById('menu-button');
+  const menuClose = document.getElementById('menu-close');
+  const navBackdrop = document.getElementById('nav-backdrop');
+  const installButton = document.getElementById('install-button');
+  const notificationButton = document.getElementById('notification-button');
+  const networkStatus = document.getElementById('network-status');
   const toast = document.getElementById('toast');
+  let installPrompt = null;
+  let pushConfig = null;
 
   const cache = new Map();
   const routes = {
@@ -67,6 +74,125 @@
     toast.textContent = message;
     toast.classList.add('show');
     window.setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  function closeMenu({restoreFocus = false} = {}) {
+    document.body.classList.remove('nav-open');
+    menuButton.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) menuButton.focus();
+  }
+
+  function openMenu() {
+    document.body.classList.add('nav-open');
+    menuButton.setAttribute('aria-expanded', 'true');
+    menuClose.focus();
+  }
+
+  function urlBase64ToUint8Array(value) {
+    const padding = '='.repeat((4 - (value.length % 4)) % 4);
+    const base64 = (value + padding).replaceAll('-', '+').replaceAll('_', '/');
+    const raw = window.atob(base64);
+    return Uint8Array.from([...raw].map(char => char.charCodeAt(0)));
+  }
+
+  function setNotificationButton(enabled, available = true) {
+    notificationButton.textContent = enabled ? '●' : '♢';
+    notificationButton.title = available
+      ? (enabled ? 'Disable result notifications' : 'Enable result notifications')
+      : 'Push notifications are not configured';
+    notificationButton.setAttribute('aria-label', notificationButton.title);
+    notificationButton.disabled = !available;
+  }
+
+  async function pushRegistration() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return null;
+    return navigator.serviceWorker.ready;
+  }
+
+  async function refreshPushState() {
+    try {
+      const response = await fetch('/api/v2/push/config', {headers: {'Accept':'application/json'}, cache:'no-store'});
+      if (!response.ok) throw new Error('Push configuration unavailable');
+      pushConfig = await response.json();
+      const registration = await pushRegistration();
+      if (!pushConfig.available || !registration) {
+        setNotificationButton(false, false);
+        return;
+      }
+      const subscription = await registration.pushManager.getSubscription();
+      setNotificationButton(Boolean(subscription));
+    } catch (_) {
+      setNotificationButton(false, false);
+    }
+  }
+
+  async function toggleNotifications() {
+    const registration = await pushRegistration();
+    if (!registration || !pushConfig?.available) {
+      showToast('Push notifications are unavailable on this device.');
+      return;
+    }
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) {
+      const response = await fetch('/api/v2/push/subscriptions', {
+        method: 'DELETE',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({endpoint: existing.endpoint}),
+      });
+      if (!response.ok) throw new Error('The notification subscription could not be removed.');
+      await existing.unsubscribe();
+      setNotificationButton(false);
+      showToast('Result notifications disabled');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('Notification permission was not granted.');
+      return;
+    }
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(pushConfig.public_key),
+    });
+    const payload = subscription.toJSON();
+    const response = await fetch('/api/v2/push/subscriptions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({endpoint: payload.endpoint, keys: payload.keys}),
+    });
+    if (!response.ok) {
+      await subscription.unsubscribe();
+      throw new Error('The subscription could not be saved.');
+    }
+    setNotificationButton(true);
+    await registration.showNotification('Sabi Boy notifications are on', {
+      body: 'Automatic settlement updates can now reach this device.',
+      icon: '/assets/icon-192.png',
+      tag: 'sabi-boy-push-enabled',
+    });
+  }
+
+  async function registerPwa() {
+    if (!('serviceWorker' in navigator)) {
+      installButton.hidden = true;
+      setNotificationButton(false, false);
+      return;
+    }
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {scope:'/'});
+      registration.addEventListener('updatefound', () => {
+        if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
+      });
+      await refreshPushState();
+    } catch (error) {
+      console.error(error);
+      setNotificationButton(false, false);
+    }
+  }
+
+  function updateNetworkStatus() {
+    networkStatus.textContent = navigator.onLine ? '' : 'Offline';
+    if (navigator.onLine) clearCache();
   }
 
   function empty(titleText, detail = 'There is no recorded data for this view yet.') {
@@ -425,7 +551,7 @@
 
   function navigate(path) {
     history.pushState({}, '', path);
-    document.body.classList.remove('nav-open');
+    closeMenu();
     render();
     window.scrollTo({top:0, behavior:'instant'});
   }
@@ -439,10 +565,35 @@
     if (post) { navigate(`/blog/${encodeURIComponent(post.dataset.blogSlug)}`); }
   });
 
-  menuButton.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+  menuButton.setAttribute('aria-expanded', 'false');
+  menuButton.addEventListener('click', () => document.body.classList.contains('nav-open') ? closeMenu() : openMenu());
+  menuClose.addEventListener('click', () => closeMenu({restoreFocus:true}));
+  navBackdrop.addEventListener('click', () => closeMenu({restoreFocus:true}));
+  notificationButton.addEventListener('click', () => toggleNotifications().catch(error => showToast(error.message || 'Notifications could not be changed.')));
+  installButton.addEventListener('click', async () => {
+    if (installPrompt) {
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      installButton.hidden = true;
+    } else {
+      showToast('Use your browser menu and choose Add to Home Screen.');
+    }
+  });
   refreshButton.addEventListener('click', async () => { refreshButton.textContent = '…'; await render(true); refreshButton.textContent = '↻'; showToast('Refreshed'); });
   window.addEventListener('popstate', () => render());
-  window.addEventListener('keydown', e => { if (e.key === 'Escape') document.body.classList.remove('nav-open'); });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu({restoreFocus:true}); });
+  window.addEventListener('online', updateNetworkStatus);
+  window.addEventListener('offline', updateNetworkStatus);
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installPrompt = event;
+    installButton.hidden = false;
+  });
+  window.addEventListener('appinstalled', () => { installButton.hidden = true; showToast('Sabi Boy installed'); });
 
+  if (window.matchMedia('(display-mode: standalone)').matches) installButton.hidden = true;
+  updateNetworkStatus();
+  registerPwa();
   render();
 })();

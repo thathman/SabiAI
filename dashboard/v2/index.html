@@ -8,6 +8,7 @@
   <meta name="description" content="Sabi Boy — our sports intelligence history, performance and journal.">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
   <link rel="stylesheet" href="/assets/app.css">
   <title>Sabi Boy</title>
 </head>
@@ -20,6 +21,7 @@
           <strong>Sabi Boy</strong>
           <span>Our record</span>
         </div>
+        <button id="menu-close" class="menu-close" type="button" aria-label="Close navigation">×</button>
       </div>
 
       <nav class="nav" aria-label="Main navigation">
@@ -40,6 +42,8 @@
       </div>
     </aside>
 
+    <button id="nav-backdrop" class="nav-backdrop" type="button" aria-label="Close navigation" tabindex="-1"></button>
+
     <div class="workspace">
       <header class="topbar">
         <button id="menu-button" class="icon-button menu-button" aria-label="Open navigation">☰</button>
@@ -48,7 +52,10 @@
           <h1 id="page-title">Overview</h1>
         </div>
         <div class="topbar-actions">
+          <span id="network-status" class="network-status" aria-live="polite"></span>
           <div id="readiness-chip" class="status-chip loading"><span></span><b>Checking</b></div>
+          <button id="notification-button" class="icon-button" title="Enable result notifications" aria-label="Enable result notifications">♢</button>
+          <button id="install-button" class="icon-button" title="Install Sabi Boy" aria-label="Install Sabi Boy">↓</button>
           <button id="refresh-button" class="icon-button" title="Refresh data" aria-label="Refresh data">↻</button>
         </div>
       </header>

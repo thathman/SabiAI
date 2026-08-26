@@ -54,7 +54,7 @@ def test_multibook_compare_uses_best_exact_market_not_highest_wrong_line(tmp_pat
                     ],
                 },
                 {
-                    "bookmaker": "Stake",
+                    "bookmaker": "Bet9ja",
                     "offers": [
                         {
                             "event": "Arsenal vs Chelsea",
@@ -86,7 +86,7 @@ def test_multibook_compare_uses_best_exact_market_not_highest_wrong_line(tmp_pat
     assert data["priced_legs"] == 1
     leg = data["legs"][0]
     assert leg["best"] == {
-        "bookmaker": "stake",
+        "bookmaker": "bet9ja",
         "odds": "1.90",
         "event": "Arsenal vs Chelsea",
         "selection": "Over 2.5 goals",

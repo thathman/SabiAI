@@ -72,8 +72,8 @@ def test_restored_slip_blocks_incomplete_leg_extraction():
 
 def test_restored_slip_warns_when_displayed_total_does_not_match_legs():
     result = service().normalize(
-        bookmaker="Stake",
-        booking_code="STAKE1",
+        bookmaker="Bet9ja",
+        booking_code="BET9JA1",
         payload={
             "combined_odds": "4.00",
             "legs": [

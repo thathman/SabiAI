@@ -144,8 +144,6 @@ Canonical V2 bookmaker identities currently include:
 
 - SportyBet
 - Bet9ja
-- 1xBet
-- Stake
 
 Existing V1 browser scripts demonstrate some SportyBet/Bet9ja ticket-build/booking-code behavior. Treat these as compatibility implementations until the V2 adapter verifies capability end-to-end.
 

@@ -20,6 +20,17 @@ class Settings:
     paid_sources_enabled: bool
     football_data_token: str | None = None
     thesportsdb_key: str = "123"
+    vapid_public_key: str | None = None
+    vapid_private_key_file: Path | None = None
+    vapid_subject: str = "https://picks.hendrix.com.ng"
+    dashboard_allowed_origins: tuple[str, ...] = (
+        "https://picks.hendrix.com.ng",
+        "http://127.0.0.1:8090",
+        "http://127.0.0.1:8091",
+        "http://localhost:8090",
+        "http://localhost:8091",
+        "http://testserver",
+    )
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -31,6 +42,16 @@ class Settings:
         ).expanduser()
         football_data_token = os.getenv("FOOTBALL_DATA_API_TOKEN") or os.getenv(
             "SABIAI_FOOTBALL_DATA_TOKEN"
+        )
+        private_key = os.getenv("SABIAI_VAPID_PRIVATE_KEY_FILE")
+        origins = tuple(
+            origin.strip().rstrip("/")
+            for origin in os.getenv(
+                "SABIAI_DASHBOARD_ALLOWED_ORIGINS",
+                "https://picks.hendrix.com.ng,http://127.0.0.1:8090,http://127.0.0.1:8091,"
+                "http://localhost:8090,http://localhost:8091,http://testserver",
+            ).split(",")
+            if origin.strip()
         )
         return cls(
             repo_root=repo_root,
@@ -48,6 +69,15 @@ class Settings:
             if football_data_token and football_data_token.strip()
             else None,
             thesportsdb_key=os.getenv("SABIAI_THESPORTSDB_KEY", "123").strip() or "123",
+            vapid_public_key=(os.getenv("SABIAI_VAPID_PUBLIC_KEY") or "").strip() or None,
+            vapid_private_key_file=Path(private_key).expanduser()
+            if private_key and private_key.strip()
+            else None,
+            vapid_subject=os.getenv(
+                "SABIAI_VAPID_SUBJECT", "https://picks.hendrix.com.ng"
+            ).strip()
+            or "https://picks.hendrix.com.ng",
+            dashboard_allowed_origins=origins,
         )
 
 

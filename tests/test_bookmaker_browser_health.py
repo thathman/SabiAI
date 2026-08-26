@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from sabiai.bookmakers import BookmakerBrowserHealthService
 from sabiai.storage import OfferObservationStore, SabiDatabase
 
@@ -30,14 +32,11 @@ def test_browser_health_distinguishes_configured_from_recently_exercised(tmp_pat
     assert after.state == "recently_exercised"
 
 
-def test_unverified_bookmaker_does_not_claim_build_health(tmp_path: Path):
+def test_removed_bookmaker_has_no_health_surface(tmp_path: Path):
     db = SabiDatabase(tmp_path / "v2.db")
     db.initialize()
-    health = BookmakerBrowserHealthService(db).one(
-        "1xBet",
-        now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
-    )
-    assert health.code_build_configured is False
-    assert health.restoration_configured is False
-    assert health.market_search_configured is False
-    assert health.state == "unverified"
+    with pytest.raises(ValueError, match="Unknown bookmaker"):
+        BookmakerBrowserHealthService(db).one(
+            "1xBet",
+            now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
+        )

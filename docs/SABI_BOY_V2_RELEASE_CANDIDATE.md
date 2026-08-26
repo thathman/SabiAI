@@ -3,7 +3,7 @@
 **Branch:** `v2`
 **Human-facing product:** Sabi Boy
 **OpenClaw agent ID:** `prediction`
-**Candidate status:** Installed on the Dell as the V1 replacement; core acceptance is green, with remaining live bookmaker gates recorded in Phase 16.
+**Candidate status:** V2.1 changes are locally green and await controlled Dell installation/acceptance on top of the installed V2 replacement.
 **Promotion status:** **Do not merge to `main` yet.**
 
 This document describes the installed V2 candidate and its release boundary. It is operational as Sabi Boy, but it is not a claim that every final-release gate has passed.
@@ -77,7 +77,7 @@ Exact bookmaker policy values are not guessed. They remain live-verification dat
 
 ### Bookmakers
 
-- stable SportyBet, Bet9ja, Stake and 1xBet identities;
+- stable SportyBet and Bet9ja identities; removed bookmaker targets are rejected by active workflows;
 - exact event/market/line/period search plans;
 - multi-book fresh-price comparison;
 - strict conversion validation;
@@ -91,8 +91,6 @@ Exact bookmaker policy values are not guessed. They remain live-verification dat
 **Live-dependent boundaries:**
 
 - SportyBet and Bet9ja build/restore/search must still be proven against the current live pages.
-- Stake reusable booking-code creation is not claimed until a current accessible flow is verified.
-- 1xBet restore/search/build remains discovery-only until the configured regional public flow is verified.
 - No browser workflow may bypass CAPTCHA, authentication or access controls.
 - Booking-code creation is not wager placement. Runtime testing must not spend money or place a wager.
 
@@ -113,6 +111,11 @@ Read-only history includes:
 
 The History UI now shows the advanced parent→child and bookmaker-price read models while preserving the read-only boundary.
 
+The dashboard is also an installable PWA with PNG/maskable icons, an offline application
+shell, update/install lifecycle, a closeable mobile drawer and opt-in Web Push. Historical
+sports/finance routes remain read-only; only the isolated push subscription boundary accepts
+origin-checked subscribe/unsubscribe requests.
+
 ### Sabi Boy Blog
 
 - draft/publish/archive;
@@ -128,6 +131,9 @@ RSS/Atom is deliberately deferred because it is not required for V2 acceptance a
 - READY / DEGRADED / OBSERVE ONLY / ACTION LOCKED states;
 - source/API-economy health;
 - settlement backlog checks;
+- fixed ten-minute free-result heartbeat with audited, idempotent automatic settlement for supported score-derived markets;
+- unsupported markets and payouts remain manual rather than being guessed;
+- push notification delivery for material automatic settlement changes;
 - durable job start/success/failure/consecutive-failure bookkeeping;
 - verified SQLite backup/checksum/restore;
 - daily systemd user backup timer with conservative retention;
@@ -148,6 +154,7 @@ The V2 initialization applies the base schema and repository migrations in order
 - `0005_bookmaker_offer_observations.sql`
 - `0006_research_cases.sql`
 - `0007_source_discoveries.sql`
+- `0008_pwa_and_result_heartbeat.sql`
 
 Do not manually edit migration history during installation. A migration/reconciliation discrepancy is a release blocker and should be fixed in code with a regression test.
 
@@ -171,7 +178,7 @@ The human-facing identity is Sabi Boy. The existing machine identity remains `pr
 
 A broad regression suite is committed for the V2 code, including migration, source service/coalescing, learned sources, persistent research cases, market language, settlement profiles, ticket candidates, bookmaker conversion/build verification, advanced analytics, Blog triggers, job tracking, dashboard read-only behavior and OpenClaw acceptance parsing/tool requirements.
 
-**The full current suite is green on the Dell: 226 passed with one known Starlette deprecation warning.** The authoritative exact tested commit is recorded in the latest staging and OpenClaw activation reports. Passing tests alone does not waive unresolved live-browser or policy-verification gates.
+**The installed pre-V2.1 suite was green on the Dell: 226 passed. The V2.1 repository suite is locally green: 234 passed with one known Starlette deprecation warning.** The exact V2.1 commit and Dell rerun must be recorded after installation. Passing tests alone does not waive unresolved live-browser, real-device PWA/push or policy-verification gates.
 
 ## Runtime acceptance and remaining promotion gates
 
@@ -180,7 +187,7 @@ The authoritative evidence and pass/partial/blocker state is Phase 16 in `docs/S
 The remaining final-release gates are:
 
 - a real reusable SportyBet booking-code creation/reload round trip;
-- Stake restoration only if the regional flow becomes accessible without bypassing verification or access controls;
+- real-device PWA installation and one end-to-end Web Push delivery from the Dell result heartbeat;
 - final current bookmaker-policy evidence for the variable tennis/racquet, golf/field and overtime rules;
 - a final live multi-worker Research Scout/Skeptic/Ticket Engineer fan-out;
 - owner review or explicit waiver of the partial Blog migration condition caused by the reset V1 source containing no diary post.
