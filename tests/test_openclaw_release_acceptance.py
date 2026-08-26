@@ -8,12 +8,12 @@ from scripts import sabi_v2_openclaw_acceptance as acceptance
 def test_find_agent_supports_list_and_envelope_shapes():
     direct = [
         {"id": "main", "workspace": "/tmp/main"},
-        {"id": "sabi-ai", "workspace": "/tmp/sabi"},
+        {"id": "prediction", "workspace": "/tmp/sabi"},
     ]
     wrapped = {"agents": direct}
 
-    assert acceptance._find_agent(direct, "sabi-ai")["workspace"] == "/tmp/sabi"
-    assert acceptance._find_agent(wrapped, "sabi-ai")["workspace"] == "/tmp/sabi"
+    assert acceptance._find_agent(direct, "prediction")["workspace"] == "/tmp/sabi"
+    assert acceptance._find_agent(wrapped, "prediction")["workspace"] == "/tmp/sabi"
     assert acceptance._find_agent(wrapped, "missing") is None
 
 

@@ -100,7 +100,7 @@ def main() -> int:
 
     load_env(Path(args.env_file).expanduser())
     binary = os.environ.get("OPENCLAW_BIN", "openclaw")
-    agent_id = os.environ.get("SABIAI_OPENCLAW_AGENT_ID", "sabi-ai").strip() or "sabi-ai"
+    agent_id = os.environ.get("SABIAI_OPENCLAW_AGENT_ID", "prediction").strip() or "prediction"
     expected = Path(os.environ.get("SABIAI_REPO_ROOT", str(ROOT))).expanduser().resolve()
     actual = ROOT.resolve()
 

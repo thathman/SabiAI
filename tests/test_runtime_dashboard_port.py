@@ -57,3 +57,19 @@ def test_openclaw_bootstrap_targets_prediction_v2_runtime():
     assert "AI_AGENT=prediction" in tools
     assert "AI_AGENT=prediction" in agents
     assert "machine agent ID:** `prediction`" in identity
+
+
+def test_runtime_defaults_target_existing_prediction_agent_and_workspace():
+    environment = (ROOT / "config" / "sabi-boy.env.example").read_text(encoding="utf-8")
+    activation = (ROOT / "scripts" / "sabi_v2_activate_openclaw.sh").read_text(
+        encoding="utf-8"
+    )
+    installer = (ROOT / "scripts" / "sabi_v2_install_openclaw_automations.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "SABIAI_REPO_ROOT=/home/hendrix/.openclaw/workspace-prediction" in environment
+    assert "SABIAI_DATA_DIR=/home/hendrix/.openclaw/workspace-prediction/data" in environment
+    assert "SABIAI_OPENCLAW_AGENT_ID=prediction" in environment
+    assert 'SABIAI_OPENCLAW_AGENT_ID:-prediction' in activation
+    assert 'SABIAI_OPENCLAW_AGENT_ID:-prediction' in installer

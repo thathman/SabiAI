@@ -13,7 +13,7 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 OPENCLAW_BIN="${OPENCLAW_BIN:-openclaw}"
-AGENT_ID="${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}"
+AGENT_ID="${SABIAI_OPENCLAW_AGENT_ID:-prediction}"
 TZ_NAME="${SABIAI_TIMEZONE:-Africa/Lagos}"
 GATEWAY_ENV_FILE="${OPENCLAW_GATEWAY_ENV_FILE:-$HOME/.openclaw/env/openclaw.env}"
 
