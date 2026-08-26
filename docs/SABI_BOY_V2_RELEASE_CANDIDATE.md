@@ -171,7 +171,7 @@ The human-facing identity is Sabi Boy. The existing machine identity remains `pr
 
 A broad regression suite is committed for the V2 code, including migration, source service/coalescing, learned sources, persistent research cases, market language, settlement profiles, ticket candidates, bookmaker conversion/build verification, advanced analytics, Blog triggers, job tracking, dashboard read-only behavior and OpenClaw acceptance parsing/tool requirements.
 
-**The full current suite is green on the Dell: 225 passed with one known Starlette deprecation warning.** The authoritative exact tested commit is recorded in the latest staging and OpenClaw activation reports. Passing tests alone does not waive unresolved live-browser or policy-verification gates.
+**The full current suite is green on the Dell: 226 passed with one known Starlette deprecation warning.** The authoritative exact tested commit is recorded in the latest staging and OpenClaw activation reports. Passing tests alone does not waive unresolved live-browser or policy-verification gates.
 
 ## Runtime acceptance and remaining promotion gates
 

@@ -440,7 +440,7 @@
 ### Phase 16 Dell evidence — 2026-08-26
 
 - The final exact commit is recorded in `data/release/staging-latest.json` and `data/release/openclaw-activation-latest.json`; the same commit must be green in the stage, activation and external finalizer reports.
-- Full Dell suite: 225 passed with one known Starlette deprecation warning.
+- Full Dell suite: 226 passed with one known Starlette deprecation warning.
 - Verified private recovery archives: `~/sabi-boy-migration-archives/20260826T071240Z/v1-prediction-workspace.tar.gz` and `v1-repository-and-service.tar.gz`; both gzip checks and recorded SHA-256 checksums passed.
 - Migration/reconciliation: source and V2 both contained zero picks/tickets after the intentional V1 reset; the bankroll reconciled exactly at ₦30,000 with no migration warnings. The separate pre-reset private archive was reviewed for historical strategy/compound/long-shot records.
 - Active runtime: the existing OpenClaw agent ID is `prediction`, with name/identity Sabi Boy, seven required current-format skills, 131 V2 tools, five preserved bindings and READY status.
@@ -451,6 +451,7 @@
 - Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed; the enabled backup timer created an integrity-checked backup and a temporary restore passed.
 - Security: loopback-only application binding, disabled API docs, host validation, security headers, private file permissions, secret scan and installed-package audit passed. The external Cloudflare route was not reconfigured.
 - V1 service and active V1 working copies were removed only after archive verification. The V2 service now owns the original port and external route; `main` remains unmerged.
+- The cutover finalizer accepts an already inactive/removed V1 systemd unit as the required stopped state; regression coverage prevents the final report from failing after deliberate V1 removal.
 - Release blocker status: **NOT READY** until the deliberately incomplete live gates above are either passed or explicitly waived by the owner.
 
 ---
