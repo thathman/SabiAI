@@ -5,13 +5,13 @@ Use this document as the execution brief when switching to ChatGPT Work.
 **Repository:** `thathman/SabiAI`  
 **Branch:** `v2`  
 **Product:** Sabi Boy  
-**OpenClaw compatibility agent ID:** `sabi-ai`  
+**OpenClaw agent ID:** `prediction`
 **Phase:** Installation + controlled runtime acceptance  
 **Do not merge `v2` to `main` during this phase unless every applicable Phase 16 gate is green and the release step is explicitly included.**
 
 ## Mission
 
-Install the completed Sabi Boy V2 candidate on the Dell, preserve the working V1 system, run the full test suite, rehearse and verify the real V1 → V2 migration, activate the V2 OpenClaw agent safely, exercise the real multi-sport/Ticket Workshop/bookmaker workflows, verify the read-only dashboard and operational safeguards, fix any defects found on `v2`, and leave a complete evidence-backed acceptance report.
+Install the completed Sabi Boy V2 candidate on the Dell, preserve and verify V1 data while migration is tested, run the full test suite, rehearse and verify the real V1 → V2 migration, activate the existing `prediction` OpenClaw agent as human-facing Sabi Boy, exercise the real multi-sport/Ticket Workshop/bookmaker workflows, verify the read-only dashboard and operational safeguards, fix any defects found on `v2`, and leave a complete evidence-backed acceptance report. The approved endpoint for this Dell is an in-place replacement: no active V1 service or checkout remains after V2 is verified, while private recovery archives are retained.
 
 This is not a redesign task. Treat these as binding:
 
@@ -30,11 +30,11 @@ Do not revive V1 architecture simply because it is already installed.
 
 ## Non-negotiable safety / release rules
 
-1. **Preserve V1.** Do not modify or delete the V1 DB during preparation/migration rehearsal.
+1. **Preserve V1 data during validation.** Do not modify or delete the V1 DB during preparation/migration rehearsal. After all required replacement checks pass, remove the active V1 service/checkouts but retain verified private recovery archives.
 2. **No destructive Git recovery.** Never force-reset or discard unknown local changes. Inspect and preserve them.
 3. **No GitHub Actions.** Tests run locally on the Dell.
 4. **Forgejo/local-first development discipline.** Any fixes discovered during testing stay on `v2`, are tested locally, and follow the project's local/Forgejo-first workflow before GitHub release promotion.
-5. **No external cutover at the beginning.** V2 runs beside V1 on `127.0.0.1:8091` first.
+5. **No external cutover at the beginning.** V2 runs on a separate loopback port first. The approved final replacement moves V2 to V1's existing `127.0.0.1:8090` target without editing Cloudflare routing.
 6. **No wager placement or spending.** Booking-code creation/rebuild tests may prepare reusable codes only. Do not press a final wager/place-bet action and do not spend account funds.
 7. **No access-control bypass.** Do not evade CAPTCHA, authentication, regional restrictions or anti-bot controls.
 8. **Do not fake bookmaker support.** Stake code creation and 1xBet restore/search/build remain unclaimed until a real accessible flow is verified.
@@ -68,7 +68,7 @@ systemctl --user is-enabled sabi-boy-backup.timer || true
 systemctl --user list-timers --all | grep -Ei 'sabi|backup' || true
 
 openclaw agents list --json || true
-openclaw automations list --all --json || true
+openclaw cron list --all --json || true
 ```
 
 Also identify and record:
@@ -76,7 +76,7 @@ Also identify and record:
 - current V1 local port/process;
 - V1 DB path;
 - current external/Cloudflare route to V1;
-- current OpenClaw `sabi-ai` workspace path if the agent exists;
+- current OpenClaw `prediction` workspace path;
 - AI Spine integration path/state;
 - environment/config file locations and permissions;
 - required environment variable **names** only, not token/secret values.
@@ -174,7 +174,7 @@ PY
 
 Treat it as a development defect, not an acceptance exception:
 
-1. keep V1 untouched;
+1. keep the active installation untouched while reproducing the failure;
 2. reproduce the failing test narrowly;
 3. fix only the underlying issue on `v2`;
 4. add or strengthen a regression test;
@@ -221,7 +221,7 @@ A failed backup/integrity verification blocks migration.
 
 ---
 
-# Stage F — Stage V2 beside V1
+# Stage F — Rehearse V2 on a separate port before replacement
 
 Run the guarded staging command:
 
@@ -236,7 +236,7 @@ Expected behavior:
 3. require reconciliation;
 4. run full release acceptance (including the full pytest suite again);
 5. exercise backup/restore acceptance;
-6. start V2 on `127.0.0.1:8091` while leaving V1 available;
+6. start V2 on the configured separate loopback port while leaving V1 available during rehearsal;
 7. verify V2 `/health` and `/api/v2/overview`;
 8. enable the V2 verified-backup timer only after acceptance;
 9. write commit-pinned staging state.
@@ -337,9 +337,9 @@ cat data/release/openclaw-identity-latest.json
 cat data/release/openclaw-activation-latest.json
 
 openclaw agents list --json
-openclaw skills check --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --json
-openclaw skills list --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --json
-openclaw automations list --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --all --json
+openclaw skills check --agent "${SABIAI_OPENCLAW_AGENT_ID:-prediction}" --json
+openclaw skills list --agent "${SABIAI_OPENCLAW_AGENT_ID:-prediction}" --json
+openclaw cron list --all --json
 ```
 
 Run the final OpenClaw verifier directly too:
@@ -351,19 +351,19 @@ Run the final OpenClaw verifier directly too:
 
 Acceptance must prove:
 
-- exact `sabi-ai` agent exists or was safely created;
+- exact existing `prediction` agent is used;
 - its workspace is this exact V2 checkout;
 - all seven current-format Sabi Boy skills are visible;
 - the final V2 tool surface is present, including persistent research cases, learned sources, verified ticket variants, settlement profiles, bookmaker browser health, advanced history and Blog triggers;
 - runtime readiness is not ACTION LOCKED.
 
-If an existing `sabi-ai` agent points somewhere else, do not silently repoint it. Investigate the current deployment and preserve the existing agent until the correct migration decision is clear.
+If the existing `prediction` agent points somewhere else, do not silently repoint it before its current state is recorded and the V2 workspace has passed controlled acceptance.
 
 ---
 
 # Stage J — OpenClaw agent/subagent behavior acceptance
 
-From the actual `sabi-ai` agent, verify the human-facing identity is Sabi Boy and the language contract holds:
+From the actual `prediction` agent, verify the human-facing identity is Sabi Boy and the language contract holds:
 
 - decimal odds only;
 - explicit named teams/players;
@@ -375,7 +375,7 @@ From the actual `sabi-ai` agent, verify the human-facing identity is Sabi Boy an
 
 Exercise the Research Scout, Skeptic and Ticket Engineer worker flows. Confirm results return to the main Sabi Boy agent and do not create competing permanent personalities.
 
-Verify AI Spine/shared-memory/message-bus compatibility after the V2 agent/workspace activation. Preserve the `sabi-ai` machine identity expected by existing integrations.
+Verify AI Spine/shared-memory/message-bus compatibility after the V2 agent/workspace activation. Preserve the `prediction` machine identity expected by existing integrations.
 
 ---
 
@@ -617,7 +617,7 @@ blog.reflection.context
 
 Create controlled conditions or use existing real recent data to confirm meaningful trigger types without fabricating a post.
 
-Verify daily and weekly OpenClaw reflection automations exist for the `sabi-ai` agent and can execute successfully.
+Verify daily and weekly OpenClaw reflection cron jobs exist for the `prediction` agent and can execute successfully.
 
 A scheduled run with no meaningful trigger may correctly publish nothing.
 
@@ -696,36 +696,28 @@ Check at minimum:
 - OpenClaw agent/workspace permissions are correct;
 - unrelated agents/automations are untouched;
 - backup files have appropriate ownership/permissions;
-- Cloudflare/external routing still points to V1 until a deliberate cutover step.
+- Cloudflare/external routing remains unchanged during staging; on this Dell it already targets the shared local port that V2 takes over at replacement.
 
 Record findings and fix blockers before release.
 
 ---
 
-# Stage Y — Cutover rehearsal, not blind cutover
+# Stage Y — Approved same-port replacement
 
-Inspect and record the real external routing mechanism and current V1 target.
-
-Rehearse the exact change needed to point only the Sabi route to:
+Inspect and record the real external routing mechanism and current V1 target. On this Dell the route already points to:
 
 ```text
-http://127.0.0.1:8091
+http://127.0.0.1:8090
 ```
 
-Keep a rollback copy/diff of the existing configuration.
-
-Do not change unrelated Cloudflare/tunnel/reverse-proxy routes.
-
-For this installation/testing phase, leave external production routing unchanged unless the user explicitly asks Work to continue through production cutover after all acceptance gates are green.
-
-If a real cutover is later authorized, follow `docs/SABI_BOY_V2_DEPLOYMENT.md` and verify externally before stopping V1:
+Do not edit Cloudflare/tunnel/reverse-proxy routes. After all separate-port checks are green, stop/disable the legacy dashboard, start V2 on the existing port 8090, and immediately verify local and external health:
 
 ```bash
 .venv/bin/python scripts/sabi_v2_finalize_cutover.py \
   --health-url 'https://ACTUAL-SABI-HOST/health'
 ```
 
-Only after external V2 verification should `--stop-v1` be considered.
+After local/external V2 verification, remove the active V1 service/checkouts while retaining the verified private archives. Do not merge `v2` to `main` as part of this replacement.
 
 ---
 
@@ -745,7 +737,7 @@ If the V2 DB itself must be restored to the pre-stage snapshot:
 .venv/bin/python scripts/sabi_v2_rollback.py --restore-v2-database
 ```
 
-If external routing was changed during an explicitly authorized cutover, restore the recorded V1 route first, then run the rollback helper.
+Before active-V1 cleanup, use the rollback helper normally. After cleanup, recovery requires restoring the verified private V1 archive because no dormant V1 checkout/service is retained.
 
 Do not delete unrelated OpenClaw agents/automations as part of rollback.
 
@@ -805,6 +797,6 @@ Do not call the release ready if any required Phase 16 item remains red.
 
 The ideal endpoint is:
 
-> V2 is installed and running safely beside V1; the real history reconciles; the full tests are green; the real `sabi-ai` OpenClaw agent is Sabi Boy and sees the final V2 skills/tools; representative research/ticket/bookmaker/dashboard/Blog/backup/security checks pass; production routing has not been changed unless separately authorized; Phase 16 has evidence for every completed gate.
+> V2 has replaced the active Prediction V1 installation on the existing local route; the real history reconciles; the full tests are green; the real `prediction` OpenClaw agent is named Sabi Boy and sees the final V2 skills/tools; representative research/ticket/bookmaker/dashboard/Blog/backup/security checks pass; no wager was placed; Cloudflare routing was not edited; active V1 code/services were removed after verified recovery archives were retained; Phase 16 has evidence for every completed gate.
 
-Only after that state should the project move to final production cutover/promotion of `v2` to `main`.
+This replacement does not by itself authorize promotion or merge of `v2` to `main`.

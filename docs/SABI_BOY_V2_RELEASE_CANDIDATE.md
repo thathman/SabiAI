@@ -2,7 +2,7 @@
 
 **Branch:** `v2`  
 **Human-facing product:** Sabi Boy  
-**Compatibility agent ID:** `sabi-ai`  
+**OpenClaw agent ID:** `prediction`
 **Candidate status:** Repository development complete; Dell/OpenClaw/live-browser acceptance pending.  
 **Promotion status:** **Do not merge to `main` yet.**
 
@@ -132,7 +132,7 @@ RSS/Atom is deliberately deferred because it is not required for V2 acceptance a
 - verified SQLite backup/checksum/restore;
 - daily systemd user backup timer with conservative retention;
 - checkout-portable runtime preparation;
-- guarded staging beside V1 on `127.0.0.1:8091`;
+- guarded staging on a separate loopback port before the approved in-place replacement;
 - fail-closed OpenClaw agent/workspace/skill/final-tool-surface acceptance;
 - guarded OpenClaw activation;
 - external-route finalizer;
@@ -163,7 +163,7 @@ Current-format skill packages required by acceptance:
 - `sabi-boy-records`
 - `sabi-boy-blog`
 
-The human-facing identity is Sabi Boy. The machine identity remains `sabi-ai` for compatibility.
+The human-facing identity is Sabi Boy. The existing machine identity remains `prediction` for compatibility with the Dell's bindings.
 
 `scripts/sabi_v2_openclaw_acceptance.py` is the authority for the required final V2 tool surface. It includes durable research cases, source learning, verified ticket variants, settlement profiles, bookmaker browser health, advanced history and Blog triggers in addition to the earlier research/bookmaker/build tools.
 
@@ -201,7 +201,7 @@ Do not work around a failed acceptance gate by editing the report or disabling t
 
 If installation/testing finds a defect:
 
-1. keep V1 intact;
+1. keep V1 intact until its data, migration and recovery archives are verified;
 2. stop/rollback V2 if integrity is affected;
 3. fix the defect on `v2`;
 4. add/regress the failing case;

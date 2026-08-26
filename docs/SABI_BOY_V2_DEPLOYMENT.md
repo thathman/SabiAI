@@ -7,7 +7,7 @@ This runbook is for the eventual Dell/OpenClaw upgrade from SabiAI V1 to Sabi Bo
 ## Principles
 
 1. V1 data is never modified during preparation.
-2. V1 stays available while V2 is staged on a separate local port.
+2. V1 stays available while V2 is staged on a separate local port; after green acceptance, this Dell's approved endpoint removes the active V1 service/checkouts and retains private recovery archives.
 3. Every deployment starts with verified SQLite snapshots.
 4. V1 → V2 migration is deterministic and repeatable.
 5. Migration must reconcile before V2 starts.
@@ -28,7 +28,7 @@ Important variables:
 - `SABIAI_LEGACY_DB`
 - `SABIAI_V2_DB`
 - `SABIAI_TIMEZONE`
-- `SABIAI_OPENCLAW_AGENT_ID` — defaults to compatibility id `sabi-ai`
+- `SABIAI_OPENCLAW_AGENT_ID` — defaults to the existing Dell agent id `prediction`
 - `SABIAI_THESPORTSDB_KEY`
 - `SABIAI_FOOTBALL_DATA_TOKEN` (optional)
 - `SABIAI_PAID_SOURCES`
@@ -49,7 +49,7 @@ Verified backup schedule:
 
 Legacy V1 dashboard is intentionally not reused as the V2 process.
 
-Human-facing identity: **Sabi Boy**. The technical OpenClaw/AI Spine agent id remains `sabi-ai` unless a later deliberate compatibility migration changes it.
+Human-facing identity: **Sabi Boy**. The technical OpenClaw/AI Spine agent id remains `prediction`.
 
 ## Step 1 — Get the correct branch
 
@@ -179,14 +179,14 @@ The guarded activation command:
 
 1. requires a green commit-pinned V2 staging state;
 2. rechecks the live local V2 dashboard;
-3. preserves the existing `sabi-ai` agent if it already points at this checkout;
-4. creates the `sabi-ai` agent at this checkout if it is genuinely missing;
+3. preserves and updates the existing `prediction` agent when it points at this checkout;
+4. refuses to substitute a new agent identity for `prediction`;
 5. **refuses to silently retarget** an existing same-id agent that points somewhere else;
 6. verifies the agent workspace through `openclaw agents list --json`;
 7. verifies required Sabi Boy skills through the OpenClaw skills CLI;
 8. verifies the final V2 gateway surface, including durable research cases, source learning, verified ticket variants, settlement profiles, bookmaker browser health, advanced history and Blog triggers;
 9. applies the human-visible Sabi Boy identity from `IDENTITY.md` while retaining the machine id;
-10. installs/updates the daily and weekly Sabi Boy reflection automations;
+10. installs/updates the daily and weekly Sabi Boy reflection cron jobs;
 11. reruns OpenClaw acceptance and records it in staging state.
 
 Reports include:
@@ -196,15 +196,15 @@ Reports include:
 - `data/release/openclaw-identity-latest.json`
 - `data/release/openclaw-activation-latest.json`
 
-The reflection jobs are installed with OpenClaw's persistent automation scheduler and are pinned to `SABIAI_OPENCLAW_AGENT_ID`. They publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
+The reflection jobs are installed with OpenClaw's persistent cron scheduler and are pinned to `SABIAI_OPENCLAW_AGENT_ID`. They publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
 
 Manual verification commands:
 
 ```bash
 openclaw agents list --json
-openclaw skills check --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --json
-openclaw skills list --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --json
-openclaw automations list --agent "${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}" --all --json
+openclaw skills check --agent "${SABIAI_OPENCLAW_AGENT_ID:-prediction}" --json
+openclaw skills list --agent "${SABIAI_OPENCLAW_AGENT_ID:-prediction}" --json
+openclaw cron list --all --json
 printf '%s\n' '{"tool":"system.tools","args":{}}' | .venv/bin/python scripts/sabiai_v2_tool.py
 printf '%s\n' '{"tool":"system.readiness","args":{}}' | .venv/bin/python scripts/sabiai_v2_tool.py
 ```
@@ -249,21 +249,19 @@ This repo intentionally does not assume whether the live endpoint is provided by
 - reverse proxy;
 - another OpenClaw-managed route.
 
-On the Dell, identify the current route to V1 and record its configuration before editing it.
+On the Dell, identify the current route to V1 and record its configuration before any local service replacement.
 
-Change only the Sabi dashboard target from V1's local endpoint to:
+For the approved Prediction replacement, the existing Cloudflare route already targets:
 
 ```text
-http://127.0.0.1:8091
+http://127.0.0.1:8090
 ```
 
-Do not change unrelated tunnel/routes.
-
-Keep a copy/diff of the previous routing configuration for rollback.
+Do not edit that route. Stop/disable the legacy dashboard only after the staged V2 checks pass, move `sabi-boy-dashboard.service` to the same `127.0.0.1:8090` target, then verify the routed health response identifies Sabi Boy V2. Do not change unrelated tunnel/routes.
 
 ## Step 8 — Verify and finalize external cutover
 
-After changing routing, provide the actual routed health URL:
+After the local service replacement, provide the actual routed health URL:
 
 ```bash
 .venv/bin/python scripts/sabi_v2_finalize_cutover.py \
@@ -275,11 +273,11 @@ The finalizer now requires:
 - current checkout exactly matches the staged commit;
 - green OpenClaw activation recorded in staging state;
 - required skills verified;
-- Sabi Boy reflection automations installed;
+- Sabi Boy reflection cron jobs installed;
 - local V2 health identifies Sabi Boy/read-only;
 - external route identifies Sabi Boy/read-only.
 
-Only after that verification may the legacy dashboard be stopped:
+When an external route must actually be changed in another environment, only after that verification may the legacy dashboard be stopped:
 
 ```bash
 .venv/bin/python scripts/sabi_v2_finalize_cutover.py \
@@ -287,11 +285,11 @@ Only after that verification may the legacy dashboard be stopped:
   --stop-v1
 ```
 
-Do not stop V1 before external V2 verification.
+For this approved same-port replacement, first verify V2 on the separate staging port, then stop V1, start V2 on port 8090, and immediately verify both local and routed health. The verified private V1 archives are the recovery boundary.
 
 ## Rollback
 
-First restore the external route to its recorded V1 target/configuration.
+Before legacy cleanup, restore the external route to its recorded V1 target/configuration when it was changed.
 
 Then:
 
@@ -316,7 +314,7 @@ If the V2 DB itself must be returned to its pre-staging snapshot:
 
 The backup manifest is checksum/integrity verified before restore.
 
-OpenClaw identity/automation rollback should be handled from the recorded pre-cutover OpenClaw state when a release actually changes those runtime settings. Do not delete unrelated agents or automations during rollback.
+After the approved active-V1 cleanup, rollback requires restoring the verified private V1 workspace/repository/service archive; there is intentionally no dormant active V1 checkout to restart. OpenClaw identity/cron rollback should be handled from the recorded pre-cutover OpenClaw state when a release actually changes those runtime settings. Do not delete unrelated agents or cron jobs during rollback.
 
 ## Acceptance runners
 

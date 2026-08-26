@@ -2,7 +2,7 @@
 
 > **Branch:** `v2`  
 > **Human-facing product:** Sabi Boy  
-> **Compatibility identifiers:** SabiAI / `sabiai` / `sabi-ai` remain where changing them would break runtime/data interfaces.  
+> **Compatibility identifiers:** SabiAI / `sabiai` remain where changing them would break runtime/data interfaces. The existing OpenClaw machine agent ID is `prediction`; its human-facing name is Sabi Boy.
 > **Rule:** A task may be implemented without its phase being release-ready. Dell/OpenClaw/runtime acceptance is a separate gate.
 
 ## Status
@@ -447,7 +447,7 @@ Prepare only (no migration/service/OpenClaw cutover):
 bash scripts/sabi_v2_prepare_runtime.sh
 ```
 
-Stage safely beside V1:
+Rehearse safely on a separate port before the approved in-place replacement:
 
 ```bash
 bash scripts/sabi_v2_stage.sh
