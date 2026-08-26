@@ -34,6 +34,11 @@ def test_openclaw_scripts_use_current_cron_cli_and_explicit_human_identity():
     assert '"$OPENCLAW_BIN" cron add' in installer
     assert '"$OPENCLAW_BIN" cron edit' in installer
     assert '"$OPENCLAW_BIN" automations' not in installer
+    assert "OPENCLAW_GATEWAY_ENV_FILE" in installer
+    assert 'raw.startswith("OPENCLAW_GATEWAY_TOKEN=")' in installer
+    assert 'source "$GATEWAY_ENV_FILE"' not in installer
+    assert "JOBS_PAYLOAD" not in installer
+    assert 'json.load(sys.stdin)' in installer
     assert '--name "Sabi Boy"' in activation
     assert '--emoji "🧠⚽"' in activation
     assert "--from-identity" not in activation

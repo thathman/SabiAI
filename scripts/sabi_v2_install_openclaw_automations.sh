@@ -15,6 +15,28 @@ fi
 OPENCLAW_BIN="${OPENCLAW_BIN:-openclaw}"
 AGENT_ID="${SABIAI_OPENCLAW_AGENT_ID:-sabi-ai}"
 TZ_NAME="${SABIAI_TIMEZONE:-Africa/Lagos}"
+GATEWAY_ENV_FILE="${OPENCLAW_GATEWAY_ENV_FILE:-$HOME/.openclaw/env/openclaw.env}"
+
+# OpenClaw's cron command needs the resolved gateway credential in a non-interactive shell.
+# Import only that one value from the gateway's private environment file; do not source the
+# complete file or expose unrelated provider/channel secrets to this installer.
+if [[ -z "${OPENCLAW_GATEWAY_TOKEN:-}" && -r "$GATEWAY_ENV_FILE" ]]; then
+  OPENCLAW_GATEWAY_TOKEN="$(python3 - "$GATEWAY_ENV_FILE" <<'PY'
+from pathlib import Path
+import sys
+
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if not raw.startswith("OPENCLAW_GATEWAY_TOKEN="):
+        continue
+    value = raw.split("=", 1)[1].strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    print(value, end="")
+    break
+PY
+)"
+  export OPENCLAW_GATEWAY_TOKEN
+fi
 
 if ! command -v "$OPENCLAW_BIN" >/dev/null 2>&1; then
   echo "openclaw CLI was not found: $OPENCLAW_BIN" >&2
@@ -29,11 +51,11 @@ job_id_by_name() {
   local wanted="$1"
   local payload
   payload="$(jobs_json)"
-  JOBS_PAYLOAD="$payload" python3 - "$wanted" <<'PY'
-import json, os, sys
+  python3 -c '
+import json, sys
 wanted = sys.argv[1]
 try:
-    data = json.loads(os.environ.get("JOBS_PAYLOAD", ""))
+    data = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
 if isinstance(data, dict):
@@ -51,7 +73,7 @@ for row in rows:
         if value:
             print(value)
         break
-PY
+' "$wanted" <<<"$payload"
 }
 
 upsert_agent_job() {
