@@ -42,6 +42,17 @@ class ResearchTools:
     def _case_store(self) -> ResearchCaseStore:
         return ResearchCaseStore(self.app._db(initialize=True))
 
+    @staticmethod
+    def _notes(value) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            note = value.strip()
+            return [note] if note else []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        raise ValueError("Research case notes must be text or a list of text notes.")
+
     def plan(self, args: dict) -> dict:
         plan = self.app.research_planner.plan(
             str(args.get("sport", "")),
@@ -162,7 +173,7 @@ class ResearchTools:
             event_id=args.get("event_id"),
             title=args.get("title"),
             objective=args.get("objective"),
-            notes=args.get("notes") or [],
+            notes=self._notes(args.get("notes")),
             case_id=args.get("case_id"),
         )
         return json_value(case)
@@ -194,7 +205,7 @@ class ResearchTools:
             status=args.get("status"),
             title=args.get("title"),
             objective=args.get("objective"),
-            notes=args.get("notes") if "notes" in args else None,
+            notes=self._notes(args.get("notes")) if "notes" in args else None,
             append_note=args.get("append_note"),
         )
         return json_value(case)

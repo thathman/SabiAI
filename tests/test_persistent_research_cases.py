@@ -105,3 +105,27 @@ def test_research_case_status_validation_and_listing(tmp_path: Path):
     assert updated.status == "watch"
     assert "Waiting for lineup." in updated.notes
     assert store.list(status="watch")[0].id == case.id
+
+
+def test_gateway_normalizes_plain_text_research_case_notes(tmp_path: Path):
+    gateway = SabiToolGateway(_settings(tmp_path))
+    created = gateway.dispatch(
+        "research.case.create",
+        {
+            "sport": "Volleyball",
+            "event": "Acceptance probe",
+            "notes": "Reachability is not match verification.",
+        },
+    )
+    assert created["ok"] is True
+    assert created["data"]["notes"] == ["Reachability is not match verification."]
+
+    updated = gateway.dispatch(
+        "research.case.update",
+        {
+            "case_id": created["data"]["id"],
+            "notes": "Resume from another session.",
+        },
+    )
+    assert updated["ok"] is True
+    assert updated["data"]["notes"] == ["Resume from another session."]
