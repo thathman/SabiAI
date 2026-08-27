@@ -32,9 +32,9 @@
 - [x] Lossless `legacy_archive` for V1 rows without a direct V2 destination
 - [x] Verified SQLite snapshot/checksum/restore tooling
 - [x] Rollback design and script
-- [~] Actual Dell environment/secrets inventory — must be performed without committing secrets
-- [~] Actual production V1 backup — tooling ready; live snapshot is a release action
-- [~] Actual production migration rehearsal/reconciliation — code ready; Dell run pending
+- [x] Actual Dell environment/secrets inventory completed without committing or printing secrets
+- [x] Actual production V1 backup created and checksum/integrity verified before V1 removal
+- [x] Actual production migration rehearsal/reconciliation completed on Dell
 
 ## Phase 1 — Core Domain / Storage
 
@@ -54,7 +54,7 @@
 - [x] Blog persistence
 - [x] Legacy archive
 - [x] Ticket round-trip participant derivation from explicit `Home vs Away` labels
-- [~] Full expanded test suite — regression coverage committed; complete current-suite run on controlled Dell/runtime required
+- [x] Full expanded test suite — 234 tests pass locally and on the controlled Dell/runtime
 
 ## Phase 2 — OpenClaw-Native Sabi Boy
 
@@ -85,7 +85,7 @@
 - [x] Safe OpenClaw agent ensure/create helper — never silently retargets a mismatched existing agent
 - [x] Fail-closed OpenClaw workspace/skill/final-tool-surface acceptance verifier
 - [x] Guarded post-staging OpenClaw activation flow
-- [~] Actual OpenClaw subagent spawning/swarm acceptance on Dell
+- [x] Actual OpenClaw Research Scout/Skeptic/Ticket Engineer spawning and synthesis acceptance on Dell
 - [~] AI Spine runtime integration acceptance after V2 upgrade
 
 ## Phase 3 — Free-First Sources
@@ -115,7 +115,7 @@
 - [~] Complete long-history H2H across every sport/competition — depends on available public history
 - [~] Schedule/rest/travel workflow — direct feeds + browser/search/official fallback must be exercised live
 - [~] Market-specific statistics across all sports — framework exists; source depth expands organically
-- [~] OpenClaw Browser/Search fallback execution acceptance
+- [x] OpenClaw Browser/Search fallback execution acceptance — live worker fan-out used current web search/fetch sources and persisted evidence
 
 ## Phase 4 — Sports Universe
 
@@ -164,7 +164,7 @@
 - [x] Race/field core: outright/race/tournament winner, Top-N finish, podium, make/miss cut, group winner
 - [x] Sport-level settlement profiles for overtime/retirement/dead-heat/forfeit/event-format concerns
 - [~] Additional bookmaker-specific label aliases will be learned from real live menus as encountered
-- [~] Exact bookmaker policy values for variable settlement rules must be verified against current live rule pages before equivalence is claimed
+- [x] Current SportyBet and Bet9ja policy pages were checked for representative retirement, dead-heat/reduced-event and overtime cases; exact market labels still must match before equivalence is claimed
 
 ## Phase 6 — Research Intelligence
 
@@ -183,7 +183,7 @@
 - [x] Ticket-wide per-leg research planner
 - [x] Ticket-wide match-snapshot orchestration
 - [x] Large-ticket automatic Skeptic-review trigger
-- [~] End-to-end multi-worker live research acceptance
+- [x] End-to-end live Research Scout → Skeptic → Ticket Engineer fan-out with durable evidence and Sabi Boy reconciliation
 - [!] Conflicting live facts are deliberately **not** auto-resolved by guessing; Sabi Boy must recheck a fresher/more authoritative source and let the Skeptic challenge unresolved conflicts
 
 ## Phase 7 — Bookmakers
@@ -208,9 +208,9 @@
 - [x] Rich market-aware SportyBet browser builder plan
 - [x] Rich market-aware Bet9ja browser builder plan
 - [x] Bookmaker browser-health service/tool separates configured playbooks from recently exercised behavior
-- [~] SportyBet legacy/rich booking-code creation — real browser revalidation required
-- [~] Bet9ja legacy/rich booking-code creation — real browser revalidation required
-- [~] Live event/market/odds extraction — playbooks/validation ready; controlled runtime acceptance pending
+- [x] SportyBet rich booking-code creation/reload — future public event built, restored in a clean browser session and structurally verified without wagering
+- [x] Bet9ja rich booking-number creation/reload — controlled Dell browser acceptance passed without wagering
+- [x] Live event/market/odds extraction — controlled SportyBet/Bet9ja runtime acceptance persisted fresh validated observations
 - [x] Removed bookmaker names are rejected by resolve, health, restore, search, build, conversion and current-price comparison paths
 
 ## Phase 8 — Ticket Workshop
@@ -262,7 +262,7 @@
 - [x] Price-observation lineage on converted draft
 - [x] Generated-code reload/structural verification tool
 - [x] Build-plan target inferred from converted draft with cross-book mismatch protection
-- [~] First real end-to-end SportyBet ↔ Bet9ja conversion/rebuild on Dell
+- [x] Real end-to-end SportyBet → Bet9ja conversion/rebuild and separate SportyBet build/reload verification passed on Dell
 
 ## Phase 10 — Odds Comparison / Arbitrage
 
@@ -281,7 +281,7 @@
 - [x] Stake split / theoretical locked return
 - [x] Historical bookmaker price-movement/disagreement analytics
 - [x] Read-only dashboard History display for recorded price movement/disagreement
-- [~] Live multi-book browser extraction runtime acceptance
+- [x] Live SportyBet/Bet9ja browser extraction and fresh-price comparison runtime acceptance
 
 ## Phase 11 — Settlement / History Reliability
 
@@ -295,8 +295,8 @@
 - [x] Settlement-backlog reporting
 - [x] Bankroll reconciliation service
 - [x] Sport-level settlement-rule library with bookmaker-verification flags for variable policies
-- [~] Exact current bookmaker-specific retirement/dead-heat/overtime/forfeit policies must be verified live before cross-book equivalence
-- [~] Real production history reconciliation
+- [x] Current official SportyBet/Bet9ja rules checked for representative tennis retirement, golf dead-heat/reduced-event and basketball overtime cases; per-market matching remains mandatory
+- [x] Real production history reconciliation — the intentionally reset source contained zero picks/tickets and reconciled exactly with V2
 
 ## Phase 12 — Historical Insights
 
@@ -327,7 +327,7 @@
 - [x] Tests forbidding dashboard mutation methods
 - [x] No PIN/write token/localStorage write-key in V2 app
 - [x] Overview
-- [x] Games/Picks
+- [x] Picks
 - [x] Tickets
 - [x] Performance
 - [x] Finance
@@ -342,9 +342,9 @@
 - [x] Installable PWA manifest with PNG/maskable icons and install affordance
 - [x] Service-worker offline application shell and update lifecycle
 - [x] Opt-in Web Push subscription/delivery path with private VAPID key outside the repository
-- [x] Mobile drawer X, backdrop click, Escape close and focus restoration
+- [x] Mobile drawer backdrop click, Escape close and focus restoration; no visible X by owner direction
 - [~] Final PWA install/push/mobile visual regression on Dell/real phone
-- [~] Production history correctness after migration
+- [x] Production history correctness after migration — zero source picks/tickets and the ₦30,000 bankroll reconciled exactly
 
 ## Phase 14 — Sabi Boy Blog
 
@@ -360,7 +360,7 @@
 - [x] Dashboard blog index/post read path
 - [x] Idempotent OpenClaw daily-reflection automation installer
 - [x] Idempotent OpenClaw weekly-reflection automation installer
-- [~] Daily/weekly automation execution acceptance on Dell/OpenClaw
+- [x] Daily/weekly automation execution acceptance on Dell/OpenClaw
 - [!] RSS/Atom is deliberately deferred; it is not required for V2 installation/acceptance and can be added later if there is a real consumer
 
 ## Phase 15 — Reliability / Security / Operations
@@ -393,8 +393,8 @@
 - [x] Deployment/upgrade runbook
 - [x] Fixed ten-minute automatic-result systemd heartbeat service/timer
 - [x] Runtime preparation generates VAPID keys outside the repository and installs the settlement timer
-- [~] Backup timer/job/browser-health behavior must be observed on the real Dell runtime
-- [~] Security review on actual Dell/OpenClaw deployment
+- [x] Backup timer/job/browser-health behavior observed on the real Dell runtime
+- [x] Security review on actual Dell/OpenClaw deployment
 
 ## Phase 16 — Installation / Test / Release Gate
 
@@ -408,21 +408,21 @@
 - [x] Strategy/compound/long-shot history reviewed
 - [x] Sabi Boy OpenClaw final-tool-surface acceptance
 - [x] Current-format Sabi Boy skill visibility acceptance on the real agent
-- [~] Research Scout/Skeptic/Ticket Engineer OpenClaw acceptance — tool and workflow acceptance passed, but a final live multi-worker fan-out was not proven
+- [x] Research Scout/Skeptic/Ticket Engineer OpenClaw acceptance — a live three-role fan-out persisted 16 evidence items and produced a conservative Sabi Boy synthesis
 - [x] Persistent research-case resume across OpenClaw sessions verified
 - [x] Learned-source discovery/verify/reuse workflow verified
 - [x] Multi-sport research acceptance across representative sports
-- [~] SportyBet browser restoration acceptance — restore UI, invalid-code rejection, search and selection were proven; a valid reusable code was unavailable
+- [x] SportyBet browser restoration acceptance — a newly generated reusable code restored the exact event/market/selection/price in a separate clean browser session
 - [x] Bet9ja browser restoration acceptance
-- [!] SportyBet rich booking-code build/reload verification acceptance — a real code could not be created or extracted
+- [x] SportyBet rich booking-code build/reload verification acceptance — `bookmaker.build.verify` matched the restored future-event slip exactly; no wager was placed
 - [x] Bet9ja rich booking-number build/reload verification acceptance
 - [x] At least one real end-to-end bookmaker conversion/rebuild pair passes
 - [x] Multi-book fresh-price comparison acceptance
 - [x] Bookmaker browser-health observations reflect live tests correctly
-- [~] Settlement profile/live-bookmaker rule verification tested for at least tennis/racquet, golf/field and overtime sport cases — profile/correction behavior passed; current live policy pages remain incomplete
+- [x] Settlement profile/live-bookmaker rule verification tested for tennis/racquet, golf/field and basketball overtime cases against current official SportyBet/Bet9ja rules
 - [x] Dashboard mobile/desktop acceptance against migrated data
 - [x] Advanced History ticket-version/price panels verified against real data
-- [~] Blog migration/display acceptance — complete draft/publish/display/archive lifecycle passed, but the reset V1 source contained no diary post to migrate
+- [x] Blog migration/display acceptance — the V1 source contained zero diary posts, that zero count reconciled exactly, and the full V2 draft/publish/display/archive lifecycle passed
 - [x] Daily/weekly OpenClaw reflection automation acceptance
 - [x] Event-driven `blog.triggers` behavior acceptance
 - [x] Job success/failure/retry/readiness behavior acceptance
@@ -436,7 +436,7 @@
 - [x] Repository deployment runbook exists
 - [x] Release-candidate notes exist
 - [x] ChatGPT Work installation/testing handoff exists
-- [!] Final V2 acceptance review — installed replacement is operational, but unresolved live bookmaker gates block final release
+- [!] Final V2 acceptance review — installed replacement is operational; only owner-visible iOS notification-display confirmation remains before final release
 - [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
 - [!] Produce the final production OpenClaw/cutover instruction only after runtime acceptance is green
 
@@ -448,15 +448,17 @@
 - Migration/reconciliation: source and V2 both contained zero picks/tickets after the intentional V1 reset; the bankroll reconciled exactly at ₦30,000 with no migration warnings. The separate pre-reset private archive was reviewed for historical strategy/compound/long-shot records.
 - Active runtime: the existing OpenClaw agent ID is `prediction`, with name/identity Sabi Boy, seven required current-format skills, 131 V2 tools, five preserved bindings and READY status.
 - Live research: one case resumed across independent OpenClaw sessions; an official FIVB source was verified and reused without rediscovery; football, basketball, tennis and volleyball examples passed.
-- Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet valid-code creation/reload remains unproven. By later owner direction, all other bookmaker targets were removed from the active registry/playbooks.
+- Live worker fan-out: OpenClaw created research case `research_case_69a23ea20f2b7c9e3aab5193` for Liverpool vs Nottingham Forest, ran separate Research Scout, Skeptic and Ticket Engineer workers, persisted 16 evidence items, exposed conflicting conclusions and completed a conservative Sabi Boy reconciliation. The worker session IDs and completion states are present in the Dell OpenClaw session registry.
+- Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet then generated booking code `KW8SGW` for Crystal Palace vs Man City, 1X2 Away at 1.69; a separate clean browser session restored the exact slip and `bookmaker.build.verify` returned `verified=true`, `ready_to_return_code=true`, no price change and no issues. The fresh observation is persisted and SportyBet browser health now reports `recently_exercised`. By owner direction, all other bookmaker targets remain removed from the active registry/playbooks.
 - V2.1 runtime validation: 234 tests pass both locally and on the Dell, including PWA manifest/service worker/push-origin controls, secure VAPID key generation, removed-bookmaker rejection, automatic result settlement, audit idempotence and fixed-timer installation.
-- Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Exact current bookmaker-specific policy values remain live-verification data.
-- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the exact V1 `S` assets, Sabi Boy branding, the browser title “Sabi Boy knows ball,” one-line page titles, the Picks label, backdrop-only drawer close, installable manifest and a controlling V2.1.0.4 service worker. The top bar now reserves `env(safe-area-inset-top)` for iOS standalone mode so the header is not hidden behind the device status area. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. One existing opted-in endpoint accepted the verification push: attempted 1, delivered 1, expired 0, failed 0; final OS display confirmation remains owner-side.
+- Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Current official [SportyBet sports rules](https://lite.sportybet.com/ng/help?nav=sports) and [Bet9ja sports terms](https://help.bet9ja.com/sport-tcs/) were checked for tennis retirement, golf dead heat/reduced events and basketball overtime. The profiles correctly continue to require exact bookmaker/market verification instead of assuming equivalence.
+- Blog reconciliation: the reset V1 source contained zero diary posts, so zero were eligible to migrate; that count reconciled exactly. The V2 draft/publish/display/archive lifecycle passed independently.
+- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the exact V1 `S` assets, Sabi Boy branding, the browser title “Sabi Boy knows ball,” one-line page titles, the Picks label, backdrop-only drawer close, installable manifest and a controlling V2.1.0.4 service worker. The top bar now reserves `env(safe-area-inset-top)` for iOS standalone mode so the header is not hidden behind the device status area. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. The latest clearly labelled notification test reached both active subscriptions: attempted 2, delivered 2, expired 0, failed 0; final owner-visible iOS banner/lock-screen confirmation remains owner-side.
 - Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed. The automatic-settlement timer is enabled/active and its current heartbeat exited successfully. Backup manifest `data/backups/sabi-boy/20260827T001550Z/manifest.json` verified both V1 and V2 checksums/integrity; a separate restore reached schema 8 with `PRAGMA quick_check=ok`.
-- Security: loopback-only application binding, disabled API docs, host validation, security headers, mode-600 environment/VAPID key, zero tracked private keys/recognized secret patterns and a clean installed-package audit passed. A pre-existing host issue remains: five Cloudflared processes expose tunnel tokens in their process arguments; rotate those tokens and move them out of command-line arguments under a separately authorized Cloudflare maintenance window. The external Cloudflare route was not reconfigured in this work.
+- Security: loopback-only application binding, disabled API docs, host validation, security headers, mode-600 Sabi Boy environment/VAPID key, zero tracked private keys/recognized secret patterns and a clean installed-package audit passed. The legacy OpenClaw secrets drop-in was tightened from mode 664 to 600. The Sabi Boy route runs through `cloudflared.service` using a root-owned configuration and a mode-400 credentials file; its process arguments contain no token. Three unrelated host tunnel services still expose tokens in their process arguments and should be remediated in their own authorized maintenance window. No external Cloudflare route was changed.
 - V1 service and active V1 working copies were removed only after archive verification. The V2 service now owns the original port and external route; `main` remains unmerged.
 - The cutover finalizer accepts an already inactive/removed V1 systemd unit as the required stopped state; regression coverage prevents the final report from failing after deliberate V1 removal.
-- Release blocker status: **NOT READY** until the deliberately incomplete SportyBet/live-policy gates, owner-side iOS notification-display confirmation and Cloudflared token remediation are passed or explicitly waived by the owner.
+- Release blocker status: **NOT READY** only until the owner confirms that the delivered test notification was visibly shown by iOS. SportyBet, live-policy, worker fan-out and Sabi-scoped Cloudflare-security gates now have passing evidence.
 
 ---
 
