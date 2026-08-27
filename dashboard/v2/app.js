@@ -3,7 +3,6 @@
 
   const view = document.getElementById('view');
   const title = document.getElementById('page-title');
-  const eyebrow = document.getElementById('eyebrow');
   const readinessChip = document.getElementById('readiness-chip');
   const refreshButton = document.getElementById('refresh-button');
   const menuButton = document.getElementById('menu-button');
@@ -14,18 +13,23 @@
   const toast = document.getElementById('toast');
   let installPrompt = null;
   let pushConfig = null;
+  let pushServiceWorker = null;
+  let pushSubscription = null;
+
+  const BELL_OFF = '<svg class="notification-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-9.33-5M6.26 6.26A5.9 5.9 0 0 0 6 8c0 7-3 7-3 9h14M13.73 21a2 2 0 0 1-3.46 0M3 3l18 18"/></svg>';
+  const BELL_ON = '<svg class="notification-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 
   const cache = new Map();
   const routes = {
-    '/': ['overview', 'Overview', 'OUR HISTORY'],
-    '/picks': ['picks', 'Games / Picks', 'OUR GAMES'],
-    '/tickets': ['tickets', 'Tickets', 'OUR TICKETS'],
-    '/performance': ['performance', 'Performance', 'OUR PERFORMANCE'],
-    '/finance': ['finance', 'Finance', 'OUR BANKROLL'],
-    '/strategies': ['strategies', 'Strategies', 'OUR STRATEGIES'],
-    '/history': ['history', 'History', 'OUR RECORD'],
-    '/blog': ['blog', 'Sabi Blog', 'SABI'],
-    '/system': ['system', 'System', 'SYSTEM HEALTH'],
+    '/': ['overview', 'Overview'],
+    '/picks': ['picks', 'Games / Picks'],
+    '/tickets': ['tickets', 'Tickets'],
+    '/performance': ['performance', 'Performance'],
+    '/finance': ['finance', 'Finance'],
+    '/strategies': ['strategies', 'Strategies'],
+    '/history': ['history', 'History'],
+    '/blog': ['blog', 'Sabi Blog'],
+    '/system': ['system', 'System'],
   };
 
   const esc = (value) => String(value ?? '')
@@ -69,10 +73,10 @@
 
   function clearCache() { cache.clear(); }
 
-  function showToast(message) {
+  function showToast(message, duration = 1800) {
     toast.textContent = message;
     toast.classList.add('show');
-    window.setTimeout(() => toast.classList.remove('show'), 1800);
+    window.setTimeout(() => toast.classList.remove('show'), duration);
   }
 
   function closeMenu({restoreFocus = false} = {}) {
@@ -94,13 +98,26 @@
     return Uint8Array.from([...raw].map(char => char.charCodeAt(0)));
   }
 
-  function setNotificationButton(enabled, available = true) {
-    notificationButton.textContent = enabled ? '●' : '♢';
-    notificationButton.title = available
-      ? (enabled ? 'Disable result notifications' : 'Enable result notifications')
-      : 'Push notifications are not configured';
+  function isAppleMobile() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function isStandalonePwa() {
+    return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  }
+
+  function setNotificationButton(enabled, available = true, installRequired = false) {
+    notificationButton.innerHTML = enabled ? BELL_ON : BELL_OFF;
+    notificationButton.dataset.notificationState = enabled ? 'on' : 'off';
+    notificationButton.setAttribute('aria-pressed', String(enabled));
+    notificationButton.title = installRequired
+      ? 'Install Sabi on the Home Screen to enable result notifications'
+      : available
+        ? (enabled ? 'Disable result notifications' : 'Enable result notifications')
+        : 'Push notifications are unavailable on this device';
     notificationButton.setAttribute('aria-label', notificationButton.title);
-    notificationButton.disabled = !available;
+    notificationButton.disabled = !available && !installRequired;
   }
 
   async function pushRegistration() {
@@ -113,46 +130,70 @@
       const response = await fetch('/api/v2/push/config', {headers: {'Accept':'application/json'}, cache:'no-store'});
       if (!response.ok) throw new Error('Push configuration unavailable');
       pushConfig = await response.json();
+      if (isAppleMobile() && !isStandalonePwa()) {
+        pushServiceWorker = null;
+        pushSubscription = null;
+        setNotificationButton(false, true, true);
+        return;
+      }
       const registration = await pushRegistration();
       if (!pushConfig.available || !registration) {
+        pushServiceWorker = null;
+        pushSubscription = null;
         setNotificationButton(false, false);
         return;
       }
-      const subscription = await registration.pushManager.getSubscription();
-      setNotificationButton(Boolean(subscription));
+      pushServiceWorker = registration;
+      pushSubscription = await registration.pushManager.getSubscription();
+      setNotificationButton(Boolean(pushSubscription));
     } catch (_) {
+      pushServiceWorker = null;
+      pushSubscription = null;
       setNotificationButton(false, false);
     }
   }
 
   async function toggleNotifications() {
-    const registration = await pushRegistration();
-    if (!registration || !pushConfig?.available) {
+    if (isAppleMobile() && !isStandalonePwa()) {
+      showToast('On iPhone or iPad: tap Share, choose Add to Home Screen, open Sabi from its Home Screen icon, then tap the bell again.', 6500);
+      return;
+    }
+    if (!pushServiceWorker || !pushConfig?.available) {
       showToast('Push notifications are unavailable on this device.');
       return;
     }
-    const existing = await registration.pushManager.getSubscription();
-    if (existing) {
+    if (pushSubscription) {
       const response = await fetch('/api/v2/push/subscriptions', {
         method: 'DELETE',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({endpoint: existing.endpoint}),
+        body: JSON.stringify({endpoint: pushSubscription.endpoint}),
       });
       if (!response.ok) throw new Error('The notification subscription could not be removed.');
-      await existing.unsubscribe();
+      await pushSubscription.unsubscribe();
+      pushSubscription = null;
       setNotificationButton(false);
       showToast('Result notifications disabled');
       return;
     }
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      showToast('Notification permission was not granted.');
+    if (Notification.permission === 'denied') {
+      showToast('Notifications are blocked. Allow Sabi in your device notification settings, then tap the bell again.', 6500);
       return;
     }
-    const subscription = await registration.pushManager.subscribe({
+
+    // Keep subscribe() directly in the tap handler. WebKit requires this user
+    // activation for Home Screen web apps to show the iOS permission prompt.
+    const subscriptionRequest = pushServiceWorker.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(pushConfig.public_key),
     });
+    notificationButton.disabled = true;
+    let subscription;
+    try {
+      subscription = await subscriptionRequest;
+    } catch (error) {
+      setNotificationButton(false);
+      throw error;
+    }
     const payload = subscription.toJSON();
     const response = await fetch('/api/v2/push/subscriptions', {
       method: 'POST',
@@ -161,10 +202,12 @@
     });
     if (!response.ok) {
       await subscription.unsubscribe();
+      setNotificationButton(false);
       throw new Error('The subscription could not be saved.');
     }
+    pushSubscription = subscription;
     setNotificationButton(true);
-    await registration.showNotification('Sabi notifications are on', {
+    await pushServiceWorker.showNotification('Sabi notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
       icon: '/assets/icon-192.png',
       tag: 'sabi-boy-push-enabled',
@@ -526,15 +569,15 @@
   const renderers = { overview:renderOverview, picks:renderPicks, tickets:renderTickets, performance:renderPerformance, finance:renderFinance, strategies:renderStrategies, history:renderHistory, blog:renderBlog, system:renderSystem };
 
   function pathRoute(pathname) {
-    if (pathname.startsWith('/blog/') && pathname.length > 6) return ['blog-post','Blog','SABI'];
-    if (pathname.startsWith('/tickets/') && pathname.length > 9) return ['ticket-detail','Ticket','OUR TICKETS'];
+    if (pathname.startsWith('/blog/') && pathname.length > 6) return ['blog-post','Blog'];
+    if (pathname.startsWith('/tickets/') && pathname.length > 9) return ['ticket-detail','Ticket'];
     return routes[pathname] || routes['/'];
   }
 
   async function render(force = false) {
     if (force) clearCache();
-    const [name, pageTitle, eye] = pathRoute(location.pathname);
-    title.textContent = pageTitle; eyebrow.textContent = eye;
+    const [name, pageTitle] = pathRoute(location.pathname);
+    title.textContent = pageTitle;
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (name === 'blog-post' ? 'blog' : name === 'ticket-detail' ? 'tickets' : name)));
     view.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading our record…</p></div>';
     try {

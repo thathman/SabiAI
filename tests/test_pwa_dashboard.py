@@ -32,7 +32,12 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'id="menu-close"' not in shell.text
     assert 'id="nav-backdrop"' in shell.text
     assert 'id="notification-button"' in shell.text
+    assert 'id="eyebrow"' not in shell.text
+    assert 'data-notification-state="off"' in shell.text
+    assert 'aria-pressed="false"' in shell.text
+    assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
+    assert 'name="apple-mobile-web-app-capable"' in shell.text
     assert '<strong>Sabi</strong>' in shell.text
     assert 'Our record</span>' not in shell.text
     assert 'class="online-pill"><span></span> Online' in shell.text
@@ -48,6 +53,13 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert ">S</text>" in favicon.text
     assert ">S</text>" in icon.text
     assert ">SB</text>" not in icon.text
+
+    app_script = client.get("/assets/app.js")
+    assert app_script.status_code == 200
+    assert "Add to Home Screen" in app_script.text
+    assert "navigator.standalone" in app_script.text
+    assert "pushManager.subscribe" in app_script.text
+    assert "Notification.requestPermission" not in app_script.text
 
 
 def _settings(tmp_path: Path) -> Settings:

@@ -66,7 +66,6 @@ a { color: inherit; text-decoration: none; }
   background: rgba(11,11,13,.86); backdrop-filter: blur(18px);
 }
 .page-heading { min-width: 0; }
-.page-heading p { margin: 0 0 3px; color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .19em; }
 .page-heading h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 500; font-size: 25px; letter-spacing: -.025em; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .icon-button {
@@ -74,6 +73,8 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--line); background: var(--panel); color: #c5c6cb; cursor: pointer;
 }
 .icon-button:hover { background: var(--panel-2); color: var(--text); }
+.notification-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.notification-button[data-notification-state="on"] { color: var(--good); border-color: rgba(100,198,143,.45); background: rgba(100,198,143,.08); }
 .menu-button { display: none; }
 .network-status { color: var(--bad); font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .network-status:empty { display: none; }

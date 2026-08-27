@@ -1,6 +1,6 @@
 'use strict';
 
-const SHELL_CACHE = 'sabi-shell-v2.1.0.1';
+const SHELL_CACHE = 'sabi-shell-v2.1.0.2';
 const APP_SHELL = [
   '/',
   '/manifest.json',
