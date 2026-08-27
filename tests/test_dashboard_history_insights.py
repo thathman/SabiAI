@@ -25,6 +25,11 @@ class DashboardHistoryInsightsTests(unittest.TestCase):
         self.assertIn('@router.get("/bookmakers/price-history")', api)
         self.assertIn('@router.get("/bookmakers/price-disagreements")', api)
 
+    def test_finance_view_uses_canonical_overview_profit_loss_endpoint(self):
+        script = (ROOT / "dashboard" / "v2" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("api('/overview')", script)
+        self.assertNotIn("api('/history/profit_loss')", script)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -437,7 +437,11 @@
   }
 
   async function renderFinance() {
-    const [pl, series] = await Promise.all([api('/history/profit_loss'), api('/series/bankroll?limit=1000')]);
+    // Profit/loss is part of the read-only overview payload; there is no
+    // separate /history/profit_loss route. Reuse the canonical endpoint so
+    // Finance remains functional instead of falling back to the app shell.
+    const [overview, series] = await Promise.all([api('/overview'), api('/series/bankroll?limit=1000')]);
+    const pl = overview.profit_loss || {};
     const b = pl.betting || {}, f = pl.funding || {};
     const pnlN = Number(b.profit_loss || 0);
     view.innerHTML = `
