@@ -2,7 +2,7 @@
 Description=Run Sabi Boy direct daily research at 08:00 Lagos time
 
 [Timer]
-OnCalendar=*-*-* 08:00:00
+OnCalendar=*-*-* 08:00:00 Africa/Lagos
 Persistent=true
 AccuracySec=1m
 RandomizedDelaySec=30s
