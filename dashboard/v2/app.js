@@ -28,7 +28,7 @@
     '/finance': ['finance', 'Finance'],
     '/strategies': ['strategies', 'Strategies'],
     '/history': ['history', 'History'],
-    '/blog': ['blog', 'Sabi Boy Blog'],
+    '/blog': ['blog', "Sabi's Blog"],
     '/system': ['system', 'System'],
   };
 
@@ -209,7 +209,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.1.0.5',
+      icon: '/assets/icon-192.png?v=2.1.0.6',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -221,7 +221,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.5', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.6', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
@@ -505,14 +505,14 @@
   async function renderBlog() {
     const data = await api('/blog?limit=100');
     const posts = data.posts || [];
-    view.innerHTML = `<section class="section">${sectionHead('Sabi Boy Blog', 'Thoughts, lessons, postmortems and reflections from our own journey')}
+    view.innerHTML = `<section class="section">${sectionHead("Sabi's Blog", 'Thoughts, lessons, postmortems and reflections from our own journey')}
       ${posts.length ? `<div class="blog-grid">${posts.map(p => `<article class="blog-card" data-blog-slug="${esc(p.slug)}"><div class="category">${esc(p.category || 'Sabi Boy')}</div><h2>${esc(p.title)}</h2><p>${esc(p.excerpt || String(p.body||'').slice(0,190))}</p><footer>${date(p.published_at || p.created_at)}${p.tags?.length ? ` · ${p.tags.slice(0,3).map(esc).join(' · ')}` : ''}</footer></article>`).join('')}</div>` : empty('Sabi Boy has not published a post yet', 'The blog will build continuity from our actual record and reflections.')}
     </section>`;
   }
 
   async function renderBlogPost(slug) {
     const p = await api(`/blog/${encodeURIComponent(slug)}`);
-    view.innerHTML = `<article class="article"><a class="article-back" href="/blog" data-route="blog">← Back to Sabi Boy Blog</a><div class="category">${esc(p.category || 'Sabi Boy')}</div><h1>${esc(p.title)}</h1><div class="article-meta">${date(p.published_at || p.created_at)}</div><div class="article-body">${esc(p.body)}</div>${p.tags?.length ? `<div class="tags">${p.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
+    view.innerHTML = `<article class="article"><a class="article-back" href="/blog" data-route="blog">← Back to Sabi's Blog</a><div class="category">${esc(p.category || 'Sabi Boy')}</div><h1>${esc(p.title)}</h1><div class="article-meta">${date(p.published_at || p.created_at)}</div><div class="article-body">${esc(p.body)}</div>${p.tags?.length ? `<div class="tags">${p.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
   }
 
   async function renderSystem() {

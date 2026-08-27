@@ -21,7 +21,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
-    assert all("?v=2.1.0.5" in icon["src"] for icon in data["icons"])
+    assert all("?v=2.1.0.6" in icon["src"] for icon in data["icons"])
 
     worker = client.get("/sw.js")
     assert worker.status_code == 200
@@ -40,8 +40,8 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
     assert 'name="apple-mobile-web-app-capable"' in shell.text
-    assert '/assets/app.js?v=2.1.0.5' in shell.text
-    assert '/assets/app.css?v=2.1.0.5' in shell.text
+    assert '/assets/app.js?v=2.1.0.6' in shell.text
+    assert '/assets/app.css?v=2.1.0.6' in shell.text
     assert '<strong>Sabi Boy</strong>' in shell.text
     assert '<title>Sabi Boy knows ball</title>' in shell.text
     assert '<span>Picks</span>' in shell.text
@@ -54,7 +54,8 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert '> Online<' not in sidebar
     assert 'id="readiness-chip"' not in topbar
     assert '<div class="brand-mark">SB</div>' not in shell.text
-    assert '<img class="brand-mark" src="/favicon.ico?v=2.1.0.5" alt="">' in shell.text
+    assert '<img class="brand-mark" src="/favicon.ico?v=2.1.0.6" alt="">' in shell.text
+    assert '<span>Sabi\'s Blog</span>' in shell.text
 
     favicon = client.get("/favicon.ico")
     icon = client.get("/icon.svg")
