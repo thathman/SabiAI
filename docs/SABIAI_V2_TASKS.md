@@ -429,7 +429,7 @@
 - [x] Settlement duplicate/correction acceptance
 - [x] Automatic result heartbeat settles supported score-derived picks/ticket legs idempotently and audits every change
 - [x] Automatic settlement leaves unsupported props/rule-sensitive cases pending and never infers payouts
-- [~] PWA install/offline/push acceptance — repository tests pass; Dell HTTPS install and a real-device push delivery remain to be proven
+- [~] PWA install/offline/push acceptance — live HTTPS install/offline controls and the push endpoint passed; final iOS lock-screen/display confirmation remains owner-side
 - [x] Backup timer + backup/restore drill passes on Dell
 - [x] External route/cutover rehearsal documented
 - [x] Security/secrets review
@@ -440,23 +440,23 @@
 - [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
 - [!] Produce the final production OpenClaw/cutover instruction only after runtime acceptance is green
 
-### Phase 16 Dell evidence — 2026-08-26
+### Phase 16 Dell evidence — 2026-08-27
 
-- The final exact commit is recorded in `data/release/staging-latest.json` and `data/release/openclaw-activation-latest.json`; the same commit must be green in the stage, activation and external finalizer reports.
-- Full Dell suite: 226 passed with one known Starlette deprecation warning.
+- Exact installed and acceptance-tested code commit: `762e01f0e5aebb56b658f596592fe1c9e6f5702d` (`v2`, V2.1.0.3). Forgejo `thathman/SabiAI` resolves `v2` to the same commit; `main` remains unmerged.
+- Full Dell suite: 234 passed with one known Starlette deprecation warning. The staged release acceptance repeated the same 234-test result with no failed gates.
 - Verified private recovery archives: `~/sabi-boy-migration-archives/20260826T071240Z/v1-prediction-workspace.tar.gz` and `v1-repository-and-service.tar.gz`; both gzip checks and recorded SHA-256 checksums passed.
 - Migration/reconciliation: source and V2 both contained zero picks/tickets after the intentional V1 reset; the bankroll reconciled exactly at ₦30,000 with no migration warnings. The separate pre-reset private archive was reviewed for historical strategy/compound/long-shot records.
 - Active runtime: the existing OpenClaw agent ID is `prediction`, with name/identity Sabi Boy, seven required current-format skills, 131 V2 tools, five preserved bindings and READY status.
 - Live research: one case resumed across independent OpenClaw sessions; an official FIVB source was verified and reused without rediscovery; football, basketball, tennis and volleyball examples passed.
 - Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet valid-code creation/reload remains unproven. By later owner direction, all other bookmaker targets were removed from the active registry/playbooks.
-- V2.1 repository validation: 234 tests pass locally, including PWA manifest/service worker/push-origin controls, secure VAPID key generation, removed-bookmaker rejection, automatic result settlement, audit idempotence and fixed-timer installation. Dell runtime evidence is still required for the new V2.1 gates.
+- V2.1 runtime validation: 234 tests pass both locally and on the Dell, including PWA manifest/service worker/push-origin controls, secure VAPID key generation, removed-bookmaker rejection, automatic result settlement, audit idempotence and fixed-timer installation.
 - Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Exact current bookmaker-specific policy values remain live-verification data.
-- Dashboard: all read-only routes passed; desktop and mobile layouts were accepted; Advanced History displayed the real 1.70/1.72 bookmaker observations.
-- Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed; the enabled backup timer created an integrity-checked backup and a temporary restore passed.
-- Security: loopback-only application binding, disabled API docs, host validation, security headers, private file permissions, secret scan and installed-package audit passed. The external Cloudflare route was not reconfigured.
+- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the V1 `S` assets, `Sabi` branding, one-line page titles, backdrop-only drawer close, installable manifest and a controlling V2.1.0.3 service worker. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell now gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. One existing opted-in endpoint accepted the verification push: attempted 1, delivered 1, expired 0, failed 0; final OS display confirmation remains owner-side.
+- Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed. The automatic-settlement timer is enabled/active and its current heartbeat exited successfully. Backup manifest `data/backups/sabi-boy/20260827T001550Z/manifest.json` verified both V1 and V2 checksums/integrity; a separate restore reached schema 8 with `PRAGMA quick_check=ok`.
+- Security: loopback-only application binding, disabled API docs, host validation, security headers, mode-600 environment/VAPID key, zero tracked private keys/recognized secret patterns and a clean installed-package audit passed. A pre-existing host issue remains: five Cloudflared processes expose tunnel tokens in their process arguments; rotate those tokens and move them out of command-line arguments under a separately authorized Cloudflare maintenance window. The external Cloudflare route was not reconfigured in this work.
 - V1 service and active V1 working copies were removed only after archive verification. The V2 service now owns the original port and external route; `main` remains unmerged.
 - The cutover finalizer accepts an already inactive/removed V1 systemd unit as the required stopped state; regression coverage prevents the final report from failing after deliberate V1 removal.
-- Release blocker status: **NOT READY** until the deliberately incomplete live gates above are either passed or explicitly waived by the owner.
+- Release blocker status: **NOT READY** until the deliberately incomplete SportyBet/live-policy gates, owner-side iOS notification-display confirmation and Cloudflared token remediation are passed or explicitly waived by the owner.
 
 ---
 
