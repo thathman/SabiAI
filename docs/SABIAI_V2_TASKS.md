@@ -468,6 +468,7 @@
 - The ten-minute `sabi-boy-settlement.timer`, daily `sabi-boy-backup.timer`, and dashboard service are active. A manual settlement heartbeat completed successfully with zero source errors and no state changes.
 - The two acceptance-probe research cases were closed as test artifacts, and the `dell_acceptance_probe` database job was disabled so it cannot recreate synthetic research.
 - Live source checks succeeded for ESPN Public Data (Premier League slug `eng.1`), football-data.org, Parse ESPN, Parse Flashscore, Parse LiveScore and Parse SportyBet; TheSportsDB remains healthy. The read-only Sports Betting AI Analyzer key is configured but its validation request timed out; it is retained as an optional source and is not treated as authoritative or a release gate.
+- After the broad no-wager daily-picks dry run, the source monitor correctly delivered an actionable Matrix alert: Flashscore had three caller-side `422` responses while one fixture call succeeded, and the optional Sports Betting AI Analyzer timed out. The overall system stayed **READY** with zero stale settlements, zero paid calls and no pick/ticket mutations; these are source-input/availability follow-ups, not an authorization to place a wager.
 
 ---
 
