@@ -343,7 +343,7 @@
 - [x] Service-worker offline application shell and update lifecycle
 - [x] Opt-in Web Push subscription/delivery path with private VAPID key outside the repository
 - [x] Mobile drawer backdrop click, Escape close and focus restoration; no visible X by owner direction
-- [~] Final PWA install/push/mobile visual regression on Dell/real phone
+- [x] Final PWA install/push/mobile visual regression on Dell and owner-confirmed iOS notification display
 - [x] Production history correctness after migration — zero source picks/tickets and the ₦30,000 bankroll reconciled exactly
 
 ## Phase 14 — Sabi Boy Blog
@@ -429,16 +429,16 @@
 - [x] Settlement duplicate/correction acceptance
 - [x] Automatic result heartbeat settles supported score-derived picks/ticket legs idempotently and audits every change
 - [x] Automatic settlement leaves unsupported props/rule-sensitive cases pending and never infers payouts
-- [~] PWA install/offline/push acceptance — live HTTPS install/offline controls and the push endpoint passed; final iOS lock-screen/display confirmation remains owner-side
+- [x] PWA install/offline/push acceptance — live HTTPS controls passed and the owner confirmed the delivered test notification appeared on iOS
 - [x] Backup timer + backup/restore drill passes on Dell
 - [x] External route/cutover rehearsal documented
 - [x] Security/secrets review
 - [x] Repository deployment runbook exists
 - [x] Release-candidate notes exist
 - [x] ChatGPT Work installation/testing handoff exists
-- [!] Final V2 acceptance review — installed replacement is operational; only owner-visible iOS notification-display confirmation remains before final release
+- [x] Final V2 acceptance review — installed replacement is operational and all required original-plan acceptance gates have passing evidence
 - [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
-- [!] Produce the final production OpenClaw/cutover instruction only after runtime acceptance is green
+- [x] Final production state recorded — V2 is already the active replacement and no additional cutover action is required; `main` remains unmerged
 
 ### Phase 16 Dell evidence — 2026-08-27
 
@@ -453,12 +453,12 @@
 - V2.1 runtime validation: 234 tests pass both locally and on the Dell, including PWA manifest/service worker/push-origin controls, secure VAPID key generation, removed-bookmaker rejection, automatic result settlement, audit idempotence and fixed-timer installation.
 - Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Current official [SportyBet sports rules](https://lite.sportybet.com/ng/help?nav=sports) and [Bet9ja sports terms](https://help.bet9ja.com/sport-tcs/) were checked for tennis retirement, golf dead heat/reduced events and basketball overtime. The profiles correctly continue to require exact bookmaker/market verification instead of assuming equivalence.
 - Blog reconciliation: the reset V1 source contained zero diary posts, so zero were eligible to migrate; that count reconciled exactly. The V2 draft/publish/display/archive lifecycle passed independently.
-- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the exact V1 `S` assets, Sabi Boy branding, the browser title “Sabi Boy knows ball,” one-line page titles, the Picks label, backdrop-only drawer close, installable manifest and a controlling V2.1.0.4 service worker. The top bar now reserves `env(safe-area-inset-top)` for iOS standalone mode so the header is not hidden behind the device status area. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. The latest clearly labelled notification test reached both active subscriptions: attempted 2, delivered 2, expired 0, failed 0; final owner-visible iOS banner/lock-screen confirmation remains owner-side.
+- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the exact V1 `S` assets, Sabi Boy branding, the browser title “Sabi Boy knows ball,” one-line page titles, the Picks label, backdrop-only drawer close, installable manifest and a controlling V2.1.0.4 service worker. The top bar now reserves `env(safe-area-inset-top)` for iOS standalone mode so the header is not hidden behind the device status area. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. The latest clearly labelled notification test reached both active subscriptions: attempted 2, delivered 2, expired 0, failed 0; the owner then confirmed that the notification visibly appeared on iOS.
 - Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed. The automatic-settlement timer is enabled/active and its current heartbeat exited successfully. Backup manifest `data/backups/sabi-boy/20260827T001550Z/manifest.json` verified both V1 and V2 checksums/integrity; a separate restore reached schema 8 with `PRAGMA quick_check=ok`.
 - Security: loopback-only application binding, disabled API docs, host validation, security headers, mode-600 Sabi Boy environment/VAPID key, zero tracked private keys/recognized secret patterns and a clean installed-package audit passed. The legacy OpenClaw secrets drop-in was tightened from mode 664 to 600. The Sabi Boy route runs through `cloudflared.service` using a root-owned configuration and a mode-400 credentials file; its process arguments contain no token. Three unrelated host tunnel services still expose tokens in their process arguments and should be remediated in their own authorized maintenance window. No external Cloudflare route was changed.
 - V1 service and active V1 working copies were removed only after archive verification. The V2 service now owns the original port and external route; `main` remains unmerged.
 - The cutover finalizer accepts an already inactive/removed V1 systemd unit as the required stopped state; regression coverage prevents the final report from failing after deliberate V1 removal.
-- Release blocker status: **NOT READY** only until the owner confirms that the delivered test notification was visibly shown by iOS. SportyBet, live-policy, worker fan-out and Sabi-scoped Cloudflare-security gates now have passing evidence.
+- Release status: **READY FOR FINAL RELEASE**. Every required original-plan runtime gate has passing evidence. The optional Parse SportyBet marketplace source remains unavailable until the owner completes Parse's phone/card access requirements and adds that API to the account; this is not a V2 release blocker. `v2` has not been merged to `main`.
 
 ---
 
