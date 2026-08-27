@@ -16,6 +16,12 @@ OPENCLAW_BIN="${OPENCLAW_BIN:-openclaw}"
 AGENT_ID="${SABIAI_OPENCLAW_AGENT_ID:-prediction}"
 TZ_NAME="${SABIAI_TIMEZONE:-Africa/Lagos}"
 GATEWAY_ENV_FILE="${OPENCLAW_GATEWAY_ENV_FILE:-$HOME/.openclaw/env/openclaw.env}"
+# Use an explicit delivery route for user-facing alerts.  OpenClaw cannot safely
+# resolve "last" when several channels are configured, so fail closed to the
+# configured Matrix room unless the operator deliberately overrides it.
+DELIVERY_CHANNEL="${SABIAI_OPENCLAW_DELIVERY_CHANNEL:-matrix}"
+DELIVERY_TO="${SABIAI_OPENCLAW_DELIVERY_TO:-!lkXVdwqsWDeBqhharF:chat.hendrix.com.ng}"
+DELIVERY_ACCOUNT="${SABIAI_OPENCLAW_DELIVERY_ACCOUNT:-sabiai}"
 
 # OpenClaw's cron command needs the resolved gateway credential in a non-interactive shell.
 # Import only that one value from the gateway's private environment file; do not source the
@@ -86,7 +92,13 @@ upsert_agent_job() {
 
   local delivery_args=(--no-deliver)
   if [[ "$delivery" == "announce" ]]; then
-    delivery_args=(--announce --best-effort-deliver)
+    delivery_args=(
+      --announce
+      --best-effort-deliver
+      --channel "$DELIVERY_CHANNEL"
+      --to "$DELIVERY_TO"
+      --account "$DELIVERY_ACCOUNT"
+    )
   fi
 
   if [[ -n "$existing" ]]; then
