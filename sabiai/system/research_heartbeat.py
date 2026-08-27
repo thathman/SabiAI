@@ -36,8 +36,8 @@ def _local_date(settings: Settings, now: datetime | None = None) -> str:
     return (now or datetime.now(timezone.utc)).astimezone(zone).date().isoformat()
 
 
-def _request_key(sport: str, day: str) -> str:
-    digest = hashlib.sha256(f"daily-fixtures|{sport}|{day}".encode()).hexdigest()[:24]
+def _request_key(sport: str, day: str, source: str | None = None) -> str:
+    digest = hashlib.sha256(f"daily-fixtures|{sport}|{day}|{source or 'fallback'}".encode()).hexdigest()[:24]
     return f"daily-fixtures:{digest}"
 
 
@@ -66,25 +66,36 @@ def collect_fixtures(
         metadata: dict[str, Any] = {"date": day}
         if league:
             metadata.update({"league": league, "league_slug": league, "espn_sport": espn_sport})
-        request = SourceRequest(
-            request_key=_request_key(sport, day),
-            capability="fixtures",
-            sport=sport,
-            ttl_seconds=900,
-            metadata=metadata,
+        source_order: tuple[str | None, ...] = (
+            ("Parse · SportyBet", None)
+            if "Parse · SportyBet" in bundle.fetchers and sport in {"football", "soccer", "basketball", "ice_hockey"}
+            else (None,)
         )
-        try:
-            response = service.execute(request, bundle.fetchers, allow_paid=False)
-            for event in _normalize_events(response.payload, sport=sport, source=response.source_name):
-                key = (_norm(str(event.get("event") or "")), str(event.get("starts_at") or ""))
-                if not key[0] or key in seen:
-                    continue
-                seen.add(key)
-                events.append(event)
-                if len(events) >= max_events:
-                    break
-        except Exception as exc:
-            failures.append(f"{sport}: {_safe_error(exc)}")
+        for source_name in source_order:
+            request = SourceRequest(
+                request_key=_request_key(sport, day, source_name),
+                capability="fixtures",
+                sport=sport,
+                ttl_seconds=900,
+                metadata=metadata,
+                source_names=(source_name,) if source_name else (),
+            )
+            try:
+                response = service.execute(request, bundle.fetchers, allow_paid=False)
+                for event in _normalize_events(response.payload, sport=sport, source=response.source_name):
+                    key = (_norm(str(event.get("event") or "")), str(event.get("starts_at") or ""))
+                    if not key[0] or key in seen:
+                        continue
+                    seen.add(key)
+                    events.append(event)
+                    if len(events) >= max_events:
+                        break
+            except Exception as exc:
+                failures.append(f"{sport}{f' via {source_name}' if source_name else ''}: {_safe_error(exc)}")
+            if events and source_name == "Parse · SportyBet":
+                break
+            if len(events) >= max_events:
+                break
         if len(events) >= max_events:
             break
 
@@ -94,8 +105,8 @@ def collect_fixtures(
 def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[dict[str, Any]]:
     for row in _event_rows(payload):
         name = _first(row, "strEvent", "event", "name", "shortName", "displayName")
-        home = _first(row, "strHomeTeam", "homeTeam", "home", "home_name")
-        away = _first(row, "strAwayTeam", "awayTeam", "away", "away_name")
+        home = _first(row, "strHomeTeam", "homeTeamName", "homeTeam", "home", "home_name")
+        away = _first(row, "strAwayTeam", "awayTeamName", "awayTeam", "away", "away_name")
         competitions = row.get("competitions") if isinstance(row.get("competitions"), list) else []
         if (not home or not away) and competitions and isinstance(competitions[0], dict):
             competitors = competitions[0].get("competitors")
@@ -113,9 +124,9 @@ def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[d
             name = f"{home} vs {away}"
         if not name:
             continue
-        starts_at = _first(row, "strTimestamp", "date", "startTime", "dateEvent", "starts_at")
-        league = _first(row, "strLeague", "league", "competition", "shortName")
-        event_id = _first(row, "idEvent", "id", "uid")
+        starts_at = _first(row, "strTimestamp", "date", "startTime", "dateEvent", "starts_at", "kickoffTime")
+        league = _first(row, "strLeague", "tournament", "league", "competition", "category")
+        event_id = _first(row, "idEvent", "eventId", "id", "uid")
         item: dict[str, Any] = {
             "sport": sport,
             "event": name,
@@ -139,18 +150,8 @@ def _event_rows(payload: object) -> Iterable[dict[str, Any]]:
     if isinstance(payload, dict):
         raw = payload.get("raw")
         if isinstance(raw, dict):
-            for key in ("events", "event", "fixtures", "games", "matches", "data"):
-                value = raw.get(key)
-                if isinstance(value, list):
-                    candidates.extend(item for item in value if isinstance(item, dict))
-                elif isinstance(value, dict):
-                    candidates.append(value)
-        for key in ("events", "event", "fixtures", "games", "matches"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                candidates.extend(item for item in value if isinstance(item, dict))
-            elif isinstance(value, dict):
-                candidates.append(value)
+            candidates.extend(_nested_event_rows(raw))
+        candidates.extend(_nested_event_rows(payload))
     for item in candidates:
         yield item
 
@@ -166,7 +167,15 @@ def _extract_odds(row: dict[str, Any]) -> list[dict[str, Any]]:
                 key_text = str(key).casefold()
                 if key_text in {"odds", "markets", "market", "prices", "selections", "outcomes"}:
                     visit(child, str(key))
-                elif key_text in {"decimalodds", "decimal_odds", "price", "odd"}:
+                elif key_text in {
+                    "decimalodds",
+                    "decimal_odds",
+                    "price",
+                    "odd",
+                    "homeodds",
+                    "drawodds",
+                    "awayodds",
+                }:
                     try:
                         numeric = float(child)
                     except (TypeError, ValueError):
@@ -422,6 +431,23 @@ def _first(row: dict[str, Any], *keys: str) -> str | None:
         if value is not None and str(value).strip():
             return str(value).strip()
     return None
+
+
+def _nested_event_rows(value: object) -> list[dict[str, Any]]:
+    if isinstance(value, list):
+        rows: list[dict[str, Any]] = []
+        for item in value:
+            rows.extend(_nested_event_rows(item))
+        return rows
+    if not isinstance(value, dict):
+        return []
+    rows = []
+    for key in ("events", "event", "fixtures", "games", "matches"):
+        if key in value:
+            rows.extend(_nested_event_rows(value[key]))
+    if any(key in value for key in ("strEvent", "eventId", "idEvent", "homeTeamName", "strHomeTeam", "name")):
+        rows.append(value)
+    return rows
 
 
 def _norm(value: str) -> str:

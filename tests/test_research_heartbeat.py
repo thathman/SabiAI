@@ -78,6 +78,31 @@ def test_validation_accepts_only_supplied_decimal_price(tmp_path):
     assert rows[0]["source"] == "SportyBet"
 
 
+def test_parse_sportybet_fixture_data_is_normalized_with_prices():
+    payload = {
+        "raw": {
+            "data": {
+                "events": [
+                    {
+                        "eventId": "sr:match:1",
+                        "tournament": "Premier League",
+                        "homeTeamName": "Home",
+                        "awayTeamName": "Away",
+                        "kickoffTime": 1787943600000,
+                        "homeOdds": "2.20",
+                        "drawOdds": "3.40",
+                        "awayOdds": "3.10",
+                    }
+                ]
+            }
+        }
+    }
+    rows = list(heartbeat._normalize_events(payload, sport="football", source="Parse · SportyBet"))
+    assert rows[0]["event"] == "Home vs Away"
+    assert rows[0]["event_id"] == "sr:match:1"
+    assert len(rows[0]["odds"]) == 3
+
+
 def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_path):
     captured = {}
 
