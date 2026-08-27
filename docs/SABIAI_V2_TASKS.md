@@ -469,6 +469,7 @@
 - The two acceptance-probe research cases were closed as test artifacts, and the `dell_acceptance_probe` database job was disabled so it cannot recreate synthetic research.
 - Live source checks succeeded for ESPN Public Data (Premier League slug `eng.1`), football-data.org, Parse ESPN, Parse Flashscore, Parse LiveScore and Parse SportyBet; TheSportsDB remains healthy. The read-only Sports Betting AI Analyzer key is configured but its validation request timed out; it is retained as an optional source and is not treated as authoritative or a release gate.
 - After the broad no-wager daily-picks dry run, the source monitor correctly delivered an actionable Matrix alert: Flashscore had three caller-side `422` responses while one fixture call succeeded, and the optional Sports Betting AI Analyzer timed out. The overall system stayed **READY** with zero stale settlements, zero paid calls and no pick/ticket mutations; these are source-input/availability follow-ups, not an authorization to place a wager.
+- Dashboard follow-up: commit `e94b513ef6313a6bf877e98e5c867df36d5df7b8` renames the navigation/page/article label to **Sabi's Blog**, bumps the PWA cache version to `2.1.0.6`, and passed the full Dell suite (**243 passed, 1 warning**). The active Dell dashboard was restarted and serves the new shell.
 
 ---
 
