@@ -36,8 +36,11 @@ Important variables:
 - `SABIAI_VAPID_PUBLIC_KEY`
 - `SABIAI_VAPID_PRIVATE_KEY_FILE` — mode-600 key outside the repository
 - `SABIAI_VAPID_SUBJECT`
-- `SABIAI_OPENCLAW_RESEARCH_MODEL` — model used only by the daily research/picks job
-- `SABIAI_OPENCLAW_RESEARCH_FALLBACKS` — comma-separated model fallback(s)
+- `SABIAI_RESEARCH_API_BASE_URL` — direct OpenAI-compatible research endpoint
+- `SABIAI_RESEARCH_MODEL` — direct daily research model (default `qwen3.8-max-preview`)
+- `SABIAI_RESEARCH_API_KEY` — optional dedicated key; the Dell may use the private `ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY`
+- `SABIAI_RESEARCH_SPORTS` — comma-separated daily fixture sports
+- `SABIAI_RESEARCH_FALLBACK_API_BASE_URL`, `SABIAI_RESEARCH_FALLBACK_API_KEY`, `SABIAI_RESEARCH_FALLBACK_MODEL` — optional direct fallback
 
 V2 dashboard service:
 
@@ -60,6 +63,14 @@ Local source/readiness health:
 - interval: thirty minutes, persistent across downtime
 - scope: reads V2's local fetch log, readiness report and background-job state; it makes no provider or language-model calls
 - material changes send Web Push when a subscription is available
+
+Direct daily research and picks:
+
+- service: `sabi-boy-research.service`
+- timer: `sabi-boy-research.timer`
+- schedule: 08:00 `Africa/Lagos`, persistent across downtime
+- scope: compact direct source collection plus a direct Alibaba-compatible model call; no OpenClaw agent, workspace, memory or tool schemas are loaded
+- output: `data/reports/daily-picks-latest.json` and a Web Push notification; recommendations are never written as placed wagers
 
 Verified backup schedule:
 
@@ -142,7 +153,8 @@ The stage command performs the release-critical order:
 9. enable the V2 backup timer only after the required V2 acceptance gates succeed;
 10. enable the automatic result-settlement heartbeat;
 11. enable the local source/readiness health timer;
-12. write commit-pinned staging state.
+12. enable the direct daily research timer;
+13. write commit-pinned staging state.
 
 State/report locations:
 
@@ -222,7 +234,7 @@ Reports include:
 - `data/release/openclaw-identity-latest.json`
 - `data/release/openclaw-activation-latest.json`
 
-The Sabi Boy model wake layer is installed with OpenClaw's persistent cron scheduler and is pinned to `SABIAI_OPENCLAW_AGENT_ID`. It creates three idempotent agent jobs: daily picks at 08:00 Africa/Lagos (announced), daily reflection at 22:30 (quiet), and weekly reflection Sunday at 20:00 (quiet). The daily picks job uses `SABIAI_OPENCLAW_RESEARCH_MODEL` (default Alibaba Qwen 3.8 Max Preview) and falls back to `SABIAI_OPENCLAW_RESEARCH_FALLBACKS` (default OpenCode Qwen 3.7 Max). Source/readiness monitoring is a separate local `sabi-boy-health.timer` system service and does not wake the model or consume model tokens. User-facing announcements use the explicit `SABIAI_OPENCLAW_DELIVERY_CHANNEL`, `SABIAI_OPENCLAW_DELIVERY_TO` and `SABIAI_OPENCLAW_DELIVERY_ACCOUNT` route; relying on `last` is unsafe when multiple channels are configured. The systemd `sabi-boy-settlement.timer` remains the ten-minute result heartbeat and sends Web Push only when a settlement changes. Reflection jobs publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
+The daily pick/research wake is owned by the local `sabi-boy-research.timer` at 08:00 `Africa/Lagos`. It collects a compact fixture/price packet and calls the configured direct model without loading the `prediction` agent, its workspace, memory or tool schemas. The report is written locally and sent by Web Push; no wager or placed-pick record is created. OpenClaw's persistent cron scheduler is retained only for the quiet daily reflection at 22:30 and weekly reflection Sunday at 20:00, both pinned to `SABIAI_OPENCLAW_AGENT_ID`. Source/readiness monitoring is a separate local `sabi-boy-health.timer` and does not wake the model or consume model tokens. User-facing OpenClaw announcements use the explicit `SABIAI_OPENCLAW_DELIVERY_CHANNEL`, `SABIAI_OPENCLAW_DELIVERY_TO` and `SABIAI_OPENCLAW_DELIVERY_ACCOUNT` route; relying on `last` is unsafe when multiple channels are configured. The systemd `sabi-boy-settlement.timer` remains the ten-minute result heartbeat and sends Web Push only when a settlement changes. Reflection jobs publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
 
 Manual verification commands:
 

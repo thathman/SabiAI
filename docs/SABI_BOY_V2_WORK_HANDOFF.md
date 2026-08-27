@@ -609,7 +609,7 @@ blog.reflection.context
 
 Create controlled conditions or use existing real recent data to confirm meaningful trigger types without fabricating a post.
 
-Verify daily and weekly OpenClaw reflection cron jobs exist for the `prediction` agent and can execute successfully.
+Verify the local `sabi-boy-research.timer` is enabled/active and fires at 08:00 `Africa/Lagos`; it must run the direct compact research service without waking the `prediction` agent. Verify the quiet daily and weekly OpenClaw reflection cron jobs still exist for the `prediction` agent and can execute successfully.
 
 A scheduled run with no meaningful trigger may correctly publish nothing.
 

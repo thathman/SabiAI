@@ -474,6 +474,12 @@
 - Live model probe on the Dell (2026-08-28) completed successfully with `aliyun-token-plan/qwen3.8-max-preview`: response `MODEL_PROBE_OK`, provider/model reported as `aliyun-token-plan` / `qwen3.8-max-preview`, fallback not used, and approximately 14.4 seconds elapsed. The probe used 70,501 input and 31 output tokens because the prediction agent loads its full workspace/tool context; this is why only the daily research workflow is model-backed and local health/settlement timers remain model-free.
 - Dashboard follow-up: commit `2883d27f0312deb1f3388fe264ea5bad28f4b39e` renames the navigation/page/article label to **Sabi's Blog**, fixes Finance to use the canonical read-only overview payload, bumps the PWA cache version to `2.1.0.6`, and passed the full Dell suite (**244 passed, 1 warning**). The active Dell dashboard was restarted and serves the new shell.
 
+### Phase 16 follow-up evidence — 2026-08-28 (direct research wake)
+
+- Implementation commits `b96c42e49129c611583221afc5c5dc68c28cc8ff`, `51de663`, `e5311da` and `026b139` move daily research/picks out of the OpenClaw agent. `sabi-boy-research.service` / `sabi-boy-research.timer` collect direct TheSportsDB/Parse SportyBet fixture and price data, call Alibaba Qwen directly, write `data/reports/daily-picks-latest.json`, and send Web Push. The timer is enabled/active on the Dell and pinned to 08:00 `Africa/Lagos` (07:00 UTC); the old `sabi-boy-daily-picks` OpenClaw cron is retained only as a disabled historical record.
+- The direct Dell dry run completed successfully with 53 events, zero source failures, one validated Liverpool vs Nottingham Forest recommendation (SportyBet 1.57, 62% confidence), two Web Push deliveries and no wager/pick-ledger mutation. Direct model usage was 6,399 prompt / 2,186 completion tokens (versus the earlier 70,501-token full-agent probe); the recommendation report records the exact usage and delivery result.
+- Full Dell pytest suite at the new runtime commit: **252 passed, 1 warning** (the existing Starlette/httpx deprecation warning). The remaining OpenClaw jobs are the quiet daily/weekly Blog reflections; health, settlement and daily research are system-owned.
+
 ---
 
 ## Current release commands
