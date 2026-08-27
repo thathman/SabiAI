@@ -1,9 +1,10 @@
 'use strict';
 
-const SHELL_CACHE = 'sabi-boy-shell-v2.1.0.0';
+const SHELL_CACHE = 'sabi-shell-v2.1.0.1';
 const APP_SHELL = [
   '/',
   '/manifest.json',
+  '/favicon.ico',
   '/icon.svg',
   '/assets/app.css',
   '/assets/app.js',
@@ -56,9 +57,9 @@ self.addEventListener('push', event => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch (_) {
-    payload = {body: event.data ? event.data.text() : 'Sabi Boy has an update.'};
+    payload = {body: event.data ? event.data.text() : 'Sabi has an update.'};
   }
-  const title = String(payload.title || 'Sabi Boy');
+  const title = String(payload.title || 'Sabi');
   const options = {
     body: String(payload.body || 'A result has changed.'),
     icon: '/assets/icon-192.png',

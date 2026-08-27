@@ -18,8 +18,8 @@ from sabiai.dashboard import create_push_router, create_v2_dashboard_router
 ASSET_DIR = Path(__file__).with_name("v2")
 
 app = FastAPI(
-    title="Sabi Boy",
-    description="Read-only dashboard for our Sabi Boy history, performance and journal.",
+    title="Sabi",
+    description="Dashboard for Sabi history, performance and journal.",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
@@ -67,8 +67,8 @@ def health():
 def manifest():
     return {
         "id": "/",
-        "name": "Sabi Boy",
-        "short_name": "Sabi Boy",
+        "name": "Sabi",
+        "short_name": "Sabi",
         "description": "Our sports intelligence history, performance and journal.",
         "start_url": "/?source=pwa",
         "scope": "/",
@@ -94,12 +94,22 @@ def manifest():
 
 @app.get("/icon.svg")
 def icon():
+    # Copied verbatim from the V1 dashboard's /icon.svg asset.
     svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'>
-<rect width='192' height='192' rx='42' fill='#111216'/>
-<circle cx='96' cy='96' r='61' fill='none' stroke='#e6b252' stroke-width='7'/>
-<text x='96' y='121' font-family='Georgia,serif' font-size='72' font-weight='700' fill='#f5f0e8' text-anchor='middle'>SB</text>
-</svg>"""
+<rect width='192' height='192' rx='32' fill='#0c0a07'/>
+<text x='96' y='130' font-family='Georgia,serif' font-size='110' font-weight='900'
+  fill='#e6b252' text-anchor='middle'>S</text></svg>"""
     return Response(svg, media_type="image/svg+xml")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    # Copied verbatim from the V1 dashboard's /favicon.ico asset.
+    svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
+<rect width='32' height='32' rx='6' fill='#0c0a07'/>
+<text x='16' y='24' font-family='Georgia,serif' font-size='22' font-weight='900'
+  fill='#e6b252' text-anchor='middle'>S</text></svg>"""
+    return Response(svg.encode(), media_type="image/svg+xml")
 
 
 @app.get("/sw.js")
@@ -137,5 +147,5 @@ def shell(page: str = ""):
         return Response(status_code=404)
     index = ASSET_DIR / "index.html"
     if not index.is_file():
-        return HTMLResponse("<h1>Sabi Boy V2</h1><p>Dashboard assets are missing.</p>", status_code=503)
+        return HTMLResponse("<h1>Sabi V2</h1><p>Dashboard assets are missing.</p>", status_code=503)
     return FileResponse(index, media_type="text/html; charset=utf-8")

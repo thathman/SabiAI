@@ -38,17 +38,9 @@ a { color: inherit; text-decoration: none; }
 }
 .brand { display: flex; align-items: center; gap: 12px; padding: 2px 8px 24px; }
 .brand-mark {
-  width: 42px; height: 42px; border: 1px solid rgba(230,178,82,.55); border-radius: 13px;
-  display: grid; place-items: center; color: var(--accent); font-family: Georgia, serif;
-  font-size: 15px; font-weight: 700; letter-spacing: -.04em; box-shadow: inset 0 0 0 4px rgba(230,178,82,.04);
+  width: 42px; height: 42px; display: block; flex: 0 0 42px;
 }
 .brand strong { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 19px; letter-spacing: -.02em; }
-.brand span { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; text-transform: uppercase; letter-spacing: .11em; }
-.menu-close {
-  display: none; width: 34px; height: 34px; margin-left: auto; border: 1px solid var(--line);
-  border-radius: 10px; background: var(--panel-2); color: var(--muted); cursor: pointer;
-  font-size: 24px; line-height: 1;
-}
 .nav-backdrop { display: none; }
 
 .nav { display: flex; flex-direction: column; gap: 4px; }
@@ -63,8 +55,8 @@ a { color: inherit; text-decoration: none; }
 .nav a.active .nav-icon { color: var(--accent); }
 
 .sidebar-foot { margin-top: auto; padding: 18px 9px 2px; border-top: 1px solid var(--line-soft); }
-.read-only-pill { display: flex; align-items: center; gap: 7px; color: #c7c8cc; font-size: 11px; font-weight: 650; }
-.read-only-pill span { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px rgba(100,198,143,.09); }
+.online-pill { display: flex; align-items: center; gap: 7px; color: #c7c8cc; font-size: 11px; font-weight: 650; }
+.online-pill span { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px rgba(100,198,143,.09); }
 .sidebar-foot small { display: block; margin-top: 9px; color: var(--dim); font-size: 10px; line-height: 1.45; }
 
 .workspace { grid-column: 2; min-width: 0; }
@@ -234,7 +226,6 @@ tbody tr:hover { background: rgba(255,255,255,.015); }
   }
   body.nav-open .nav-backdrop { opacity: 1; pointer-events: auto; }
   body.nav-open { overflow: hidden; }
-  .menu-close { display: grid; place-items: center; }
   .menu-button { display: grid; }
   .grid-2, .grid-equal, .grid-3 { grid-template-columns: 1fr; }
   .ticket-list, .blog-grid { grid-template-columns: 1fr; }

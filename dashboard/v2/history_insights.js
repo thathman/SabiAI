@@ -132,7 +132,7 @@
 
       view.appendChild(wrapper);
     } catch (error) {
-      console.error('Sabi Boy advanced history could not be loaded', error);
+      console.error('Sabi advanced history could not be loaded', error);
       if (location.pathname === '/history' && !document.getElementById('advanced-history-insights')) {
         const wrapper = document.createElement('section');
         wrapper.id = 'advanced-history-insights';

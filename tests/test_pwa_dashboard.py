@@ -9,12 +9,14 @@ from sabiai.dashboard import create_push_router
 from sabiai.storage import SabiDatabase
 
 
-def test_dashboard_exposes_installable_pwa_shell_and_mobile_close_controls():
+def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close():
     client = TestClient(dashboard_app)
     manifest = client.get("/manifest.json")
     assert manifest.status_code == 200
     data = manifest.json()
     assert data["id"] == "/"
+    assert data["name"] == "Sabi"
+    assert data["short_name"] == "Sabi"
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
@@ -27,10 +29,25 @@ def test_dashboard_exposes_installable_pwa_shell_and_mobile_close_controls():
 
     shell = client.get("/")
     assert shell.status_code == 200
-    assert 'id="menu-close"' in shell.text
+    assert 'id="menu-close"' not in shell.text
     assert 'id="nav-backdrop"' in shell.text
     assert 'id="notification-button"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
+    assert '<strong>Sabi</strong>' in shell.text
+    assert 'Our record</span>' not in shell.text
+    assert 'class="online-pill"><span></span> Online' in shell.text
+    assert '<div class="brand-mark">SB</div>' not in shell.text
+    assert '<img class="brand-mark" src="/icon.svg" alt="">' in shell.text
+
+    favicon = client.get("/favicon.ico")
+    icon = client.get("/icon.svg")
+    assert favicon.status_code == 200
+    assert icon.status_code == 200
+    assert "fill='#0c0a07'" in favicon.text
+    assert "fill='#e6b252'" in favicon.text
+    assert ">S</text>" in favicon.text
+    assert ">S</text>" in icon.text
+    assert ">SB</text>" not in icon.text
 
 
 def _settings(tmp_path: Path) -> Settings:

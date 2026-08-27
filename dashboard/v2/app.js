@@ -7,7 +7,6 @@
   const readinessChip = document.getElementById('readiness-chip');
   const refreshButton = document.getElementById('refresh-button');
   const menuButton = document.getElementById('menu-button');
-  const menuClose = document.getElementById('menu-close');
   const navBackdrop = document.getElementById('nav-backdrop');
   const installButton = document.getElementById('install-button');
   const notificationButton = document.getElementById('notification-button');
@@ -25,7 +24,7 @@
     '/finance': ['finance', 'Finance', 'OUR BANKROLL'],
     '/strategies': ['strategies', 'Strategies', 'OUR STRATEGIES'],
     '/history': ['history', 'History', 'OUR RECORD'],
-    '/blog': ['blog', 'Sabi Boy Blog', 'SABI BOY'],
+    '/blog': ['blog', 'Sabi Blog', 'SABI'],
     '/system': ['system', 'System', 'SYSTEM HEALTH'],
   };
 
@@ -85,7 +84,7 @@
   function openMenu() {
     document.body.classList.add('nav-open');
     menuButton.setAttribute('aria-expanded', 'true');
-    menuClose.focus();
+    document.querySelector('.nav a')?.focus();
   }
 
   function urlBase64ToUint8Array(value) {
@@ -165,7 +164,7 @@
       throw new Error('The subscription could not be saved.');
     }
     setNotificationButton(true);
-    await registration.showNotification('Sabi Boy notifications are on', {
+    await registration.showNotification('Sabi notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
       icon: '/assets/icon-192.png',
       tag: 'sabi-boy-push-enabled',
@@ -181,7 +180,7 @@
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {scope:'/'});
       registration.addEventListener('updatefound', () => {
-        if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
+        if (navigator.serviceWorker.controller) showToast('A Sabi update is downloading.');
       });
       await refreshPushState();
     } catch (error) {
@@ -463,14 +462,14 @@
   async function renderBlog() {
     const data = await api('/blog?limit=100');
     const posts = data.posts || [];
-    view.innerHTML = `<section class="section">${sectionHead('Sabi Boy Blog', 'Thoughts, lessons, postmortems and reflections from our own journey')}
-      ${posts.length ? `<div class="blog-grid">${posts.map(p => `<article class="blog-card" data-blog-slug="${esc(p.slug)}"><div class="category">${esc(p.category || 'Sabi Boy')}</div><h2>${esc(p.title)}</h2><p>${esc(p.excerpt || String(p.body||'').slice(0,190))}</p><footer>${date(p.published_at || p.created_at)}${p.tags?.length ? ` · ${p.tags.slice(0,3).map(esc).join(' · ')}` : ''}</footer></article>`).join('')}</div>` : empty('Sabi Boy has not published a post yet', 'The blog will build continuity from our actual record and reflections.')}
+    view.innerHTML = `<section class="section">${sectionHead('Sabi Blog', 'Thoughts, lessons, postmortems and reflections from our own journey')}
+      ${posts.length ? `<div class="blog-grid">${posts.map(p => `<article class="blog-card" data-blog-slug="${esc(p.slug)}"><div class="category">${esc(p.category || 'Sabi')}</div><h2>${esc(p.title)}</h2><p>${esc(p.excerpt || String(p.body||'').slice(0,190))}</p><footer>${date(p.published_at || p.created_at)}${p.tags?.length ? ` · ${p.tags.slice(0,3).map(esc).join(' · ')}` : ''}</footer></article>`).join('')}</div>` : empty('Sabi has not published a post yet', 'The blog will build continuity from our actual record and reflections.')}
     </section>`;
   }
 
   async function renderBlogPost(slug) {
     const p = await api(`/blog/${encodeURIComponent(slug)}`);
-    view.innerHTML = `<article class="article"><a class="article-back" href="/blog" data-route="blog">← Back to Sabi Boy Blog</a><div class="category">${esc(p.category || 'Sabi Boy')}</div><h1>${esc(p.title)}</h1><div class="article-meta">${date(p.published_at || p.created_at)}</div><div class="article-body">${esc(p.body)}</div>${p.tags?.length ? `<div class="tags">${p.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
+    view.innerHTML = `<article class="article"><a class="article-back" href="/blog" data-route="blog">← Back to Sabi Blog</a><div class="category">${esc(p.category || 'Sabi')}</div><h1>${esc(p.title)}</h1><div class="article-meta">${date(p.published_at || p.created_at)}</div><div class="article-body">${esc(p.body)}</div>${p.tags?.length ? `<div class="tags">${p.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
   }
 
   async function renderSystem() {
@@ -491,7 +490,7 @@
           ${(ready.issues||[]).length ? ready.issues.map(i=>`<div class="issue"><div>${outcomeBadge(i.severity)}</div><p><b>${esc(i.area)}</b> — ${esc(i.message)}</p></div>`).join('') : '<div class="stat-line"><span>No current readiness issues</span><strong>✓</strong></div>'}
         </div></div>
       </section>
-      <section class="section">${sectionHead('Sources', 'What Sabi Boy has actually been using and how those sources are behaving')}
+      <section class="section">${sectionHead('Sources', 'What Sabi has actually been using and how those sources are behaving')}
         <div class="panel flush"><div class="panel-body">${table([
           {label:'Source', render:r=>`<span class="primary-cell">${esc(r.name)}</span>`},
           {label:'State', render:r=>outcomeBadge(r.state)},
@@ -527,7 +526,7 @@
   const renderers = { overview:renderOverview, picks:renderPicks, tickets:renderTickets, performance:renderPerformance, finance:renderFinance, strategies:renderStrategies, history:renderHistory, blog:renderBlog, system:renderSystem };
 
   function pathRoute(pathname) {
-    if (pathname.startsWith('/blog/') && pathname.length > 6) return ['blog-post','Blog','SABI BOY'];
+    if (pathname.startsWith('/blog/') && pathname.length > 6) return ['blog-post','Blog','SABI'];
     if (pathname.startsWith('/tickets/') && pathname.length > 9) return ['ticket-detail','Ticket','OUR TICKETS'];
     return routes[pathname] || routes['/'];
   }
@@ -567,7 +566,6 @@
 
   menuButton.setAttribute('aria-expanded', 'false');
   menuButton.addEventListener('click', () => document.body.classList.contains('nav-open') ? closeMenu() : openMenu());
-  menuClose.addEventListener('click', () => closeMenu({restoreFocus:true}));
   navBackdrop.addEventListener('click', () => closeMenu({restoreFocus:true}));
   notificationButton.addEventListener('click', () => toggleNotifications().catch(error => showToast(error.message || 'Notifications could not be changed.')));
   installButton.addEventListener('click', async () => {
@@ -590,7 +588,7 @@
     installPrompt = event;
     installButton.hidden = false;
   });
-  window.addEventListener('appinstalled', () => { installButton.hidden = true; showToast('Sabi Boy installed'); });
+  window.addEventListener('appinstalled', () => { installButton.hidden = true; showToast('Sabi installed'); });
 
   if (window.matchMedia('(display-mode: standalone)').matches) installButton.hidden = true;
   updateNetworkStatus();
