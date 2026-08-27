@@ -15,12 +15,12 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert manifest.status_code == 200
     data = manifest.json()
     assert data["id"] == "/"
-    assert data["name"] == "Sabi"
-    assert data["short_name"] == "Sabi"
+    assert data["name"] == "Sabi Boy"
+    assert data["short_name"] == "Sabi Boy"
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
-    assert all("?v=2.1.0.3" in icon["src"] for icon in data["icons"])
+    assert all("?v=2.1.0.4" in icon["src"] for icon in data["icons"])
 
     worker = client.get("/sw.js")
     assert worker.status_code == 200
@@ -39,9 +39,12 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
     assert 'name="apple-mobile-web-app-capable"' in shell.text
-    assert '/assets/app.js?v=2.1.0.3' in shell.text
-    assert '/assets/app.css?v=2.1.0.3' in shell.text
-    assert '<strong>Sabi</strong>' in shell.text
+    assert '/assets/app.js?v=2.1.0.4' in shell.text
+    assert '/assets/app.css?v=2.1.0.4' in shell.text
+    assert '<strong>Sabi Boy</strong>' in shell.text
+    assert '<title>Sabi Boy knows ball</title>' in shell.text
+    assert '<span>Picks</span>' in shell.text
+    assert 'safe-area-inset-top' in client.get('/assets/app.css').text
     assert 'Our record</span>' not in shell.text
     assert 'class="online-pill"><span></span> Online' in shell.text
     assert '<div class="brand-mark">SB</div>' not in shell.text

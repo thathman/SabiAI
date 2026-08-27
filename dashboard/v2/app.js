@@ -22,13 +22,13 @@
   const cache = new Map();
   const routes = {
     '/': ['overview', 'Overview'],
-    '/picks': ['picks', 'Games / Picks'],
+    '/picks': ['picks', 'Picks'],
     '/tickets': ['tickets', 'Tickets'],
     '/performance': ['performance', 'Performance'],
     '/finance': ['finance', 'Finance'],
     '/strategies': ['strategies', 'Strategies'],
     '/history': ['history', 'History'],
-    '/blog': ['blog', 'Sabi Blog'],
+    '/blog': ['blog', 'Sabi Boy Blog'],
     '/system': ['system', 'System'],
   };
 
@@ -112,7 +112,7 @@
     notificationButton.dataset.notificationState = enabled ? 'on' : 'off';
     notificationButton.setAttribute('aria-pressed', String(enabled));
     notificationButton.title = installRequired
-      ? 'Install Sabi on the Home Screen to enable result notifications'
+      ? 'Install Sabi Boy on the Home Screen to enable result notifications'
       : available
         ? (enabled ? 'Disable result notifications' : 'Enable result notifications')
         : 'Push notifications are unavailable on this device';
@@ -155,7 +155,7 @@
 
   async function toggleNotifications() {
     if (isAppleMobile() && !isStandalonePwa()) {
-      showToast('On iPhone or iPad: tap Share, choose Add to Home Screen, open Sabi from its Home Screen icon, then tap the bell again.', 6500);
+      showToast('On iPhone or iPad: tap Share, choose Add to Home Screen, open Sabi Boy from its Home Screen icon, then tap the bell again.', 6500);
       return;
     }
     if (!pushServiceWorker || !pushConfig?.available) {
@@ -176,7 +176,7 @@
       return;
     }
     if (Notification.permission === 'denied') {
-      showToast('Notifications are blocked. Allow Sabi in your device notification settings, then tap the bell again.', 6500);
+      showToast('Notifications are blocked. Allow Sabi Boy in your device notification settings, then tap the bell again.', 6500);
       return;
     }
 
@@ -207,9 +207,9 @@
     }
     pushSubscription = subscription;
     setNotificationButton(true);
-    await pushServiceWorker.showNotification('Sabi notifications are on', {
+    await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.1.0.3',
+      icon: '/assets/icon-192.png?v=2.1.0.4',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -221,9 +221,9 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.3', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.4', {scope:'/'});
       registration.addEventListener('updatefound', () => {
-        if (navigator.serviceWorker.controller) showToast('A Sabi update is downloading.');
+        if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
       await refreshPushState();
     } catch (error) {
@@ -373,7 +373,7 @@
 
   async function renderPicks() {
     const [data, filters] = await Promise.all([api('/picks?limit=300'), api('/filters')]);
-    view.innerHTML = `<section class="section">${sectionHead('Games / Picks', 'Every recorded selection, with our outcome and context', `${(data.rows||[]).length} shown`)}
+    view.innerHTML = `<section class="section">${sectionHead('Picks', 'Every recorded selection, with our outcome and context', `${(data.rows||[]).length} shown`)}
       <div class="filter-row">
         <select id="pick-result"><option value="">All results</option>${['won','lost','draw','void','pending'].map(x => `<option>${x}</option>`).join('')}</select>
         <select id="pick-sport"><option value="">All sports</option>${(filters.sports||[]).map(x => `<option>${esc(x)}</option>`).join('')}</select>
@@ -505,14 +505,14 @@
   async function renderBlog() {
     const data = await api('/blog?limit=100');
     const posts = data.posts || [];
-    view.innerHTML = `<section class="section">${sectionHead('Sabi Blog', 'Thoughts, lessons, postmortems and reflections from our own journey')}
-      ${posts.length ? `<div class="blog-grid">${posts.map(p => `<article class="blog-card" data-blog-slug="${esc(p.slug)}"><div class="category">${esc(p.category || 'Sabi')}</div><h2>${esc(p.title)}</h2><p>${esc(p.excerpt || String(p.body||'').slice(0,190))}</p><footer>${date(p.published_at || p.created_at)}${p.tags?.length ? ` · ${p.tags.slice(0,3).map(esc).join(' · ')}` : ''}</footer></article>`).join('')}</div>` : empty('Sabi has not published a post yet', 'The blog will build continuity from our actual record and reflections.')}
+    view.innerHTML = `<section class="section">${sectionHead('Sabi Boy Blog', 'Thoughts, lessons, postmortems and reflections from our own journey')}
+      ${posts.length ? `<div class="blog-grid">${posts.map(p => `<article class="blog-card" data-blog-slug="${esc(p.slug)}"><div class="category">${esc(p.category || 'Sabi Boy')}</div><h2>${esc(p.title)}</h2><p>${esc(p.excerpt || String(p.body||'').slice(0,190))}</p><footer>${date(p.published_at || p.created_at)}${p.tags?.length ? ` · ${p.tags.slice(0,3).map(esc).join(' · ')}` : ''}</footer></article>`).join('')}</div>` : empty('Sabi Boy has not published a post yet', 'The blog will build continuity from our actual record and reflections.')}
     </section>`;
   }
 
   async function renderBlogPost(slug) {
     const p = await api(`/blog/${encodeURIComponent(slug)}`);
-    view.innerHTML = `<article class="article"><a class="article-back" href="/blog" data-route="blog">← Back to Sabi Blog</a><div class="category">${esc(p.category || 'Sabi')}</div><h1>${esc(p.title)}</h1><div class="article-meta">${date(p.published_at || p.created_at)}</div><div class="article-body">${esc(p.body)}</div>${p.tags?.length ? `<div class="tags">${p.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
+    view.innerHTML = `<article class="article"><a class="article-back" href="/blog" data-route="blog">← Back to Sabi Boy Blog</a><div class="category">${esc(p.category || 'Sabi Boy')}</div><h1>${esc(p.title)}</h1><div class="article-meta">${date(p.published_at || p.created_at)}</div><div class="article-body">${esc(p.body)}</div>${p.tags?.length ? `<div class="tags">${p.tags.map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>` : ''}</article>`;
   }
 
   async function renderSystem() {
@@ -533,7 +533,7 @@
           ${(ready.issues||[]).length ? ready.issues.map(i=>`<div class="issue"><div>${outcomeBadge(i.severity)}</div><p><b>${esc(i.area)}</b> — ${esc(i.message)}</p></div>`).join('') : '<div class="stat-line"><span>No current readiness issues</span><strong>✓</strong></div>'}
         </div></div>
       </section>
-      <section class="section">${sectionHead('Sources', 'What Sabi has actually been using and how those sources are behaving')}
+      <section class="section">${sectionHead('Sources', 'What Sabi Boy has actually been using and how those sources are behaving')}
         <div class="panel flush"><div class="panel-body">${table([
           {label:'Source', render:r=>`<span class="primary-cell">${esc(r.name)}</span>`},
           {label:'State', render:r=>outcomeBadge(r.state)},
@@ -578,6 +578,7 @@
     if (force) clearCache();
     const [name, pageTitle] = pathRoute(location.pathname);
     title.textContent = pageTitle;
+    document.title = 'Sabi Boy knows ball';
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (name === 'blog-post' ? 'blog' : name === 'ticket-detail' ? 'tickets' : name)));
     view.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading our record…</p></div>';
     try {
@@ -631,7 +632,7 @@
     installPrompt = event;
     installButton.hidden = false;
   });
-  window.addEventListener('appinstalled', () => { installButton.hidden = true; showToast('Sabi installed'); });
+  window.addEventListener('appinstalled', () => { installButton.hidden = true; showToast('Sabi Boy installed'); });
 
   if (window.matchMedia('(display-mode: standalone)').matches) installButton.hidden = true;
   updateNetworkStatus();

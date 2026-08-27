@@ -19,8 +19,8 @@ from sabiai.dashboard import create_push_router, create_v2_dashboard_router
 ASSET_DIR = Path(__file__).with_name("v2")
 
 app = FastAPI(
-    title="Sabi",
-    description="Dashboard for Sabi history, performance and journal.",
+    title="Sabi Boy knows ball",
+    description="Dashboard for Sabi Boy history, performance and journal.",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
@@ -69,9 +69,9 @@ def manifest():
     version = f"?v={__version__}"
     return {
         "id": "/",
-        "name": "Sabi",
-        "short_name": "Sabi",
-        "description": "Our sports intelligence history, performance and journal.",
+        "name": "Sabi Boy",
+        "short_name": "Sabi Boy",
+        "description": "Sabi Boy's sports intelligence history, performance and journal.",
         "start_url": "/?source=pwa",
         "scope": "/",
         "display": "standalone",
@@ -87,7 +87,7 @@ def manifest():
             {"src": f"/assets/icon-maskable-512.png{version}", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
         ],
         "shortcuts": [
-            {"name": "Games and picks", "short_name": "Picks", "url": "/picks", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
+            {"name": "Picks", "short_name": "Picks", "url": "/picks", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
             {"name": "Tickets", "short_name": "Tickets", "url": "/tickets", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
             {"name": "System health", "short_name": "System", "url": "/system", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
         ],
@@ -149,5 +149,5 @@ def shell(page: str = ""):
         return Response(status_code=404)
     index = ASSET_DIR / "index.html"
     if not index.is_file():
-        return HTMLResponse("<h1>Sabi V2</h1><p>Dashboard assets are missing.</p>", status_code=503)
+        return HTMLResponse("<h1>Sabi Boy V2</h1><p>Dashboard assets are missing.</p>", status_code=503)
     return FileResponse(index, media_type="text/html; charset=utf-8")
