@@ -269,8 +269,6 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "notes": _notes(result),
             "usage": usage,
         }
-        report_path = settings.data_dir / "reports" / "daily-picks-latest.json"
-        _write_report(report_path, report)
         push = WebPushService(database, settings).send(_push_payload(day, recommendations, failures))
         report["push"] = {
             "enabled": push.enabled,
@@ -279,6 +277,8 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "expired": push.expired,
             "failed": push.failed,
         }
+        report_path = settings.data_dir / "reports" / "daily-picks-latest.json"
+        _write_report(report_path, report)
         jobs.success("daily-picks")
         return report
     except Exception as exc:
