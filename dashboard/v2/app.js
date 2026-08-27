@@ -209,7 +209,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.1.0.4',
+      icon: '/assets/icon-192.png?v=2.1.0.5',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -221,7 +221,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.4', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.5', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
@@ -536,7 +536,7 @@
       <section class="section">${sectionHead('Sources', 'What Sabi Boy has actually been using and how those sources are behaving')}
         <div class="panel flush"><div class="panel-body">${table([
           {label:'Source', render:r=>`<span class="primary-cell">${esc(r.name)}</span>`},
-          {label:'State', render:r=>outcomeBadge(r.state)},
+          {label:'State', render:r=>outcomeBadge(r.state === 'not_used_yet' ? 'Not used yet' : r.state)},
           {label:'Requests', num:true, render:r=>num(r.requests)},
           {label:'Success', num:true, render:r=>num(r.successes)},
           {label:'Failures', num:true, render:r=>num(r.failures)},

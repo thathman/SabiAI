@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -76,3 +77,36 @@ def test_static_ticket_analytics_routes_are_not_shadowed_by_ticket_detail(tmp_pa
     ):
         response = client.get(path)
         assert response.status_code == 200, response.text
+
+
+def test_source_screen_syncs_every_configured_runtime_source(tmp_path):
+    settings = replace(
+        _settings(tmp_path),
+        parse_api_key="test-key",
+        parse_flashscore_scraper_id="flashscore-id",
+        parse_livescore_scraper_id="livescore-id",
+        parse_sportybet_scraper_id="sportybet-id",
+        parse_espn_scraper_id="espn-id",
+        sports_betting_analyzer_api_key="analyzer-key",
+    )
+    app = FastAPI()
+    app.include_router(create_v2_dashboard_router(settings))
+
+    response = TestClient(app).get("/api/v2/system/sources")
+
+    assert response.status_code == 200
+    rows = {row["name"]: row for row in response.json()["sources"]}
+    assert {
+        "TheSportsDB",
+        "ESPN Public Data",
+        "OpenClaw Browser",
+        "OpenClaw Search",
+        "Parse · Flashscore",
+        "Parse · LiveScore",
+        "Parse · SportyBet",
+        "Parse · ESPN",
+        "Sports Betting AI Analyzer",
+    } <= rows.keys()
+    assert all(row["state"] == "not_used_yet" for row in rows.values())
+    assert "Parse · 1xBet" not in rows
+    assert "Stake" not in rows

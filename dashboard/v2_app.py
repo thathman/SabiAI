@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+from starlette.types import Message
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -17,6 +18,11 @@ from sabiai import __version__
 from sabiai.dashboard import create_push_router, create_v2_dashboard_router
 
 ASSET_DIR = Path(__file__).with_name("v2")
+MAX_MUTATION_BODY_BYTES = 16 * 1024
+V1_S_ICON = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
+<rect width='32' height='32' rx='6' fill='#0c0a07'/>
+<text x='16' y='24' font-family='Georgia,serif' font-size='22' font-weight='900'
+  fill='#e6b252' text-anchor='middle'>S</text></svg>"""
 
 app = FastAPI(
     title="Sabi Boy knows ball",
@@ -38,6 +44,43 @@ app.include_router(create_v2_dashboard_router())
 app.include_router(create_push_router())
 
 
+class _RequestBodyTooLarge(Exception):
+    pass
+
+
+@app.middleware("http")
+async def dashboard_request_size_limit(request: Request, call_next):
+    """Reject oversized state-changing requests before FastAPI parses their body."""
+
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        raw_length = request.headers.get("content-length")
+        if raw_length:
+            try:
+                if int(raw_length) > MAX_MUTATION_BODY_BYTES:
+                    return Response(status_code=413, content="Request body is too large.")
+            except ValueError:
+                return Response(status_code=400, content="Invalid Content-Length.")
+
+        consumed = 0
+        original_receive = request._receive
+
+        async def limited_receive() -> Message:
+            nonlocal consumed
+            message = await original_receive()
+            if message.get("type") == "http.request":
+                consumed += len(message.get("body") or b"")
+                if consumed > MAX_MUTATION_BODY_BYTES:
+                    raise _RequestBodyTooLarge
+            return message
+
+        try:
+            request._receive = limited_receive
+            return await call_next(request)
+        except _RequestBodyTooLarge:
+            return Response(status_code=413, content="Request body is too large.")
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def dashboard_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -48,12 +91,21 @@ async def dashboard_security_headers(request: Request, call_next):
         "Permissions-Policy",
         "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
     )
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; "
-        "frame-ancestors 'none'; form-action 'none'",
+        "img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; "
+        "font-src 'self'; media-src 'none'; frame-src 'none'; child-src 'none'; object-src 'none'; "
+        "base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
     )
+    if request.url.path in {"/", "/manifest.json"} or (
+        not request.url.path.startswith(("/api/", "/assets/", "/sw.js", "/health"))
+    ):
+        response.headers.setdefault("Cache-Control", "no-cache")
     if request.url.path.startswith("/api/v2") or request.url.path in {"/health", "/sw.js"}:
         response.headers.setdefault("Cache-Control", "no-store")
     return response
@@ -96,22 +148,14 @@ def manifest():
 
 @app.get("/icon.svg")
 def icon():
-    # Copied verbatim from the V1 dashboard's /icon.svg asset.
-    svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'>
-<rect width='192' height='192' rx='32' fill='#0c0a07'/>
-<text x='96' y='130' font-family='Georgia,serif' font-size='110' font-weight='900'
-  fill='#e6b252' text-anchor='middle'>S</text></svg>"""
-    return Response(svg, media_type="image/svg+xml")
+    # Use the exact V1 favicon artwork everywhere instead of maintaining a second S.
+    return Response(V1_S_ICON, media_type="image/svg+xml")
 
 
 @app.get("/favicon.ico")
 def favicon():
     # Copied verbatim from the V1 dashboard's /favicon.ico asset.
-    svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
-<rect width='32' height='32' rx='6' fill='#0c0a07'/>
-<text x='16' y='24' font-family='Georgia,serif' font-size='22' font-weight='900'
-  fill='#e6b252' text-anchor='middle'>S</text></svg>"""
-    return Response(svg.encode(), media_type="image/svg+xml")
+    return Response(V1_S_ICON.encode(), media_type="image/svg+xml")
 
 
 @app.get("/sw.js")

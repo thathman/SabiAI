@@ -80,8 +80,14 @@ upsert_agent_job() {
   local name="$1"
   local cron_expr="$2"
   local prompt="$3"
+  local delivery="${4:-quiet}"
   local existing
   existing="$(job_id_by_name "$name" || true)"
+
+  local delivery_args=(--no-deliver)
+  if [[ "$delivery" == "announce" ]]; then
+    delivery_args=(--announce --best-effort-deliver)
+  fi
 
   if [[ -n "$existing" ]]; then
     echo "Updating OpenClaw automation: $name ($existing)"
@@ -91,7 +97,7 @@ upsert_agent_job() {
       --session isolated \
       --agent "$AGENT_ID" \
       --message "$prompt" \
-      --no-deliver >/dev/null
+      "${delivery_args[@]}" >/dev/null
   else
     echo "Creating OpenClaw automation: $name"
     # Current OpenClaw create/add syntax takes the schedule and agent prompt as positional
@@ -103,7 +109,7 @@ upsert_agent_job() {
       --tz "$TZ_NAME" \
       --session isolated \
       --agent "$AGENT_ID" \
-      --no-deliver >/dev/null
+      "${delivery_args[@]}" >/dev/null
   fi
 }
 
@@ -117,7 +123,19 @@ Run Sabi Boy's weekly reflection workflow. Query system.tools and system.readine
 EOF
 )
 
+DAILY_PICKS_PROMPT=$(cat <<'EOF'
+Run Sabi Boy's daily multi-sport research and picks workflow. Start by querying system.tools and system.readiness. If the system is ACTION LOCKED, explain the blocker and stop. Discover today's events across the broad sports universe, then use the configured free-first sources: TheSportsDB, ESPN Public Data, Parse ESPN, Parse Flashscore, Parse LiveScore and Parse SportyBet when available, plus OpenClaw Search/Browser for gaps. Never call or recommend Stake or 1xBet. For each serious candidate, establish the exact market and settlement meaning, create or resume a durable research case, gather attributable evidence, run the Skeptic review when required, and use fresh SportyBet/Bet9ja prices only when available. Return only clear recommendations with sport, event, pick, decimal odds, confidence percentage and a one-line reason; say when evidence or price freshness is insufficient. Do not place wagers, submit booking codes, or claim a pick was placed. Do not write an actual settled/placed record unless Hendrix explicitly confirms it was used. Send the concise result to the configured user channel; if no qualifying pick survives the checks, say so plainly. Do not publish a Blog post from this routine.
+EOF
+)
+
+SOURCE_HEALTH_PROMPT=$(cat <<'EOF'
+Run Sabi Boy's source and readiness monitor. Query system.readiness, system.sources and system.api_economy, and use system.jobs.list to inspect recent heartbeat failures. Do not spend money, place wagers, call Stake or 1xBet, or perform any state-changing bookmaker action. If all monitored components are healthy or merely not used yet, finish without a user-facing message. If a source, job, database, bankroll reconciliation or settlement backlog is degraded or failing, send a short actionable alert naming the component, observed state and safe next check. Do not invent an outage from an uncalled source.
+EOF
+)
+
 # Daily near the end of Sabi Boy's configured local day; weekly on Sunday evening.
+upsert_agent_job "sabi-boy-daily-picks" "0 8 * * *" "$DAILY_PICKS_PROMPT" announce
+upsert_agent_job "sabi-boy-source-health" "*/30 * * * *" "$SOURCE_HEALTH_PROMPT" announce
 upsert_agent_job "sabi-boy-daily-reflection" "30 22 * * *" "$DAILY_PROMPT"
 upsert_agent_job "sabi-boy-weekly-reflection" "0 20 * * 0" "$WEEKLY_PROMPT"
 

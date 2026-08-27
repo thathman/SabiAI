@@ -48,3 +48,31 @@ class JsonHttpClient:
             return json.loads(body)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"Source returned invalid JSON from {url}") from exc
+
+    def post(
+        self,
+        url: str,
+        *,
+        payload: Mapping[str, object] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> object:
+        request_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": self.user_agent,
+        }
+        request_headers.update(dict(headers or {}))
+        body = json.dumps(dict(payload or {}), separators=(",", ":")).encode("utf-8")
+        request = Request(url, data=body, headers=request_headers, method="POST")
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                charset = response.headers.get_content_charset() or "utf-8"
+                response_body = response.read().decode(charset)
+        except HTTPError as exc:
+            raise RuntimeError(f"HTTP {exc.code} from {url}") from exc
+        except URLError as exc:
+            raise RuntimeError(f"Could not reach {url}: {exc.reason}") from exc
+        try:
+            return json.loads(response_body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Source returned invalid JSON from {url}") from exc

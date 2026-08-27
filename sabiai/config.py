@@ -31,6 +31,12 @@ class Settings:
         "http://localhost:8091",
         "http://testserver",
     )
+    parse_api_key: str | None = None
+    parse_flashscore_scraper_id: str | None = None
+    parse_livescore_scraper_id: str | None = None
+    parse_sportybet_scraper_id: str | None = None
+    parse_espn_scraper_id: str | None = None
+    sports_betting_analyzer_api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -78,6 +84,29 @@ class Settings:
             ).strip()
             or "https://picks.hendrix.com.ng",
             dashboard_allowed_origins=origins,
+            parse_api_key=(os.getenv("SABIAI_PARSE_API_KEY") or "").strip() or None,
+            parse_flashscore_scraper_id=(
+                os.getenv("SABIAI_PARSE_FLASHSCORE_SCRAPER_ID") or ""
+            ).strip()
+            or None,
+            parse_livescore_scraper_id=(
+                os.getenv("SABIAI_PARSE_LIVESCORE_SCRAPER_ID") or ""
+            ).strip()
+            or None,
+            parse_sportybet_scraper_id=(
+                os.getenv("SABIAI_PARSE_SPORTYBET_SCRAPER_ID") or ""
+            ).strip()
+            or None,
+            parse_espn_scraper_id=(
+                os.getenv("SABIAI_PARSE_ESPN_SCRAPER_ID") or ""
+            ).strip()
+            or None,
+            sports_betting_analyzer_api_key=(
+                os.getenv("SABIAI_SPORTS_BETTING_ANALYZER_API_KEY")
+                or os.getenv("SBMA_API_KEY")
+                or ""
+            ).strip()
+            or None,
         )
 
 

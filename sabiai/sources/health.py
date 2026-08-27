@@ -115,7 +115,7 @@ class SourceHealthService:
         if not enabled:
             return "disabled"
         if requests == 0:
-            return "unknown"
+            return "not_used_yet"
         recent = list(rows[:5])
         recent_failures = sum(1 for row in recent if not int(row["success"] or 0))
         if recent and recent_failures == len(recent):

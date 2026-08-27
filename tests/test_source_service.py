@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sabiai.sources import Source, SourceCost, SourceKind, SourceRegistry, SourceRequest, SourceService
+from sabiai.sources import Source, SourceCost, SourceHealthService, SourceKind, SourceRegistry, SourceRequest, SourceService
 from sabiai.storage import SabiDatabase
 
 
@@ -32,6 +32,15 @@ class SourceServiceTests(unittest.TestCase):
         )
         self.assertEqual(result.source_name, "Official")
         self.assertEqual(calls, ["official"])
+
+    def test_unused_source_has_a_plain_not_used_yet_state(self):
+        tmp, db, _service = self.make_service()
+        self.addCleanup(tmp.cleanup)
+        db.upsert_source(Source("Official", SourceKind.OFFICIAL, SourceCost.FREE, {"volleyball"}, {"injuries"}))
+
+        states = {source.name: source.state for source in SourceHealthService(db).sources()}
+
+        self.assertEqual(states["Official"], "not_used_yet")
 
     def test_cache_prevents_duplicate_fetch(self):
         tmp, db, service = self.make_service()

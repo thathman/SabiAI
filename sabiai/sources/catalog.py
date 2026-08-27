@@ -7,6 +7,7 @@ from sabiai.config import Settings
 
 from .espn import EspnPublicAdapter
 from .football_data import FootballDataAdapter
+from .parse_bot import ParseBotAdapter, SportsBettingAnalyzerAdapter
 from .registry import Source, SourceCost, SourceKind, SourceRegistry
 from .service import Fetcher
 from .thesportsdb import TheSportsDBAdapter
@@ -41,6 +42,102 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
         football_data = FootballDataAdapter(token=settings.football_data_token)
         registry.register(football_data.source)
         fetchers[football_data.name] = football_data.fetch
+
+    if settings.parse_api_key:
+        parse_sources = []
+        if settings.parse_flashscore_scraper_id:
+            parse_sources.append(
+                ParseBotAdapter(
+                    name="Parse · Flashscore",
+                    api_key=settings.parse_api_key,
+                    scraper_id=settings.parse_flashscore_scraper_id,
+                    endpoints={
+                        "search": "search",
+                        "fixtures": "get_daily_fixtures",
+                        "live_scores": "get_live_scores",
+                        "event_search": "get_match_detail",
+                        "event_events": "get_match_events",
+                        "event_stats": "get_match_statistics",
+                        "stats": "get_match_statistics",
+                        "league_table": "get_league_standings",
+                        "lineup": "get_match_lineups",
+                        "availability": "get_match_lineups",
+                        "odds": "get_match_odds",
+                        "preview": "get_match_preview",
+                        "form": "get_team_results",
+                    },
+                    notes="Connected Flashscore Parse API using limited free Parse credits.",
+                )
+            )
+        if settings.parse_livescore_scraper_id:
+            parse_sources.append(
+                ParseBotAdapter(
+                    name="Parse · LiveScore",
+                    api_key=settings.parse_api_key,
+                    scraper_id=settings.parse_livescore_scraper_id,
+                    endpoints={
+                        "fixtures": "get_scores_by_date_and_sport",
+                        "live_scores": "get_scores_by_date_and_sport",
+                        "schedule": "get_league_fixtures",
+                        "event_results": "get_league_results",
+                        "league_table": "get_league_standings",
+                        "event_stats": "get_match_summary",
+                        "stats": "get_league_stats",
+                        "team_profile": "get_team_overview",
+                        "team_search": "search_teams_and_competitions",
+                    },
+                    sports={"football", "soccer"},
+                    notes="Connected LiveScore Parse API using limited free Parse credits.",
+                )
+            )
+        if settings.parse_sportybet_scraper_id:
+            parse_sources.append(
+                ParseBotAdapter(
+                    name="Parse · SportyBet",
+                    api_key=settings.parse_api_key,
+                    scraper_id=settings.parse_sportybet_scraper_id,
+                    endpoints={
+                        "fixtures:football": "get_prematch_football_events",
+                        "fixtures:soccer": "get_prematch_football_events",
+                        "fixtures:basketball": "get_prematch_basketball_events",
+                        "fixtures:ice_hockey": "get_prematch_ice_hockey_events",
+                        "odds:football": "get_prematch_football_markets",
+                        "odds:soccer": "get_prematch_football_markets",
+                    },
+                    sports={"football", "soccer", "basketball", "ice_hockey"},
+                    notes=(
+                        "Connected read-only SportyBet Parse API using limited free Parse credits. "
+                        "The booking endpoint is deliberately excluded and Sabi Boy never places wagers."
+                    ),
+                )
+            )
+        if settings.parse_espn_scraper_id:
+            parse_sources.append(
+                ParseBotAdapter(
+                    name="Parse · ESPN",
+                    api_key=settings.parse_api_key,
+                    scraper_id=settings.parse_espn_scraper_id,
+                    endpoints={
+                        "fixtures": "get_scoreboard",
+                        "league_table": "get_standings",
+                        "team_search": "get_teams",
+                        "team_profile": "get_team_roster",
+                        "news": "get_news",
+                        "search": "search",
+                    },
+                    notes="Connected ESPN Parse API using limited free Parse credits.",
+                )
+            )
+        for adapter in parse_sources:
+            registry.register(adapter.source)
+            fetchers[adapter.name] = adapter.fetch
+
+    if settings.sports_betting_analyzer_api_key:
+        analyzer = SportsBettingAnalyzerAdapter(
+            api_key=settings.sports_betting_analyzer_api_key
+        )
+        registry.register(analyzer.source)
+        fetchers[analyzer.name] = analyzer.fetch
 
     registry.register(
         Source(

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from sabiai.blog import BlogService
 from sabiai.config import Settings
-from sabiai.sources import SourceHealthService
+from sabiai.sources import SourceHealthService, default_source_bundle
 from sabiai.storage import (
     AdvancedAnalytics,
     DashboardReadService,
@@ -218,8 +218,12 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
 
     @router.get("/system/sources")
     def system_sources():
+        database = db()
+        database.initialize()
+        for source in default_source_bundle(settings).registry.all():
+            database.upsert_source(source)
         return {
-            "sources": [asdict(item) for item in SourceHealthService(db()).sources()]
+            "sources": [asdict(item) for item in SourceHealthService(database).sources()]
         }
 
     @router.get("/system/api-economy")

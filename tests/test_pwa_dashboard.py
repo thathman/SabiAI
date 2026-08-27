@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -20,7 +21,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
-    assert all("?v=2.1.0.4" in icon["src"] for icon in data["icons"])
+    assert all("?v=2.1.0.5" in icon["src"] for icon in data["icons"])
 
     worker = client.get("/sw.js")
     assert worker.status_code == 200
@@ -39,19 +40,26 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
     assert 'name="apple-mobile-web-app-capable"' in shell.text
-    assert '/assets/app.js?v=2.1.0.4' in shell.text
-    assert '/assets/app.css?v=2.1.0.4' in shell.text
+    assert '/assets/app.js?v=2.1.0.5' in shell.text
+    assert '/assets/app.css?v=2.1.0.5' in shell.text
     assert '<strong>Sabi Boy</strong>' in shell.text
     assert '<title>Sabi Boy knows ball</title>' in shell.text
     assert '<span>Picks</span>' in shell.text
-    assert 'safe-area-inset-top' in client.get('/assets/app.css').text
+    css = client.get('/assets/app.css').text
+    assert 'padding-top: calc(24px + env(safe-area-inset-top))' in css
     assert 'Our record</span>' not in shell.text
-    assert 'class="online-pill"><span></span> Online' in shell.text
+    sidebar = shell.text.split('<aside class="sidebar"', 1)[1].split('</aside>', 1)[0]
+    topbar = shell.text.split('<header class="topbar">', 1)[1].split('</header>', 1)[0]
+    assert 'id="readiness-chip"' in sidebar
+    assert '> Online<' not in sidebar
+    assert 'id="readiness-chip"' not in topbar
     assert '<div class="brand-mark">SB</div>' not in shell.text
-    assert '<img class="brand-mark" src="/icon.svg" alt="">' in shell.text
+    assert '<img class="brand-mark" src="/favicon.ico?v=2.1.0.5" alt="">' in shell.text
 
     favicon = client.get("/favicon.ico")
     icon = client.get("/icon.svg")
+    icon_source = client.get("/assets/icon-source.svg")
+    maskable_source = client.get("/assets/icon-maskable-source.svg")
     assert favicon.status_code == 200
     assert icon.status_code == 200
     assert "fill='#0c0a07'" in favicon.text
@@ -59,6 +67,9 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert ">S</text>" in favicon.text
     assert ">S</text>" in icon.text
     assert ">SB</text>" not in icon.text
+    assert icon.content == favicon.content
+    assert icon_source.text.strip() == favicon.text.strip()
+    assert maskable_source.text.strip() == favicon.text.strip()
 
     app_script = client.get("/assets/app.js")
     assert app_script.status_code == 200
@@ -66,6 +77,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert "navigator.standalone" in app_script.text
     assert "pushManager.subscribe" in app_script.text
     assert "Notification.requestPermission" not in app_script.text
+    assert "r.state === 'not_used_yet' ? 'Not used yet' : r.state" in app_script.text
 
 
 def _settings(tmp_path: Path) -> Settings:
@@ -84,16 +96,19 @@ def _settings(tmp_path: Path) -> Settings:
     )
 
 
+def _push_payload(endpoint: str = "https://web.push.apple.com/subscriptions/device-12345") -> dict:
+    p256dh = base64.urlsafe_b64encode(b"\x04" + (b"p" * 64)).decode().rstrip("=")
+    auth = base64.urlsafe_b64encode(b"a" * 16).decode().rstrip("=")
+    return {"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}}
+
+
 def test_push_subscription_requires_allowed_origin_and_never_lists_endpoints(tmp_path):
     settings = _settings(tmp_path)
     SabiDatabase(settings.v2_db).initialize()
     app = FastAPI()
     app.include_router(create_push_router(settings))
     client = TestClient(app)
-    payload = {
-        "endpoint": "https://push.example.test/subscriptions/device-12345",
-        "keys": {"p256dh": "p" * 65, "auth": "a" * 24},
-    }
+    payload = _push_payload()
 
     assert client.post("/api/v2/push/subscriptions", json=payload).status_code == 403
     subscribed = client.post(
@@ -123,12 +138,50 @@ def test_push_endpoint_rejects_non_https_subscription_url(tmp_path):
     app = FastAPI()
     app.include_router(create_push_router(settings))
     client = TestClient(app)
+    payload = _push_payload("http://web.push.apple.com/subscriptions/device-12345")
     response = client.post(
         "/api/v2/push/subscriptions",
-        json={
-            "endpoint": "http://push.example.test/subscriptions/device-12345",
-            "keys": {"p256dh": "p" * 65, "auth": "a" * 24},
-        },
+        json=payload,
         headers={"Origin": "http://testserver"},
     )
+    assert response.status_code == 422
+
+
+def test_push_endpoint_rejects_non_push_hosts_and_cross_site_fetches(tmp_path):
+    settings = _settings(tmp_path)
+    SabiDatabase(settings.v2_db).initialize()
+    app = FastAPI()
+    app.include_router(create_push_router(settings))
+    client = TestClient(app)
+
+    arbitrary = client.post(
+        "/api/v2/push/subscriptions",
+        json=_push_payload("https://attacker.example/subscriptions/device-12345"),
+        headers={"Origin": "http://testserver"},
+    )
+    cross_site = client.post(
+        "/api/v2/push/subscriptions",
+        json=_push_payload(),
+        headers={"Origin": "http://testserver", "Sec-Fetch-Site": "cross-site"},
+    )
+
+    assert arbitrary.status_code == 422
+    assert cross_site.status_code == 403
+
+
+def test_push_endpoint_rejects_malformed_web_push_keys(tmp_path):
+    settings = _settings(tmp_path)
+    SabiDatabase(settings.v2_db).initialize()
+    app = FastAPI()
+    app.include_router(create_push_router(settings))
+    client = TestClient(app)
+    payload = _push_payload()
+    payload["keys"]["p256dh"] = "not-a-valid-key"
+
+    response = client.post(
+        "/api/v2/push/subscriptions",
+        json=payload,
+        headers={"Origin": "http://testserver"},
+    )
+
     assert response.status_code == 422

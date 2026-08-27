@@ -3,6 +3,7 @@ from .espn import EspnPublicAdapter
 from .football_data import FootballDataAdapter
 from .health import SourceHealth, SourceHealthService
 from .learning import LearnedSource, SourceLearningService
+from .parse_bot import ParseBotAdapter, SportsBettingAnalyzerAdapter
 from .registry import (
     AccessDecision,
     Source,
@@ -18,6 +19,7 @@ __all__ = [
     "EspnPublicAdapter",
     "FootballDataAdapter",
     "LearnedSource",
+    "ParseBotAdapter",
     "Source",
     "SourceBundle",
     "SourceCost",
@@ -29,6 +31,7 @@ __all__ = [
     "SourceRequest",
     "SourceResponse",
     "SourceService",
+    "SportsBettingAnalyzerAdapter",
     "TheSportsDBAdapter",
     "default_source_bundle",
 ]

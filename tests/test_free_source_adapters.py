@@ -4,7 +4,9 @@ from sabiai.config import Settings
 from sabiai.sources import (
     EspnPublicAdapter,
     FootballDataAdapter,
+    ParseBotAdapter,
     SourceRequest,
+    SportsBettingAnalyzerAdapter,
     TheSportsDBAdapter,
     default_source_bundle,
 )
@@ -233,3 +235,110 @@ def test_default_source_bundle_requires_no_private_token(tmp_path: Path):
     assert "OpenClaw Search" in names
     assert "TheSportsDB" in bundle.fetchers
     assert "ESPN Public Data" in bundle.fetchers
+
+
+def test_parse_adapter_calls_only_an_allowlisted_endpoint():
+    calls = []
+
+    def fake_post(url, *, payload=None, headers=None):
+        calls.append((url, payload, headers))
+        return {"status": "success", "data": [{"event": "Arsenal vs Chelsea"}]}
+
+    adapter = ParseBotAdapter(
+        name="Parse · Flashscore",
+        api_key="test-key",
+        scraper_id="d11166c0-0278-4747-828f-936c42d8963a",
+        endpoints={"fixtures": "get_daily_fixtures"},
+        http_post=fake_post,
+    )
+    result = adapter.fetch(
+        SourceRequest(
+            request_key="parse:fixtures",
+            capability="fixtures",
+            sport="football",
+            metadata={"date": "2026-08-27"},
+        )
+    )
+
+    assert calls == [
+        (
+            "https://api.parse.bot/scraper/d11166c0-0278-4747-828f-936c42d8963a/get_daily_fixtures",
+            {"date": "2026-08-27"},
+            {"X-API-Key": "test-key"},
+        )
+    ]
+    assert result["raw"]["data"][0]["event"] == "Arsenal vs Chelsea"
+
+
+def test_parse_sportybet_catalog_never_exposes_booking_endpoint(tmp_path: Path):
+    settings = Settings(
+        repo_root=tmp_path,
+        data_dir=tmp_path / "data",
+        legacy_bets_db=tmp_path / "data" / "bets.db",
+        v2_db=tmp_path / "data" / "v2.db",
+        timezone="Africa/Lagos",
+        paid_sources_enabled=False,
+        parse_api_key="test-key",
+        parse_sportybet_scraper_id="bcc1b144-d466-46b3-ad01-338d5b27086b",
+    )
+
+    bundle = default_source_bundle(settings)
+    adapter = bundle.fetchers["Parse · SportyBet"].__self__
+    assert "book_bet" not in adapter.allowed_endpoints
+
+
+def test_all_configured_remote_sources_are_registered(tmp_path: Path):
+    settings = Settings(
+        repo_root=tmp_path,
+        data_dir=tmp_path / "data",
+        legacy_bets_db=tmp_path / "data" / "bets.db",
+        v2_db=tmp_path / "data" / "v2.db",
+        timezone="Africa/Lagos",
+        paid_sources_enabled=False,
+        parse_api_key="test-key",
+        parse_flashscore_scraper_id="flashscore-id",
+        parse_livescore_scraper_id="livescore-id",
+        parse_sportybet_scraper_id="sportybet-id",
+        parse_espn_scraper_id="espn-id",
+        sports_betting_analyzer_api_key="analyzer-key",
+    )
+
+    bundle = default_source_bundle(settings)
+    names = {source.name for source in bundle.registry.all()}
+
+    assert {
+        "Parse · Flashscore",
+        "Parse · LiveScore",
+        "Parse · SportyBet",
+        "Parse · ESPN",
+        "Sports Betting AI Analyzer",
+    } <= names
+    assert "Parse · 1xBet" not in names
+    assert "Stake" not in names
+
+
+def test_sports_betting_analyzer_uses_fixed_suggestion_endpoint():
+    calls = []
+
+    def fake_post(url, *, payload=None, headers=None):
+        calls.append((url, payload, headers))
+        return {"picks": [{"selection": "Example"}]}
+
+    adapter = SportsBettingAnalyzerAdapter(api_key="test-key", http_post=fake_post)
+    result = adapter.fetch(
+        SourceRequest(
+            request_key="analyzer:nba",
+            capability="suggested_picks",
+            sport="basketball",
+            metadata={"provider_sport": "NBA"},
+        )
+    )
+
+    assert calls == [
+        (
+            "https://sportsbettingaianalyzer.com/api/picks/suggested",
+            {"sport": "NBA"},
+            {"X-API-Key": "test-key"},
+        )
+    ]
+    assert result["raw"]["data"]["picks"][0]["selection"] == "Example"
