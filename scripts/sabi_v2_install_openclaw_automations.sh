@@ -22,6 +22,10 @@ GATEWAY_ENV_FILE="${OPENCLAW_GATEWAY_ENV_FILE:-$HOME/.openclaw/env/openclaw.env}
 DELIVERY_CHANNEL="${SABIAI_OPENCLAW_DELIVERY_CHANNEL:-matrix}"
 DELIVERY_TO="${SABIAI_OPENCLAW_DELIVERY_TO:-!lkXVdwqsWDeBqhharF:chat.hendrix.com.ng}"
 DELIVERY_ACCOUNT="${SABIAI_OPENCLAW_DELIVERY_ACCOUNT:-sabiai}"
+# Daily research is the only scheduled workflow that needs a language model. Keep it
+# on the strongest configured Alibaba model, with an explicit OpenCode fallback.
+RESEARCH_MODEL="${SABIAI_OPENCLAW_RESEARCH_MODEL:-aliyun-token-plan/qwen3.8-max-preview}"
+RESEARCH_FALLBACKS="${SABIAI_OPENCLAW_RESEARCH_FALLBACKS:-opencode-go/qwen3.7-max}"
 
 # OpenClaw's cron command needs the resolved gateway credential in a non-interactive shell.
 # Import only that one value from the gateway's private environment file; do not source the
@@ -87,6 +91,8 @@ upsert_agent_job() {
   local cron_expr="$2"
   local prompt="$3"
   local delivery="${4:-quiet}"
+  local model="${5:-}"
+  local fallbacks="${6:-}"
   local existing
   existing="$(job_id_by_name "$name" || true)"
 
@@ -99,6 +105,13 @@ upsert_agent_job() {
       --to "$DELIVERY_TO"
       --account "$DELIVERY_ACCOUNT"
     )
+  fi
+
+  if [[ -n "$model" ]]; then
+    delivery_args+=(--model "$model")
+  fi
+  if [[ -n "$fallbacks" ]]; then
+    delivery_args+=(--fallbacks "$fallbacks")
   fi
 
   if [[ -n "$existing" ]]; then
@@ -125,6 +138,16 @@ upsert_agent_job() {
   fi
 }
 
+disable_agent_job() {
+  local name="$1"
+  local existing
+  existing="$(job_id_by_name "$name" || true)"
+  if [[ -n "$existing" ]]; then
+    echo "Disabling retired OpenClaw automation: $name ($existing)"
+    "$OPENCLAW_BIN" cron edit "$existing" --disable >/dev/null
+  fi
+}
+
 DAILY_PROMPT=$(cat <<'EOF'
 Run Sabi Boy's daily reflection workflow. First query system.tools and system.readiness; do not invent unavailable capabilities. Use blog.reflection.context plus our actual recent picks, tickets, results, streaks, settlement changes, research lessons, source discoveries and meaningful bookmaker/ticket work from today. Decide whether there is something genuinely worth writing. If nothing meaningful changed, do not publish a filler post. If there is, write a concise first-person Sabi Boy post in clear everyday language. It may discuss what I watched, what changed my mind, what I got wrong, a ticket lesson, a sport/market I learned more about, source quality, or a pattern in our own history. It is not generic sports news and should not sound like a technical model report. Create and publish it through blog.create/blog.publish with category Daily Reflection and useful tags. Do not send a routine chat notification merely because this scheduled job ran.
 EOF
@@ -140,14 +163,17 @@ Run Sabi Boy's daily multi-sport research and picks workflow. Start by querying 
 EOF
 )
 
+# Keep the retired source-health prompt defined for compatibility with older local
+# installer wrappers; it is deliberately never scheduled below.
 SOURCE_HEALTH_PROMPT=$(cat <<'EOF'
 Run Sabi Boy's source and readiness monitor. Query system.readiness, system.sources and system.api_economy, and use system.jobs.list to inspect recent heartbeat failures. Do not spend money, place wagers, call Stake or 1xBet, or perform any state-changing bookmaker action. If all monitored components are healthy or merely not used yet, finish without a user-facing message. If a source, job, database, bankroll reconciliation or settlement backlog is degraded or failing, send a short actionable alert naming the component, observed state and safe next check. Do not invent an outage from an uncalled source.
 EOF
 )
 
 # Daily near the end of Sabi Boy's configured local day; weekly on Sunday evening.
-upsert_agent_job "sabi-boy-daily-picks" "0 8 * * *" "$DAILY_PICKS_PROMPT" announce
-upsert_agent_job "sabi-boy-source-health" "*/30 * * * *" "$SOURCE_HEALTH_PROMPT" announce
+upsert_agent_job "sabi-boy-daily-picks" "0 8 * * *" "$DAILY_PICKS_PROMPT" announce "$RESEARCH_MODEL" "$RESEARCH_FALLBACKS"
+# Retire the previous token-consuming monitor. The local systemd timer is authoritative.
+disable_agent_job "sabi-boy-source-health"
 upsert_agent_job "sabi-boy-daily-reflection" "30 22 * * *" "$DAILY_PROMPT"
 upsert_agent_job "sabi-boy-weekly-reflection" "0 20 * * 0" "$WEEKLY_PROMPT"
 

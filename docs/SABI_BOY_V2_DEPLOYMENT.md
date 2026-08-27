@@ -36,6 +36,8 @@ Important variables:
 - `SABIAI_VAPID_PUBLIC_KEY`
 - `SABIAI_VAPID_PRIVATE_KEY_FILE` — mode-600 key outside the repository
 - `SABIAI_VAPID_SUBJECT`
+- `SABIAI_OPENCLAW_RESEARCH_MODEL` — model used only by the daily research/picks job
+- `SABIAI_OPENCLAW_RESEARCH_FALLBACKS` — comma-separated model fallback(s)
 
 V2 dashboard service:
 
@@ -50,6 +52,14 @@ Automatic result settlement:
 - timer: `sabi-boy-settlement.timer`
 - interval: ten minutes, persistent across downtime
 - scope: audited/idempotent score-derived outcomes only; no inferred payouts or unsupported props
+
+Local source/readiness health:
+
+- service: `sabi-boy-health.service`
+- timer: `sabi-boy-health.timer`
+- interval: thirty minutes, persistent across downtime
+- scope: reads V2's local fetch log, readiness report and background-job state; it makes no provider or language-model calls
+- material changes send Web Push when a subscription is available
 
 Verified backup schedule:
 
@@ -98,7 +108,7 @@ This:
 - generates/reuses a mode-600 VAPID private key outside the repository;
 - initializes the V2 schema;
 - registers the source catalog;
-- renders the dashboard, verified-backup and automatic-settlement systemd user units to the actual checkout path;
+- renders the dashboard, verified-backup, automatic-settlement and local-health systemd user units to the actual checkout path;
 - reloads user systemd.
 
 It does **not**:
@@ -131,7 +141,8 @@ The stage command performs the release-critical order:
 8. verify `/api/v2/overview`;
 9. enable the V2 backup timer only after the required V2 acceptance gates succeed;
 10. enable the automatic result-settlement heartbeat;
-11. write commit-pinned staging state.
+11. enable the local source/readiness health timer;
+12. write commit-pinned staging state.
 
 State/report locations:
 
@@ -150,6 +161,7 @@ Before touching OpenClaw identity/jobs or external routing:
 systemctl --user status sabi-boy-dashboard.service --no-pager
 systemctl --user status sabi-boy-backup.timer --no-pager
 systemctl --user status sabi-boy-settlement.timer --no-pager
+systemctl --user status sabi-boy-health.timer --no-pager
 curl -fsS http://127.0.0.1:8091/health
 curl -fsS http://127.0.0.1:8091/api/v2/overview
 ```
@@ -210,7 +222,7 @@ Reports include:
 - `data/release/openclaw-identity-latest.json`
 - `data/release/openclaw-activation-latest.json`
 
-The Sabi Boy wake layer is installed with OpenClaw's persistent cron scheduler and is pinned to `SABIAI_OPENCLAW_AGENT_ID`. It creates four idempotent jobs: daily picks at 08:00 Africa/Lagos (announced), source/readiness health every 30 minutes (announced only for actionable degradation), daily reflection at 22:30 (quiet), and weekly reflection Sunday at 20:00 (quiet). User-facing announcements use the explicit `SABIAI_OPENCLAW_DELIVERY_CHANNEL`, `SABIAI_OPENCLAW_DELIVERY_TO` and `SABIAI_OPENCLAW_DELIVERY_ACCOUNT` route; relying on `last` is unsafe when multiple channels are configured. The systemd `sabi-boy-settlement.timer` remains the ten-minute result heartbeat and sends Web Push only when a settlement changes. Reflection jobs publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
+The Sabi Boy model wake layer is installed with OpenClaw's persistent cron scheduler and is pinned to `SABIAI_OPENCLAW_AGENT_ID`. It creates three idempotent agent jobs: daily picks at 08:00 Africa/Lagos (announced), daily reflection at 22:30 (quiet), and weekly reflection Sunday at 20:00 (quiet). The daily picks job uses `SABIAI_OPENCLAW_RESEARCH_MODEL` (default Alibaba Qwen 3.8 Max Preview) and falls back to `SABIAI_OPENCLAW_RESEARCH_FALLBACKS` (default OpenCode Qwen 3.7 Max). Source/readiness monitoring is a separate local `sabi-boy-health.timer` system service and does not wake the model or consume model tokens. User-facing announcements use the explicit `SABIAI_OPENCLAW_DELIVERY_CHANNEL`, `SABIAI_OPENCLAW_DELIVERY_TO` and `SABIAI_OPENCLAW_DELIVERY_ACCOUNT` route; relying on `last` is unsafe when multiple channels are configured. The systemd `sabi-boy-settlement.timer` remains the ten-minute result heartbeat and sends Web Push only when a settlement changes. Reflection jobs publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
 
 Manual verification commands:
 

@@ -132,6 +132,7 @@ RSS/Atom is deliberately deferred because it is not required for V2 acceptance a
 - source/API-economy health;
 - settlement backlog checks;
 - fixed ten-minute free-result heartbeat with audited, idempotent automatic settlement for supported score-derived markets;
+- fixed thirty-minute local source/readiness health timer; it reads the V2 database and does not wake a language model;
 - unsupported markets and payouts remain manual rather than being guessed;
 - push notification delivery for material automatic settlement changes;
 - durable job start/success/failure/consecutive-failure bookkeeping;

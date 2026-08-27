@@ -39,6 +39,9 @@ def test_openclaw_scripts_use_current_cron_cli_and_explicit_human_identity():
     assert 'source "$GATEWAY_ENV_FILE"' not in installer
     assert "JOBS_PAYLOAD" not in installer
     assert 'json.load(sys.stdin)' in installer
+    assert 'aliyun-token-plan/qwen3.8-max-preview' in installer
+    assert 'opencode-go/qwen3.7-max' in installer
+    assert 'disable_agent_job "sabi-boy-source-health"' in installer
     assert 'config set "agents.list[$agent_index].name"' in activation
     assert '--name "Sabi Boy"' in activation
     assert '--emoji "🧠⚽"' in activation

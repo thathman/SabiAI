@@ -43,3 +43,14 @@ def test_settlement_timer_is_fixed_schedule_and_installed_by_runtime_prepare():
     assert "Persistent=true" in timer
     assert "sabi-boy-settlement.service" in prepare
     assert 'enable --now "$SETTLEMENT_TIMER"' in stage
+
+
+def test_health_timer_is_local_and_installed_by_runtime_prepare_and_stage():
+    service = (ROOT / "systemd" / "sabi-boy-health.service").read_text(encoding="utf-8")
+    timer = (ROOT / "systemd" / "sabi-boy-health.timer").read_text(encoding="utf-8")
+    prepare = (ROOT / "scripts" / "sabi_v2_prepare_runtime.sh").read_text(encoding="utf-8")
+    stage = (ROOT / "scripts" / "sabi_v2_stage.sh").read_text(encoding="utf-8")
+    assert "sabi_v2_health_heartbeat.py" in service
+    assert "OnUnitActiveSec=30m" in timer
+    assert "sabi-boy-health.service" in prepare
+    assert 'enable --now "$HEALTH_TIMER"' in stage
