@@ -210,7 +210,7 @@ Reports include:
 - `data/release/openclaw-identity-latest.json`
 - `data/release/openclaw-activation-latest.json`
 
-The reflection jobs are installed with OpenClaw's persistent cron scheduler and are pinned to `SABIAI_OPENCLAW_AGENT_ID`. They publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
+The Sabi Boy wake layer is installed with OpenClaw's persistent cron scheduler and is pinned to `SABIAI_OPENCLAW_AGENT_ID`. It creates four idempotent jobs: daily picks at 08:00 Africa/Lagos (announced), source/readiness health every 30 minutes (announced only for actionable degradation), daily reflection at 22:30 (quiet), and weekly reflection Sunday at 20:00 (quiet). User-facing announcements use the explicit `SABIAI_OPENCLAW_DELIVERY_CHANNEL`, `SABIAI_OPENCLAW_DELIVERY_TO` and `SABIAI_OPENCLAW_DELIVERY_ACCOUNT` route; relying on `last` is unsafe when multiple channels are configured. The systemd `sabi-boy-settlement.timer` remains the ten-minute result heartbeat and sends Web Push only when a settlement changes. Reflection jobs publish only when there is something meaningful to reflect on; routine job execution is not announced to chat.
 
 Manual verification commands:
 

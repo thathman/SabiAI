@@ -460,6 +460,15 @@
 - The cutover finalizer accepts an already inactive/removed V1 systemd unit as the required stopped state; regression coverage prevents the final report from failing after deliberate V1 removal.
 - Release status: **READY FOR FINAL RELEASE**. Every required original-plan runtime gate has passing evidence. The optional Parse SportyBet marketplace source remains unavailable until the owner completes Parse's phone/card access requirements and adds that API to the account; this is not a V2 release blocker. `v2` has not been merged to `main`.
 
+### Phase 16 follow-up evidence — 2026-08-27 (cron/source hardening)
+
+- Current Forgejo/Dell checkout: `ada4cfe1ba8a68cf518a150800762ae3613ef7bb` on `v2`; untracked Dell runtime evidence remains preserved.
+- Full Dell pytest suite at this checkout: **243 passed, 1 warning** (the existing Starlette/httpx deprecation warning).
+- OpenClaw wake layer is installed for agent `prediction` (human identity Sabi Boy): daily picks 08:00 Africa/Lagos, source/readiness monitor every 30 minutes, daily reflection 22:30, weekly reflection Sunday 20:00. Announcement delivery is explicit Matrix room/account and was verified delivered by a manual source-health run.
+- The ten-minute `sabi-boy-settlement.timer`, daily `sabi-boy-backup.timer`, and dashboard service are active. A manual settlement heartbeat completed successfully with zero source errors and no state changes.
+- The two acceptance-probe research cases were closed as test artifacts, and the `dell_acceptance_probe` database job was disabled so it cannot recreate synthetic research.
+- Live source checks succeeded for ESPN Public Data (Premier League slug `eng.1`), football-data.org, Parse ESPN, Parse Flashscore, Parse LiveScore and Parse SportyBet; TheSportsDB remains healthy. The read-only Sports Betting AI Analyzer key is configured but its validation request timed out; it is retained as an optional source and is not treated as authoritative or a release gate.
+
 ---
 
 ## Current release commands
