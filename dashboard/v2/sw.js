@@ -1,18 +1,18 @@
 'use strict';
 
-const SHELL_CACHE = 'sabi-shell-v2.1.0.2';
+const SHELL_CACHE = 'sabi-shell-v2.1.0.3';
 const APP_SHELL = [
   '/',
-  '/manifest.json',
-  '/favicon.ico',
-  '/icon.svg',
-  '/assets/app.css',
-  '/assets/app.js',
-  '/assets/history_insights.js',
-  '/assets/icon-192.png',
-  '/assets/icon-512.png',
-  '/assets/icon-maskable-192.png',
-  '/assets/icon-maskable-512.png',
+  '/manifest.json?v=2.1.0.3',
+  '/favicon.ico?v=2.1.0.3',
+  '/icon.svg?v=2.1.0.3',
+  '/assets/app.css?v=2.1.0.3',
+  '/assets/app.js?v=2.1.0.3',
+  '/assets/history_insights.js?v=2.1.0.3',
+  '/assets/icon-192.png?v=2.1.0.3',
+  '/assets/icon-512.png?v=2.1.0.3',
+  '/assets/icon-maskable-192.png?v=2.1.0.3',
+  '/assets/icon-maskable-512.png?v=2.1.0.3',
 ];
 
 self.addEventListener('install', event => {
@@ -62,8 +62,8 @@ self.addEventListener('push', event => {
   const title = String(payload.title || 'Sabi');
   const options = {
     body: String(payload.body || 'A result has changed.'),
-    icon: '/assets/icon-192.png',
-    badge: '/assets/icon-192.png',
+    icon: '/assets/icon-192.png?v=2.1.0.3',
+    badge: '/assets/icon-192.png?v=2.1.0.3',
     tag: String(payload.tag || 'sabi-boy-update'),
     renotify: Boolean(payload.renotify),
     data: {url: String(payload.url || '/')},

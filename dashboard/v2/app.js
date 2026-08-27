@@ -209,7 +209,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png',
+      icon: '/assets/icon-192.png?v=2.1.0.3',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -221,7 +221,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.3', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi update is downloading.');
       });

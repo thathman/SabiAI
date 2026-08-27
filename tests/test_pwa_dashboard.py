@@ -20,6 +20,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
+    assert all("?v=2.1.0.3" in icon["src"] for icon in data["icons"])
 
     worker = client.get("/sw.js")
     assert worker.status_code == 200
@@ -38,6 +39,8 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
     assert 'name="apple-mobile-web-app-capable"' in shell.text
+    assert '/assets/app.js?v=2.1.0.3' in shell.text
+    assert '/assets/app.css?v=2.1.0.3' in shell.text
     assert '<strong>Sabi</strong>' in shell.text
     assert 'Our record</span>' not in shell.text
     assert 'class="online-pill"><span></span> Online' in shell.text

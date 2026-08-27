@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from sabiai import __version__
 from sabiai.dashboard import create_push_router, create_v2_dashboard_router
 
 ASSET_DIR = Path(__file__).with_name("v2")
@@ -65,6 +66,7 @@ def health():
 
 @app.get("/manifest.json")
 def manifest():
+    version = f"?v={__version__}"
     return {
         "id": "/",
         "name": "Sabi",
@@ -79,15 +81,15 @@ def manifest():
         "theme_color": "#111216",
         "categories": ["sports", "finance"],
         "icons": [
-            {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-            {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-            {"src": "/assets/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
-            {"src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+            {"src": f"/assets/icon-192.png{version}", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": f"/assets/icon-512.png{version}", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": f"/assets/icon-maskable-192.png{version}", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+            {"src": f"/assets/icon-maskable-512.png{version}", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
         ],
         "shortcuts": [
-            {"name": "Games and picks", "short_name": "Picks", "url": "/picks", "icons": [{"src": "/assets/icon-192.png", "sizes": "192x192"}]},
-            {"name": "Tickets", "short_name": "Tickets", "url": "/tickets", "icons": [{"src": "/assets/icon-192.png", "sizes": "192x192"}]},
-            {"name": "System health", "short_name": "System", "url": "/system", "icons": [{"src": "/assets/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Games and picks", "short_name": "Picks", "url": "/picks", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
+            {"name": "Tickets", "short_name": "Tickets", "url": "/tickets", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
+            {"name": "System health", "short_name": "System", "url": "/system", "icons": [{"src": f"/assets/icon-192.png{version}", "sizes": "192x192"}]},
         ],
     }
 
