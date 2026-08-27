@@ -13,6 +13,11 @@ from .readiness import (
     ReadinessState,
     SystemReadinessService,
 )
+from .research_heartbeat import (
+    call_research_model,
+    collect_fixtures,
+    run_research_heartbeat,
+)
 
 __all__ = [
     "JobService",
@@ -27,4 +32,7 @@ __all__ = [
     "ReadinessReport",
     "ReadinessState",
     "SystemReadinessService",
+    "call_research_model",
+    "collect_fixtures",
+    "run_research_heartbeat",
 ]

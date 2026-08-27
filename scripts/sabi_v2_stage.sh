@@ -8,6 +8,7 @@ SERVICE="sabi-boy-dashboard.service"
 BACKUP_TIMER="sabi-boy-backup.timer"
 SETTLEMENT_TIMER="sabi-boy-settlement.timer"
 HEALTH_TIMER="sabi-boy-health.timer"
+RESEARCH_TIMER="sabi-boy-research.timer"
 RELEASE_DIR="${ROOT}/data/release"
 BACKUP_DIR="${ROOT}/data/backups/sabi-boy"
 STATE_FILE="${RELEASE_DIR}/staging-latest.json"
@@ -125,6 +126,12 @@ if ! systemctl --user enable --now "$HEALTH_TIMER"; then
   exit 25
 fi
 
+if ! systemctl --user enable --now "$RESEARCH_TIMER"; then
+  systemctl --user stop "$SERVICE" || true
+  echo "Could not enable the Sabi Boy direct research timer. V2 stopped." >&2
+  exit 26
+fi
+
 "$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$DASHBOARD_HOST" "$DASHBOARD_PORT" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" <<'PY'
 from datetime import datetime, timezone
 import json, pathlib, sys
@@ -145,6 +152,7 @@ data = {
     'backup_timer_enabled': backup_enabled.lower() == 'true',
     'settlement_timer_enabled': True,
     'health_timer_enabled': True,
+    'research_timer_enabled': True,
     'v1_changed': False,
     'external_cutover_performed': False,
 }
@@ -159,6 +167,7 @@ V1 has not been stopped or modified.
 Verified daily backups are enabled through $BACKUP_TIMER.
 Automatic result settlement is enabled through $SETTLEMENT_TIMER.
 Local source/readiness health checks are enabled through $HEALTH_TIMER (no model wake/token use).
+Daily research is enabled through $RESEARCH_TIMER (direct compact model call; no OpenClaw agent wake).
 Backup manifest: $manifest
 Acceptance:     $RELEASE_DIR/acceptance-latest.json
 Staging state:  $STATE_FILE

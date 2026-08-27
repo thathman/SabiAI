@@ -57,13 +57,14 @@ printf '%s\n' '{"tool":"source.catalog","args":{}}' | "$VENV/bin/python" "$ROOT/
 # Render user-systemd units to the actual checkout so V2 works even when the
 # repository is not located at the historical ~/.openclaw/workspace path.
 ROOT_ESCAPED="${ROOT//&/\\&}"
-for unit in sabi-boy-dashboard.service sabi-boy-backup.service sabi-boy-settlement.service sabi-boy-health.service; do
+for unit in sabi-boy-dashboard.service sabi-boy-backup.service sabi-boy-settlement.service sabi-boy-health.service sabi-boy-research.service; do
   sed "s#%h/.openclaw/workspace#${ROOT_ESCAPED}#g" \
     "$ROOT/systemd/$unit" > "$UNIT_DIR/$unit"
 done
 cp "$ROOT/systemd/sabi-boy-backup.timer" "$UNIT_DIR/sabi-boy-backup.timer"
 cp "$ROOT/systemd/sabi-boy-settlement.timer" "$UNIT_DIR/sabi-boy-settlement.timer"
 cp "$ROOT/systemd/sabi-boy-health.timer" "$UNIT_DIR/sabi-boy-health.timer"
+cp "$ROOT/systemd/sabi-boy-research.timer" "$UNIT_DIR/sabi-boy-research.timer"
 systemctl --user daemon-reload
 
 cat <<EOF
@@ -78,6 +79,7 @@ Backup service:sabi-boy-backup.service (installed, not started)
 Backup timer:  sabi-boy-backup.timer (installed, not enabled)
 Result heartbeat:sabi-boy-settlement.timer (installed, not enabled)
 Health check:   sabi-boy-health.timer (installed, not enabled; local/no model tokens)
+Daily research: sabi-boy-research.timer (installed, not enabled; direct model call, no OpenClaw agent)
 Web Push:      configured with a private key outside the repository
 
 No V1 service was stopped and no V1 data was migrated by this preparation step.

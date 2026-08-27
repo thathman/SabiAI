@@ -1,0 +1,16 @@
+[Unit]
+Description=Sabi Boy direct daily research and pick recommendations
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/sabi-boy/sabi-boy.env
+# The Alibaba key is kept in OpenClaw's private environment file on the Dell. The
+# runner reads only the variable it needs; no OpenClaw agent or tool context is loaded.
+EnvironmentFile=-%h/.openclaw/env/openclaw.env
+WorkingDirectory=%h/.openclaw/workspace
+ExecStart=%h/.openclaw/workspace/.venv/bin/python %h/.openclaw/workspace/scripts/sabi_v2_research_heartbeat.py
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077

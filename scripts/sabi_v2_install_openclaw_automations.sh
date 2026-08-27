@@ -22,8 +22,8 @@ GATEWAY_ENV_FILE="${OPENCLAW_GATEWAY_ENV_FILE:-$HOME/.openclaw/env/openclaw.env}
 DELIVERY_CHANNEL="${SABIAI_OPENCLAW_DELIVERY_CHANNEL:-matrix}"
 DELIVERY_TO="${SABIAI_OPENCLAW_DELIVERY_TO:-!lkXVdwqsWDeBqhharF:chat.hendrix.com.ng}"
 DELIVERY_ACCOUNT="${SABIAI_OPENCLAW_DELIVERY_ACCOUNT:-sabiai}"
-# Daily research is the only scheduled workflow that needs a language model. Keep it
-# on the strongest configured Alibaba model, with an explicit OpenCode fallback.
+# Daily research is systemd-owned now. These values remain readable by older local
+# wrappers, but no daily research prompt is sent through an OpenClaw agent.
 RESEARCH_MODEL="${SABIAI_OPENCLAW_RESEARCH_MODEL:-aliyun-token-plan/qwen3.8-max-preview}"
 RESEARCH_FALLBACKS="${SABIAI_OPENCLAW_RESEARCH_FALLBACKS:-opencode-go/qwen3.7-max}"
 
@@ -170,8 +170,9 @@ Run Sabi Boy's source and readiness monitor. Query system.readiness, system.sour
 EOF
 )
 
-# Daily near the end of Sabi Boy's configured local day; weekly on Sunday evening.
-upsert_agent_job "sabi-boy-daily-picks" "0 8 * * *" "$DAILY_PICKS_PROMPT" announce "$RESEARCH_MODEL" "$RESEARCH_FALLBACKS"
+# Daily research is owned by sabi-boy-research.timer and never wakes the full agent.
+# Retire any old OpenClaw daily-picks job while preserving it as a disabled history row.
+disable_agent_job "sabi-boy-daily-picks"
 # Retire the previous token-consuming monitor. The local systemd timer is authoritative.
 disable_agent_job "sabi-boy-source-health"
 upsert_agent_job "sabi-boy-daily-reflection" "30 22 * * *" "$DAILY_PROMPT"

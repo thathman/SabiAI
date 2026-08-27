@@ -37,6 +37,19 @@ class Settings:
     parse_sportybet_scraper_id: str | None = None
     parse_espn_scraper_id: str | None = None
     sports_betting_analyzer_api_key: str | None = None
+    research_api_key: str | None = None
+    research_api_base_url: str = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+    research_model: str = "qwen3.8-max-preview"
+    research_fallback_model: str | None = None
+    research_fallback_api_key: str | None = None
+    research_fallback_api_base_url: str | None = None
+    research_sports: tuple[str, ...] = (
+        "football",
+        "basketball",
+        "tennis",
+        "baseball",
+        "ice_hockey",
+    )
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -107,6 +120,40 @@ class Settings:
                 or ""
             ).strip()
             or None,
+            research_api_key=(
+                os.getenv("SABIAI_RESEARCH_API_KEY")
+                or os.getenv("ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY")
+                or ""
+            ).strip()
+            or None,
+            research_api_base_url=(
+                os.getenv(
+                    "SABIAI_RESEARCH_API_BASE_URL",
+                    "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+                ).strip().rstrip("/")
+                or "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+            ),
+            research_model=(
+                os.getenv("SABIAI_RESEARCH_MODEL", "qwen3.8-max-preview").strip()
+                or "qwen3.8-max-preview"
+            ),
+            research_fallback_model=(os.getenv("SABIAI_RESEARCH_FALLBACK_MODEL") or "").strip()
+            or None,
+            research_fallback_api_key=(os.getenv("SABIAI_RESEARCH_FALLBACK_API_KEY") or "").strip()
+            or None,
+            research_fallback_api_base_url=(
+                (os.getenv("SABIAI_RESEARCH_FALLBACK_API_BASE_URL") or "").strip().rstrip("/")
+                or None
+            ),
+            research_sports=tuple(
+                item.strip()
+                for item in os.getenv(
+                    "SABIAI_RESEARCH_SPORTS",
+                    "football,basketball,tennis,baseball,ice_hockey",
+                ).split(",")
+                if item.strip()
+            )
+            or cls.research_sports,
         )
 
 
