@@ -400,7 +400,7 @@
 
 **The requested V2.1 repository changes are now frozen for controlled Dell acceptance. Do not promote `v2` to `main` until the applicable runtime gates below pass.**
 
-- [~] Full current V2.1 pytest suite — 234 pass locally; Dell/runtime rerun pending
+- [x] Full current V2.1 pytest suite — 234 pass locally and on the Dell/runtime
 - [x] V1 database snapshot taken and verified
 - [x] V1 → V2 migration rehearsal on actual data passes
 - [x] Historical pick/ticket totals reconcile
@@ -442,8 +442,8 @@
 
 ### Phase 16 Dell evidence — 2026-08-27
 
-- Exact installed and acceptance-tested code commit: `762e01f0e5aebb56b658f596592fe1c9e6f5702d` (`v2`, V2.1.0.3). Forgejo `thathman/SabiAI` resolves `v2` to the same commit; `main` remains unmerged.
-- Full Dell suite: 234 passed with one known Starlette deprecation warning. The staged release acceptance repeated the same 234-test result with no failed gates.
+- Exact installed and acceptance-tested code commit: `fc51e9168a42b72a1f6585dd48f36b2cf6991f0f` (`v2`, V2.1.0.4). Forgejo `thathman/SabiAI` resolves `v2` to the same commit; `main` remains unmerged.
+- Full Dell suite: 234 passed with one known Starlette deprecation warning. The staged release acceptance repeated the same 234-test result with no failed gates at this commit.
 - Verified private recovery archives: `~/sabi-boy-migration-archives/20260826T071240Z/v1-prediction-workspace.tar.gz` and `v1-repository-and-service.tar.gz`; both gzip checks and recorded SHA-256 checksums passed.
 - Migration/reconciliation: source and V2 both contained zero picks/tickets after the intentional V1 reset; the bankroll reconciled exactly at ₦30,000 with no migration warnings. The separate pre-reset private archive was reviewed for historical strategy/compound/long-shot records.
 - Active runtime: the existing OpenClaw agent ID is `prediction`, with name/identity Sabi Boy, seven required current-format skills, 131 V2 tools, five preserved bindings and READY status.
@@ -451,7 +451,7 @@
 - Bookmakers: Bet9ja restore/build/reload and SportyBet-to-Bet9ja conversion passed without wagering. A fresh Borneo Samarinda vs Madura United comparison observed SportyBet 1.70 and Bet9ja 1.72. SportyBet valid-code creation/reload remains unproven. By later owner direction, all other bookmaker targets were removed from the active registry/playbooks.
 - V2.1 runtime validation: 234 tests pass both locally and on the Dell, including PWA manifest/service worker/push-origin controls, secure VAPID key generation, removed-bookmaker rejection, automatic result settlement, audit idempotence and fixed-timer installation.
 - Controlled settlement/Blog drill: duplicate protection, audited correction, correction trigger, tennis/golf/basketball profiles and the Blog lifecycle passed. Exact current bookmaker-specific policy values remain live-verification data.
-- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the V1 `S` assets, `Sabi` branding, one-line page titles, backdrop-only drawer close, installable manifest and a controlling V2.1.0.3 service worker. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell now gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. One existing opted-in endpoint accepted the verification push: attempted 1, delivered 1, expired 0, failed 0; final OS display confirmation remains owner-side.
+- Dashboard/PWA: the public HTTPS app was accepted at 390×844 and 1440×900 with the exact V1 `S` assets, Sabi Boy branding, the browser title “Sabi Boy knows ball,” one-line page titles, the Picks label, backdrop-only drawer close, installable manifest and a controlling V2.1.0.4 service worker. The top bar now reserves `env(safe-area-inset-top)` for iOS standalone mode so the header is not hidden behind the device status area. Versioned asset URLs fixed a live stale-script/new-markup cache mismatch. The iOS bell gives Home Screen guidance outside standalone mode and calls `PushManager.subscribe()` directly from the installed-PWA tap. One existing opted-in endpoint accepted the verification push: attempted 1, delivered 1, expired 0, failed 0; final OS display confirmation remains owner-side.
 - Operations: daily and weekly OpenClaw jobs completed successfully and correctly skipped empty publication; readiness/failure recovery passed. The automatic-settlement timer is enabled/active and its current heartbeat exited successfully. Backup manifest `data/backups/sabi-boy/20260827T001550Z/manifest.json` verified both V1 and V2 checksums/integrity; a separate restore reached schema 8 with `PRAGMA quick_check=ok`.
 - Security: loopback-only application binding, disabled API docs, host validation, security headers, mode-600 environment/VAPID key, zero tracked private keys/recognized secret patterns and a clean installed-package audit passed. A pre-existing host issue remains: five Cloudflared processes expose tunnel tokens in their process arguments; rotate those tokens and move them out of command-line arguments under a separately authorized Cloudflare maintenance window. The external Cloudflare route was not reconfigured in this work.
 - V1 service and active V1 working copies were removed only after archive verification. The V2 service now owns the original port and external route; `main` remains unmerged.
