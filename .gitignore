@@ -8,6 +8,7 @@ node_modules/
 .openclaw/
 media/tmp/
 data/backups/
+data/sabi-boy-health-state.json
 data/sabiai/screenshots/
 MEMORY.md
 USER.md
