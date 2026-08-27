@@ -242,7 +242,7 @@ def main() -> int:
     parser.add_argument(
         "--install-automations",
         action="store_true",
-        help="Install/update Sabi Boy's daily picks and reflection jobs only after every required acceptance check passes.",
+        help="Install/update Sabi Boy's OpenClaw reflection jobs only after every required acceptance check passes; daily research is systemd-owned.",
     )
     args = parser.parse_args()
 
