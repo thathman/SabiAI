@@ -442,7 +442,7 @@ def _nested_event_rows(value: object) -> list[dict[str, Any]]:
     if not isinstance(value, dict):
         return []
     rows = []
-    for key in ("events", "event", "fixtures", "games", "matches"):
+    for key in ("events", "event", "fixtures", "games", "matches", "data"):
         if key in value:
             rows.extend(_nested_event_rows(value[key]))
     if any(key in value for key in ("strEvent", "eventId", "idEvent", "homeTeamName", "strHomeTeam", "name")):
