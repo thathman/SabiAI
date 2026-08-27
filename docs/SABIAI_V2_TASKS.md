@@ -462,7 +462,7 @@
 
 ### Phase 16 follow-up evidence — 2026-08-27 (cron/source hardening)
 
-- Current Forgejo/Dell checkout: `ada4cfe1ba8a68cf518a150800762ae3613ef7bb` on `v2`; untracked Dell runtime evidence remains preserved.
+- Current Forgejo/Dell checkout: `dc98ad6f9b4faf891d492470b4ff0e66382bcb1c` on `v2`; untracked Dell runtime evidence remains preserved.
 - Full Dell pytest suite at this checkout: **243 passed, 1 warning** (the existing Starlette/httpx deprecation warning).
 - OpenClaw wake layer is installed for agent `prediction` (human identity Sabi Boy): daily picks 08:00 Africa/Lagos, source/readiness monitor every 30 minutes, daily reflection 22:30, weekly reflection Sunday 20:00. Announcement delivery is explicit Matrix room/account and was verified delivered by a manual source-health run.
 - The ten-minute `sabi-boy-settlement.timer`, daily `sabi-boy-backup.timer`, and dashboard service are active. A manual settlement heartbeat completed successfully with zero source errors and no state changes.
