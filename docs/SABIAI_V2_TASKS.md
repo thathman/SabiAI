@@ -480,6 +480,13 @@
 - The direct Dell dry run completed successfully with 53 events, zero source failures, one validated Liverpool vs Nottingham Forest recommendation (SportyBet 1.57, 62% confidence), two Web Push deliveries and no wager/pick-ledger mutation. Direct model usage was 6,399 prompt / 2,186 completion tokens (versus the earlier 70,501-token full-agent probe); the recommendation report records the exact usage and delivery result.
 - Full Dell pytest suite at the new runtime commit: **252 passed, 1 warning** (the existing Starlette/httpx deprecation warning). The remaining OpenClaw jobs are the quiet daily/weekly Blog reflections; health, settlement and daily research are system-owned.
 
+### Phase 16 follow-up evidence — 2026-08-28 (pick and scan context)
+
+- Implementation commit `e5705e4` adds the `history.picks` gateway read, returning canonical recorded pick rows (event, market, selection, decimal odds, confidence, rationale, bookmaker and outcome) so Sabi Boy can answer questions about picks without relying on dashboard-only data. The core skill now requires this read for specific pick questions and reserves `history.summary` for aggregates.
+- Migration `0009_daily_research_runs.sql` and `DailyResearchLog` persist each successful direct scan, including run time, model, event count, source failures, recommendations, notes, model usage and push delivery. The gateway exposes `system.daily_research`, `research.scan.latest`, `research.scan.history` and `research.scan.context`; `system.readiness`/`system.health` include the latest scan, and `ticket.research.plan` includes recent scan context automatically.
+- Dell verification after `e8c78f6`: the 2026-08-28 scan persisted run `2026-08-28T00:10:02.866181+00:00` with 53 events, zero source failures and three recommendations; `system.readiness`, `research.scan.context` and `ticket.research.plan` all returned the same latest scan context. The direct scan remained an unplaced observation and ticket research still requires fresh price/rule/evidence checks.
+- Targeted gateway/research acceptance: **25 passed**. Local full suite at the follow-up implementation: **255 passed, 1 warning** (the existing Starlette/httpx deprecation warning).
+
 ---
 
 ## Current release commands
