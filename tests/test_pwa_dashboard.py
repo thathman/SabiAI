@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from dashboard.v2_app import app as dashboard_app
 from sabiai.config import Settings
 from sabiai.dashboard import create_push_router
+from sabiai.dashboard.branding import make_v1_icon_png, v1_icon_svg
 from sabiai.notifications import NotificationHistory, WebPushService
 from sabiai.storage import SabiDatabase
 
@@ -22,7 +23,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
-    assert all("?v=2.1.0.7" in icon["src"] for icon in data["icons"])
+    assert all("?v=2.1.0.8" in icon["src"] for icon in data["icons"])
 
     worker = client.get("/sw.js")
     assert worker.status_code == 200
@@ -41,8 +42,8 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
     assert 'name="apple-mobile-web-app-capable"' in shell.text
-    assert '/assets/app.js?v=2.1.0.7' in shell.text
-    assert '/assets/app.css?v=2.1.0.7' in shell.text
+    assert '/assets/app.js?v=2.1.0.8' in shell.text
+    assert '/assets/app.css?v=2.1.0.8' in shell.text
     assert '<strong>Sabi Boy</strong>' in shell.text
     assert '<title>Sabi Boy knows ball</title>' in shell.text
     assert '<span>Picks</span>' in shell.text
@@ -56,8 +57,10 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert '> Online<' not in sidebar
     assert 'id="readiness-chip"' not in topbar
     assert '<div class="brand-mark">SB</div>' not in shell.text
-    assert '<img class="brand-mark" src="/favicon.ico?v=2.1.0.7" alt="">' in shell.text
+    assert '<img class="brand-mark" src="/assets/icon-192.png?v=2.1.0.8" alt="">' in shell.text
     assert '<span>Sabi\'s Blog</span>' in shell.text
+    assert '🔔' not in shell.text
+    assert '<span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24">' in shell.text
 
     favicon = client.get("/favicon.ico")
     icon = client.get("/icon.svg")
@@ -65,14 +68,16 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     maskable_source = client.get("/assets/icon-maskable-source.svg")
     assert favicon.status_code == 200
     assert icon.status_code == 200
-    assert "fill='#0c0a07'" in favicon.text
-    assert "fill='#e6b252'" in favicon.text
-    assert ">S</text>" in favicon.text
-    assert ">S</text>" in icon.text
-    assert ">SB</text>" not in icon.text
-    assert icon.content == favicon.content
-    assert icon_source.text.strip() == favicon.text.strip()
-    assert maskable_source.text.strip() == favicon.text.strip()
+    assert favicon.headers["content-type"].startswith("image/png")
+    assert favicon.content == make_v1_icon_png(32)
+    assert icon.headers["content-type"].startswith("image/svg+xml")
+    assert icon.text == v1_icon_svg()
+    assert "shape-rendering='crispEdges'" in icon_source.text
+    assert "x='48' y='12' width='96' height='24'" in icon_source.text
+    assert "x='48' y='84' width='96' height='24'" in icon_source.text
+    assert maskable_source.text == icon_source.text
+    assert client.get("/assets/icon-192.png").content == make_v1_icon_png(192)
+    assert client.get("/assets/icon-maskable-512.png").content == make_v1_icon_png(512)
 
     app_script = client.get("/assets/app.js")
     assert app_script.status_code == 200

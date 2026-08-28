@@ -16,14 +16,10 @@ if str(ROOT) not in sys.path:
 
 from sabiai import __version__
 from sabiai.dashboard import create_push_router, create_v2_dashboard_router
+from sabiai.dashboard.branding import make_v1_icon_png, v1_icon_svg
 
 ASSET_DIR = Path(__file__).with_name("v2")
 MAX_MUTATION_BODY_BYTES = 16 * 1024
-V1_S_ICON = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
-<rect width='32' height='32' rx='6' fill='#0c0a07'/>
-<text x='16' y='24' font-family='Georgia,serif' font-size='22' font-weight='900'
-  fill='#e6b252' text-anchor='middle'>S</text></svg>"""
-
 app = FastAPI(
     title="Sabi Boy knows ball",
     description="Dashboard for Sabi Boy history, performance and journal.",
@@ -148,14 +144,14 @@ def manifest():
 
 @app.get("/icon.svg")
 def icon():
-    # Use the exact V1 favicon artwork everywhere instead of maintaining a second S.
-    return Response(V1_S_ICON, media_type="image/svg+xml")
+    # Keep the legacy SVG URL, but render the same pixel-block S as every PNG.
+    return Response(v1_icon_svg(), media_type="image/svg+xml")
 
 
 @app.get("/favicon.ico")
 def favicon():
-    # Copied verbatim from the V1 dashboard's /favicon.ico asset.
-    return Response(V1_S_ICON.encode(), media_type="image/svg+xml")
+    # The favicon must use the same V1 artwork as the sidebar and PWA icons.
+    return Response(make_v1_icon_png(32), media_type="image/png")
 
 
 @app.get("/sw.js")
@@ -173,6 +169,14 @@ def service_worker():
 @app.get("/assets/{name}")
 def asset(name: str):
     safe = Path(name).name
+    generated_icons = {
+        "icon-192.png": 192,
+        "icon-512.png": 512,
+        "icon-maskable-192.png": 192,
+        "icon-maskable-512.png": 512,
+    }
+    if safe in generated_icons:
+        return Response(make_v1_icon_png(generated_icons[safe]), media_type="image/png")
     path = ASSET_DIR / safe
     if not path.is_file():
         return Response(status_code=404)
