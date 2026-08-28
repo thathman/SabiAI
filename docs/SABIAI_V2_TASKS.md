@@ -531,6 +531,13 @@
 - PWA cache/version advanced to `2.3.0.0` so the coverage surface cannot be hidden by an older mobile shell. Local validation at this commit: **287 passed, 1 warning** (the existing Starlette/httpx deprecation warning); compile and diff checks passed. Dell deployment remains a separate controlled pull of this exact SHA.
 - Slices with no usable decimal price are recorded as `skipped_no_price` without a model call; this keeps broad sport coverage while avoiding token spend where the direct analyst cannot produce a validated pick.
 
+### Phase 16 follow-up evidence — 2026-08-28 (price-bearing source expansion)
+
+- Implementation commits `441b2369460b8bc56f4398a1e681d8a1a919efd3` and `6c90238f02f178bf3fa1b14830d5e8051afbd8bd` add the configured Parse Flashscore `get_fixtures_with_odds` feed and the Parse ESPN scoreboard alias to the direct daily collector. Events from multiple providers merge by same-day fixture identity, retain source lineage, and keep the supplied decimal prices only.
+- The normalizer now handles Flashscore `matches` payloads (`match_id`, team objects, competition country and current 1X2 odds) and rejects a provider envelope that returns a different sport than requested. This prevents Flashscore's football fallback response from being relabeled as another sport.
+- Local regression evidence at `6c90238f02f178bf3fa1b14830d5e8051afbd8bd`: **291 passed, 1 warning** (the existing Starlette/httpx deprecation warning). Dell source/heartbeat focused tests: **29 passed**.
+- Dell source-collection probe after the pull returned **60 same-day events across football, basketball, tennis and volleyball; 41 had usable prices; zero source failures**. The bounded model-synthesis probe was stopped before report/pick mutation after exceeding its four-minute test budget; the daily research timer remains active and the incomplete probe is recorded as a failed job rather than presented as a completed scan.
+
 ---
 
 ## Current release commands
