@@ -492,6 +492,7 @@
 - Implementation commit `0113b2f` adds migration `0010_notification_history.sql`, records every system push event with user-facing message and aggregate delivery result, and deliberately excludes browser endpoints and encryption keys. The read-only dashboard exposes `GET /api/v2/notifications` and a dedicated Notifications page with delivered, failed, expired and unavailable states.
 - PWA cache version advanced to `2.1.0.7` so the new page and service-worker shell cannot be hidden by the prior iOS cache. The active Dell dashboard was restarted from the Forgejo `v2` checkout and served `/notifications` successfully; the notification history endpoint currently returns an empty list until the next system push (prior pushes predate migration 0010).
 - Local dashboard/PWA acceptance: **11 passed, 1 warning**. The full local suite at this commit: **257 passed, 1 warning** (the existing Starlette/httpx deprecation warning). Dell dashboard/PWA acceptance also passed **11 tests, 1 warning**.
+- Branding follow-up commit `171074a1c14adb47a21fdb590a33b1ddbeabcbe6` replaces the font-rendered S with the exact V1 pixel-block S across the sidebar, favicon, legacy icon URL and all PWA/maskable icon responses. It also replaces the Notifications navigation emoji with the existing monochrome SVG bell and advances the PWA cache to `2.1.0.8`. The full local suite remains **257 passed, 1 warning**; Dell `https://picks.hendrix.com.ng/health` identifies Sabi Boy V2 and the routed `icon-192.png?v=2.1.0.8` returns the expected 192×192 RGB PNG.
 
 ---
 
