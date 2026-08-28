@@ -26,12 +26,15 @@ class StrategyPlanStore:
                 candidates = plan.get("candidates")
                 if not isinstance(candidates, list):
                     candidates = []
+                chain = plan.get("chain")
+                if not isinstance(chain, dict):
+                    chain = {}
                 conn.execute(
                     """INSERT INTO strategy_plans(
                            id,strategy_code,name,status,target_odds,combined_odds,
                            suggested_stake,confidence_pct,rationale,candidate_count,
-                           candidates_json,source_run_id,generated_at,expires_at
-                       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                           candidates_json,chain_json,source_run_id,generated_at,expires_at
+                       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                        ON CONFLICT(id) DO UPDATE SET
                            status=excluded.status,
                            target_odds=excluded.target_odds,
@@ -41,6 +44,7 @@ class StrategyPlanStore:
                            rationale=excluded.rationale,
                            candidate_count=excluded.candidate_count,
                            candidates_json=excluded.candidates_json,
+                           chain_json=excluded.chain_json,
                            source_run_id=excluded.source_run_id,
                            generated_at=excluded.generated_at,
                            expires_at=excluded.expires_at""",
@@ -56,12 +60,13 @@ class StrategyPlanStore:
                         str(plan.get("rationale") or "")[:1000],
                         int(plan.get("candidate_count") or len(candidates)),
                         json.dumps(candidates, ensure_ascii=False, separators=(",", ":")),
+                        json.dumps(chain, ensure_ascii=False, separators=(",", ":")),
                         _optional_text(plan.get("source_run_id")),
                         generated_at,
                         _optional_text(plan.get("expires_at")),
                     ),
                 )
-                saved.append(dict(plan, candidates=candidates))
+                saved.append(dict(plan, candidates=candidates, chain=chain))
         return saved
 
     def latest(self, *, limit: int = 20, strategy_code: str | None = None) -> list[dict]:
@@ -98,6 +103,10 @@ class StrategyPlanStore:
             candidates = json.loads(row["candidates_json"] or "[]")
         except (TypeError, ValueError, json.JSONDecodeError):
             candidates = []
+        try:
+            chain = json.loads(row["chain_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            chain = {}
         return {
             "id": row["id"],
             "strategy_code": row["strategy_code"],
@@ -110,6 +119,7 @@ class StrategyPlanStore:
             "rationale": row["rationale"],
             "candidate_count": int(row["candidate_count"] or 0),
             "candidates": candidates if isinstance(candidates, list) else [],
+            "chain": chain if isinstance(chain, dict) else {},
             "source_run_id": row["source_run_id"],
             "generated_at": row["generated_at"],
             "expires_at": row["expires_at"],

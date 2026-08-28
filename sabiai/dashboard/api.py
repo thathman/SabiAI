@@ -17,7 +17,7 @@ from sabiai.storage import (
     StrategyPlanStore,
 )
 from sabiai.system import SystemReadinessService
-from sabiai.strategy import StrategyLearningService
+from sabiai.strategy import StrategyChainStore, StrategyLearningService
 
 
 def _post(post) -> dict:
@@ -174,6 +174,12 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
                 "automatic_changes": False,
             },
         }
+
+    @router.get("/strategies/chain")
+    def strategy_chain():
+        database = db()
+        database.initialize()
+        return {"chain": StrategyChainStore(database).get()}
 
     @router.get("/performance/competitions")
     def performance_competitions():

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from sabiai.domain.types import Outcome, TicketStatus
 from sabiai.storage import BankrollLedger, SabiDatabase
+from sabiai.strategy import StrategyChainStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,7 +167,9 @@ class SettlementService:
         reason: str | None = None,
     ) -> TicketSettlementResult:
         with self.db.transaction() as conn:
-            ticket = conn.execute("SELECT status FROM tickets WHERE id=?", (ticket_id,)).fetchone()
+            ticket = conn.execute(
+                "SELECT status,strategy_code,combined_odds,stake FROM tickets WHERE id=?", (ticket_id,)
+            ).fetchone()
             if ticket is None:
                 raise KeyError(f"Unknown ticket: {ticket_id}")
             rows = conn.execute(
@@ -191,6 +194,32 @@ class SettlementService:
                     (new_status, settled_at, ticket_id),
                 )
                 self._audit(conn, "ticket", ticket_id, previous, new_status, source, reason)
+
+        # The daily chain is a first-class V2 strategy. A fully won chain ticket
+        # returns its calculated payout to the single bankroll ledger and advances
+        # the next day's stake; a loss resets the chain to its base stake. Both
+        # operations are idempotent because refresh_ticket only acts on a status
+        # transition and record_ticket_payout de-duplicates the ledger entry.
+        if changed and ticket["strategy_code"] == StrategyChainStore.CODE:
+            if new_status == TicketStatus.WON.value:
+                try:
+                    stake = Decimal(str(ticket["stake"] or "0"))
+                    odds = Decimal(str(ticket["combined_odds"] or "0"))
+                except (TypeError, ValueError, ArithmeticError):
+                    stake = odds = Decimal("0")
+                payout = (stake * odds).quantize(Decimal("0.01"))
+                if payout > 0:
+                    self.record_ticket_payout(
+                        ticket_id,
+                        payout,
+                        source=source,
+                        reason=reason or "Daily 1.30 Chain ticket payout",
+                    )
+            StrategyChainStore(self.db).settle_ticket(
+                ticket_id,
+                new_status,
+                ticket["combined_odds"],
+            )
 
         return TicketSettlementResult(
             ticket_id=ticket_id,

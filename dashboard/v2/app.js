@@ -511,15 +511,25 @@
   }
 
   async function renderStrategies() {
-    const [plans, performance, bankroll, learning] = await Promise.all([
+    const [plans, performance, bankroll, learning, chain] = await Promise.all([
       api('/strategies/plans?limit=30'),
       api('/performance/strategies'),
       api('/series/bankroll?limit=90'),
       api('/strategies/learning?owner=sabi_boy&limit=50'),
+      api('/strategies/chain'),
     ]);
     const rows = performance.rows || [];
+    const chainState = chain.chain || {};
+    const chainStatus = chainState.status || 'ready';
+    const chainProgress = `${num(chainState.completed_days || 0)} / ${num(chainState.target_days || 30)} days`;
     view.innerHTML = `<section class="section">${sectionHead('Strategies', 'What Sabi Boy is considering now, and how each approach has performed')}
       <div class="panel strategy-board"><div class="panel-head"><h3>Current strategy board</h3><span>Latest system scan</span></div><div class="panel-body">${strategyPlanCards(plans.rows || [])}</div></div></section>
+      <section class="section"><div class="panel"><div class="panel-head"><h3>Daily 1.30 Chain</h3><span>${outcomeBadge(chainStatus)}</span></div><div class="panel-body stat-stack">
+        <div class="stat-line"><span>Progress</span><strong>${chainProgress}</strong></div>
+        <div class="stat-line"><span>Next stake</span><strong>${money(chainState.current_stake)}</strong></div>
+        <div class="stat-line"><span>Target</span><strong>${odds(chainState.target_odds)} combined</strong></div>
+        <div class="stat-line"><span>Last outcome</span><strong>${esc(chainState.last_outcome || 'Not started')}</strong></div>
+      </div></div></section>
       <section class="section grid-equal"><div class="panel"><div class="panel-head"><h3>Strategy performance</h3><span>Decided picks</span></div><div class="panel-body">${barList(rows,'strategy')}</div></div>
         <div class="panel"><div class="panel-head"><h3>Bankroll context</h3><span>Last 90 ledger points</span></div><div class="panel-body">${lineChart(bankroll.rows || [], 'occurred_at', 'balance')}</div></div></section>
       <section class="section"><div class="panel"><div class="panel-head"><h3>Learning policy</h3><span>${num(learning.policy?.minimum_sample || 8)} settled before changes</span></div><div class="panel-body">${learningCards(learning.rows || [])}</div></div></section>

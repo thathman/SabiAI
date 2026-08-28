@@ -27,6 +27,7 @@ class StrategyPlanner:
         source_run_id: str | None = None,
         generated_at: datetime | None = None,
         recent_scans: Iterable[dict] = (),
+        chain_state: dict | None = None,
     ) -> list[dict]:
         stamp = generated_at or datetime.now(timezone.utc)
         stamp_text = stamp.isoformat()
@@ -40,7 +41,7 @@ class StrategyPlanner:
 
         plans = [
             self._precision_plan(current, bankroll_amount, source_run_id, stamp_text),
-            self._daily_chain_plan(current, bankroll_amount, source_run_id, stamp_text),
+            self._daily_chain_plan(current, bankroll_amount, source_run_id, stamp_text, chain_state),
             self._weekly_long_shot_plan(all_candidates, bankroll_amount, source_run_id, stamp_text),
         ]
         return plans
@@ -76,7 +77,41 @@ class StrategyPlanner:
             generated_at=stamp,
         )
 
-    def _daily_chain_plan(self, candidates, bankroll, source_run_id, stamp):
+    def _daily_chain_plan(self, candidates, bankroll, source_run_id, stamp, chain_state=None):
+        chain = _chain_context(chain_state, bankroll)
+        if chain and chain["status"] == "pending":
+            return _plan(
+                self.DAILY_CHAIN_CODE,
+                "Daily 1.30 Chain",
+                status="pending",
+                target_odds=chain["target_odds"],
+                combined_odds=None,
+                stake=_decimal(chain["current_stake"]),
+                confidence=None,
+                rationale=(
+                    f"Day {chain['current_day']}/{chain['target_days']} is awaiting settlement; "
+                    "the chain will not open another position."
+                ),
+                candidates=[],
+                source_run_id=source_run_id,
+                generated_at=stamp,
+                chain=chain,
+            )
+        if chain and chain["status"] == "completed":
+            return _plan(
+                self.DAILY_CHAIN_CODE,
+                "Daily 1.30 Chain",
+                status="completed",
+                target_odds=chain["target_odds"],
+                combined_odds=None,
+                stake=chain["current_stake"],
+                confidence=None,
+                rationale=f"The {chain['target_days']}-day chain is complete; the next cycle starts at the base stake.",
+                candidates=[],
+                source_run_id=source_run_id,
+                generated_at=stamp,
+                chain=chain,
+            )
         chosen = _best_combo(candidates, Decimal("1.30"), max_legs=6)
         if not chosen:
             return _plan(
@@ -91,20 +126,23 @@ class StrategyPlanner:
                 candidates=candidates,
                 source_run_id=source_run_id,
                 generated_at=stamp,
+                chain=chain,
             )
         combined = _combined(chosen)
+        stake = _decimal(chain["current_stake"]) if chain else _stake(bankroll, Decimal("0.01"))
         return _plan(
             self.DAILY_CHAIN_CODE,
             "Daily 1.30 Chain",
             status="ready",
             target_odds=Decimal("1.30"),
             combined_odds=combined,
-            stake=_stake(bankroll, Decimal("0.01")),
+            stake=stake,
             confidence=_average_confidence(chosen),
             rationale=f"{len(chosen)} fresh leg{'s' if len(chosen) != 1 else ''} reach the daily combined target.",
             candidates=chosen,
             source_run_id=source_run_id,
             generated_at=stamp,
+            chain=chain,
         )
 
     def _weekly_long_shot_plan(self, candidates, bankroll, source_run_id, stamp):
@@ -231,13 +269,13 @@ def _stake(bankroll: Decimal, fraction: Decimal) -> Decimal:
     return (bankroll * fraction).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
 
-def _plan(code, name, *, status, target_odds, combined_odds, stake, confidence, rationale, candidates, source_run_id, generated_at):
+def _plan(code, name, *, status, target_odds, combined_odds, stake, confidence, rationale, candidates, source_run_id, generated_at, chain=None):
     target = _decimal_text(target_odds)
     combined = _decimal_text(combined_odds)
     digest = hashlib.sha256(f"{code}|{source_run_id or generated_at}".encode()).hexdigest()[:24]
     generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     expires = (generated + timedelta(days=7 if code == StrategyPlanner.WEEKLY_LONG_SHOT_CODE else 1)).isoformat()
-    return {
+    plan = {
         "id": f"strategy_plan_{code}_{digest}",
         "strategy_code": code,
         "name": name,
@@ -253,6 +291,9 @@ def _plan(code, name, *, status, target_odds, combined_odds, stake, confidence, 
         "generated_at": generated_at,
         "expires_at": expires,
     }
+    if chain is not None:
+        plan["chain"] = chain
+    return plan
 
 
 def _json_candidate(row: dict) -> dict:
@@ -271,6 +312,26 @@ def _decimal_text(value) -> str | None:
     if value is None:
         return None
     return str(_decimal(value))
+
+
+def _chain_context(state: dict | None, bankroll: Decimal) -> dict | None:
+    if not isinstance(state, dict):
+        return None
+    target_days = int(state.get("target_days") or 30)
+    completed_days = max(0, int(state.get("completed_days") or 0))
+    current_day = min(completed_days + 1, target_days)
+    return {
+        "status": str(state.get("status") or "ready"),
+        "current_day": current_day,
+        "completed_days": completed_days,
+        "target_days": target_days,
+        "target_odds": _decimal_text(state.get("target_odds") or "1.30"),
+        "starting_stake": _decimal_text(state.get("starting_stake") or "1000"),
+        "current_stake": _decimal_text(state.get("current_stake") or "0"),
+        "active_ticket_id": state.get("active_ticket_id"),
+        "last_outcome": state.get("last_outcome"),
+        "cycle_count": int(state.get("cycle_count") or 0),
+    }
 
 
 def _norm(value: str) -> str:

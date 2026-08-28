@@ -2,7 +2,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from sabiai.storage import DailyResearchLog, SabiDatabase, StrategyPlanStore
-from sabiai.strategy import StrategyLearningService, StrategyPlanner, StrategyTicketService
+from sabiai.strategy import StrategyChainStore, StrategyLearningService, StrategyPlanner, StrategyTicketService
 from sabiai.settlement import SettlementService
 
 
@@ -21,6 +21,64 @@ def test_strategy_planner_builds_daily_chain_and_precision_plan():
     assert Decimal(by_code["daily_chain_1_30"]["combined_odds"]) >= Decimal("1.30")
     assert Decimal(by_code["daily_chain_1_30"]["suggested_stake"]) == Decimal("300.00")
     assert by_code["precision_picks"]["candidates"][0]["event"] == "A vs B"
+
+
+def test_daily_chain_state_compounds_only_wins_and_resets_losses(tmp_path: Path):
+    db = SabiDatabase(tmp_path / "chain.db")
+    db.initialize()
+    chain = StrategyChainStore(db)
+    initial = chain.ensure()
+    assert initial["current_day"] == 1
+    assert initial["current_stake"] == "1000.00"
+
+    chain.attach_ticket("day-1")
+    after_win = chain.settle_ticket("day-1", "won", "1.30")
+    assert after_win["completed_days"] == 1
+    assert after_win["current_day"] == 2
+    assert after_win["current_stake"] == "1300.00"
+    assert after_win["status"] == "ready"
+
+    chain.attach_ticket("day-2")
+    after_loss = chain.settle_ticket("day-2", "lost", "1.30")
+    assert after_loss["completed_days"] == 0
+    assert after_loss["current_day"] == 1
+    assert after_loss["current_stake"] == "1000.00"
+
+
+def test_daily_chain_marks_a_cycle_complete_after_thirty_wins(tmp_path: Path):
+    db = SabiDatabase(tmp_path / "chain-complete.db")
+    db.initialize()
+    chain = StrategyChainStore(db)
+    for day in range(1, 31):
+        chain.attach_ticket(f"day-{day}")
+        state = chain.settle_ticket(f"day-{day}", "won", "1.30")
+    assert state["status"] == "completed"
+    assert state["completed_days"] == 30
+    assert state["cycle_count"] == 1
+    restarted = chain.ensure()
+    assert restarted["status"] == "ready"
+    assert restarted["current_day"] == 1
+    assert restarted["current_stake"] == restarted["starting_stake"]
+
+
+def test_planner_holds_the_next_chain_day_until_settlement():
+    state = {
+        "status": "pending",
+        "completed_days": 4,
+        "target_days": 30,
+        "target_odds": "1.30",
+        "starting_stake": "1000.00",
+        "current_stake": "2856.10",
+        "active_ticket_id": "ticket-day-5",
+    }
+    plan = next(
+        row for row in StrategyPlanner().build(_recommendations(), bankroll="30000", source_run_id="run-chain", chain_state=state)
+        if row["strategy_code"] == "daily_chain_1_30"
+    )
+    assert plan["status"] == "pending"
+    assert plan["chain"]["current_day"] == 5
+    assert Decimal(plan["suggested_stake"]) == Decimal("2856.10")
+    assert plan["candidate_count"] == 0
 
 
 def test_weekly_long_shot_does_not_pad_weak_legs():

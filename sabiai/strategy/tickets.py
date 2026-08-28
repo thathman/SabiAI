@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from sabiai.storage import BankrollLedger, PickRecordService, SabiDatabase
+from .chain import StrategyChainStore
 
 
 class StrategyTicketService:
@@ -43,6 +44,8 @@ class StrategyTicketService:
         with self.db.connect() as conn:
             existing = conn.execute("SELECT id,stake,status FROM tickets WHERE id=?", (ticket_id,)).fetchone()
         if existing is not None:
+            if code == StrategyChainStore.CODE and existing["status"] == "pending":
+                StrategyChainStore(self.db).attach_ticket(ticket_id)
             return {"id": ticket_id, "strategy_code": code, "existing": True, "status": existing["status"], "stake": existing["stake"]}
 
         stake = _money(plan.get("suggested_stake"))
@@ -113,6 +116,8 @@ class StrategyTicketService:
                 )
         if stake > 0:
             BankrollLedger(self.db).record("stake", stake, ticket_id=ticket_id, note=f"Stake for {plan.get('name') or code}")
+        if code == StrategyChainStore.CODE:
+            StrategyChainStore(self.db).attach_ticket(ticket_id)
         return {
             "id": ticket_id,
             "strategy_code": code,

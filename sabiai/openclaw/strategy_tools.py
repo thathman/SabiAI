@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sabiai.storage import StrategyPlanStore
-from sabiai.strategy import StrategyLearningService
+from sabiai.strategy import StrategyChainStore, StrategyLearningService
 
 
 class StrategyTools:
@@ -15,6 +15,7 @@ class StrategyTools:
             "strategy.plans": self.plans,
             "strategy.latest": self.latest,
             "strategy.learning": self.learning,
+            "strategy.chain": self.chain,
         }
 
     def plans(self, args: dict) -> dict:
@@ -43,3 +44,8 @@ class StrategyTools:
                 "automatic_changes": False,
             },
         }
+
+    def chain(self, args: dict) -> dict:
+        """Return the durable Day N/30 chain state for conversational context."""
+
+        return {"chain": StrategyChainStore(self.app._db(initialize=True)).get()}

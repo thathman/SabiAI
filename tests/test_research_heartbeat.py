@@ -1,4 +1,6 @@
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport
@@ -104,6 +106,50 @@ def test_parse_sportybet_fixture_data_is_normalized_with_prices():
     assert rows[0]["event"] == "Home vs Away"
     assert rows[0]["event_id"] == "sr:match:1"
     assert len(rows[0]["odds"]) == 3
+
+
+def test_event_local_date_handles_iso_epoch_and_rejects_unknown():
+    assert heartbeat._event_local_date("2026-08-28T00:30:00+00:00", "Africa/Lagos") == "2026-08-28"
+    assert heartbeat._event_local_date("1787913000000", "Africa/Lagos") == "2026-08-28"
+    assert heartbeat._event_local_date("not-a-date", "Africa/Lagos") is None
+
+
+def test_collect_fixtures_enforces_requested_local_day(monkeypatch, tmp_path):
+    config = settings(tmp_path, research_sports=("football",))
+
+    class Response:
+        source_name = "Parse · SportyBet"
+        payload = {
+            "events": [
+                {
+                    "eventId": "today",
+                    "homeTeamName": "Today FC",
+                    "awayTeamName": "Today Town",
+                    "kickoffTime": 1787913000000,
+                    "homeOdds": "1.40",
+                },
+                {
+                    "eventId": "future",
+                    "homeTeamName": "Future FC",
+                    "awayTeamName": "Future Town",
+                    "kickoffTime": 1788003000000,
+                    "homeOdds": "1.40",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(
+        heartbeat.SourceService,
+        "execute",
+        lambda *_args, **_kwargs: Response(),
+    )
+    day, events, failures = heartbeat.collect_fixtures(
+        config,
+        now=datetime(2026, 8, 28, 8, 0, tzinfo=ZoneInfo("Africa/Lagos")),
+    )
+    assert day == "2026-08-28"
+    assert [item["event"] for item in events] == ["Today FC vs Today Town"]
+    assert failures == []
 
 
 def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_path):

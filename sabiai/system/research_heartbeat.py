@@ -15,7 +15,7 @@ from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport, WebPushService
 from sabiai.sources import SourceRequest, SourceService, default_source_bundle
 from sabiai.storage import BankrollLedger, DailyResearchLog, PickRecordService, SabiDatabase, StrategyPlanStore
-from sabiai.strategy import StrategyLearningService, StrategyPlanner, StrategyTicketService
+from sabiai.strategy import StrategyChainStore, StrategyLearningService, StrategyPlanner, StrategyTicketService
 
 from .jobs import JobService
 
@@ -85,6 +85,11 @@ def collect_fixtures(
             try:
                 response = service.execute(request, bundle.fetchers, allow_paid=False)
                 for event in _normalize_events(response.payload, sport=sport, source=response.source_name):
+                    # Providers may return a useful surrounding schedule even when
+                    # a date was supplied. A daily run must never promote a future
+                    # or past fixture; enforce the local calendar date here.
+                    if _event_local_date(event.get("starts_at"), settings.timezone) != day:
+                        continue
                     key = (_norm(str(event.get("event") or "")), str(event.get("starts_at") or ""))
                     if not key[0] or key in seen:
                         continue
@@ -102,6 +107,35 @@ def collect_fixtures(
             break
 
     return day, events[:max_events], failures
+
+
+def _event_local_date(value: object, timezone_name: str) -> str | None:
+    """Return an event's local calendar date for strict daily-scan filtering."""
+
+    if value is None or not str(value).strip():
+        return None
+    try:
+        zone = ZoneInfo(timezone_name)
+    except Exception:
+        zone = timezone.utc
+    text = str(value).strip()
+    if text.isdigit():
+        try:
+            epoch = float(text)
+            if epoch > 100_000_000_000:
+                epoch /= 1000
+            return datetime.fromtimestamp(epoch, timezone.utc).astimezone(zone).date().isoformat()
+        except (OverflowError, OSError, ValueError):
+            return None
+    try:
+        if len(text) == 10:
+            return date.fromisoformat(text).isoformat()
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(zone).date().isoformat()
 
 
 def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[dict[str, Any]]:
@@ -277,13 +311,18 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
         recommendations = _validated_recommendations(result, events)
         generated_at = datetime.now(timezone.utc)
         run_id = generated_at.isoformat()
+        # The current run plus six prior daily runs form the seven-day window for
+        # the weekly long-shot strategy. The daily chain itself only sees `current`.
         recent_scans = DailyResearchLog(database).list(limit=6)
+        chain_store = StrategyChainStore(database)
+        chain_state = chain_store.ensure()
         strategy_plans = StrategyPlanner().build(
             recommendations,
             bankroll=BankrollLedger(database).current_balance(),
             source_run_id=run_id,
             generated_at=generated_at,
             recent_scans=recent_scans,
+            chain_state=chain_state,
         )
         recorded_picks = _record_strategy_picks(database, strategy_plans, model=model, source_run_id=run_id)
         recorded_tickets = StrategyTicketService(database).materialize(
