@@ -163,6 +163,48 @@ def test_primary_model_timeout_uses_configured_fallback(monkeypatch, tmp_path):
     ]
 
 
+def test_failed_scheduled_run_records_failure_and_notifies(monkeypatch, tmp_path):
+    config = settings(tmp_path)
+    pushed = []
+
+    monkeypatch.setattr(
+        heartbeat,
+        "collect_fixtures",
+        lambda *_args, **_kwargs: ("2026-08-28", [], []),
+    )
+    monkeypatch.setattr(
+        heartbeat,
+        "call_research_model",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("provider timeout")),
+    )
+
+    class FakePush:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def send(self, payload):
+            pushed.append(payload)
+
+    monkeypatch.setattr(heartbeat, "WebPushService", FakePush)
+    try:
+        heartbeat.run_research_heartbeat(config)
+    except RuntimeError as exc:
+        assert str(exc) == "provider timeout"
+    else:
+        raise AssertionError("expected the scheduled run to fail")
+
+    assert pushed == [
+        {
+            "title": "Sabi Boy research issue",
+            "body": "Daily research did not complete. The system will retry automatically.",
+            "tag": "sabi-boy-daily-picks-error",
+            "url": "/system",
+            "renotify": True,
+            "error": "provider timeout",
+        }
+    ]
+
+
 def test_scan_log_is_available_to_gateway_context(tmp_path):
     config = settings(tmp_path)
     db = SabiDatabase(config.v2_db)
@@ -205,6 +247,8 @@ def test_system_timer_owns_daily_research_and_agent_cron_is_disabled():
     prepare = (root / "scripts" / "sabi_v2_prepare_runtime.sh").read_text(encoding="utf-8")
     assert "sabi_v2_research_heartbeat.py" in service
     assert "EnvironmentFile=-%h/.openclaw/env/openclaw.env" in service
+    assert "Restart=on-failure" in service
+    assert "RestartSec=2min" in service
     assert "OnCalendar=*-*-* 08:00:00" in timer
     assert 'disable_agent_job "sabi-boy-daily-picks"' in installer
     assert "sabi-boy-research.service" in prepare

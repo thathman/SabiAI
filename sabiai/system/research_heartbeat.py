@@ -323,7 +323,24 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
         jobs.success("daily-picks")
         return report
     except Exception as exc:
-        jobs.failure("daily-picks", _safe_error(exc))
+        error = _safe_error(exc)
+        jobs.failure("daily-picks", error)
+        # A failed scheduled run must be visible even when no report was written.
+        # Delivery is best-effort so a notification outage never masks the real
+        # research failure or causes a retry loop.
+        try:
+            WebPushService(database, settings).send(
+                {
+                    "title": "Sabi Boy research issue",
+                    "body": "Daily research did not complete. The system will retry automatically.",
+                    "tag": "sabi-boy-daily-picks-error",
+                    "url": "/system",
+                    "renotify": True,
+                    "error": error[:500],
+                }
+            )
+        except Exception:
+            pass
         raise
 
 
