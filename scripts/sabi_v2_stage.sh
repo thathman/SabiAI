@@ -64,6 +64,12 @@ if ! "$VENV/bin/python" "$ROOT/scripts/sabi_v2_acceptance.py" \
   exit 20
 fi
 
+if ! "$VENV/bin/python" "$ROOT/scripts/sabi_v24_coverage_acceptance.py" \
+  --report "$RELEASE_DIR/coverage-acceptance-latest.json"; then
+  echo "V2.4 coverage acceptance failed. V2 service will not be started." >&2
+  exit 21
+fi
+
 systemctl --user daemon-reload
 systemctl --user restart "$SERVICE"
 
@@ -86,59 +92,65 @@ PY
 then
   systemctl --user stop "$SERVICE" || true
   echo "V2 HTTP health check failed. V2 stopped; V1 left unchanged." >&2
-  exit 21
+  exit 22
 fi
 
 if ! "$VENV/bin/python" - <<'PY'
 import json, os, urllib.request
-with urllib.request.urlopen(os.environ['SABIAI_DASHBOARD_BASE_URL'] + '/api/v2/overview', timeout=5) as r:
-    data=json.loads(r.read().decode())
-if r.status != 200 or data.get('product') != 'Sabi Boy': raise SystemExit(1)
-print(json.dumps({'overview_ok': True, 'readiness': (data.get('readiness') or {}).get('state')}))
+base=os.environ['SABIAI_DASHBOARD_BASE_URL']
+for path in ('/api/v2/overview','/api/v2/research/funnel'):
+    with urllib.request.urlopen(base + path, timeout=5) as r:
+        data=json.loads(r.read().decode())
+    if r.status != 200:
+        raise SystemExit(1)
+    if path.endswith('/overview') and data.get('product') != 'Sabi Boy':
+        raise SystemExit(1)
+print(json.dumps({'overview_ok': True, 'coverage_funnel_ok': True}))
 PY
 then
   systemctl --user stop "$SERVICE" || true
-  echo "V2 overview check failed. V2 stopped; V1 left unchanged." >&2
-  exit 22
+  echo "V2 read-model/coverage check failed. V2 stopped; V1 left unchanged." >&2
+  exit 23
 fi
 
 if ! systemctl --user enable --now "$BACKUP_TIMER"; then
   systemctl --user stop "$SERVICE" || true
   echo "Could not enable Sabi Boy backup timer. V2 stopped; V1 left unchanged." >&2
-  exit 23
+  exit 24
 fi
 backup_timer_enabled=true
 
 if ! systemctl --user enable --now "$SETTLEMENT_TIMER"; then
   systemctl --user stop "$SERVICE" || true
   echo "Could not enable the Sabi Boy settlement heartbeat. V2 stopped." >&2
-  exit 24
+  exit 25
 fi
 
 if ! systemctl --user enable --now "$HEALTH_TIMER"; then
   systemctl --user stop "$SERVICE" || true
   echo "Could not enable the Sabi Boy local health timer. V2 stopped." >&2
-  exit 25
-fi
-
-# Start the cheap radar before enabling AI research. If discovery has a configuration
-# problem, the expensive decision layer should not be promoted on top of a blind universe.
-if ! systemctl --user enable --now "$COVERAGE_TIMER"; then
-  systemctl --user stop "$SERVICE" || true
-  echo "Could not enable the Sabi Boy discovery radar. V2 stopped." >&2
   exit 26
 fi
+
+# Prove the deterministic coverage runner works once before scheduling it. Only after that
+# successful no-model refresh do we start the recurring timer and then enable model research.
 if ! systemctl --user start sabi-boy-coverage.service; then
   systemctl --user stop "$SERVICE" || true
-  systemctl --user disable --now "$COVERAGE_TIMER" || true
   echo "Initial Sabi Boy discovery radar run failed. V2 stopped." >&2
   exit 27
+fi
+if ! systemctl --user enable "$COVERAGE_TIMER" >/dev/null || ! systemctl --user start "$COVERAGE_TIMER"; then
+  systemctl --user stop "$SERVICE" || true
+  systemctl --user disable --now "$COVERAGE_TIMER" || true
+  echo "Could not enable the Sabi Boy discovery radar timer. V2 stopped." >&2
+  exit 28
 fi
 
 if ! systemctl --user enable --now "$RESEARCH_TIMER"; then
   systemctl --user stop "$SERVICE" || true
+  systemctl --user disable --now "$COVERAGE_TIMER" || true
   echo "Could not enable the Sabi Boy direct research timer. V2 stopped." >&2
-  exit 28
+  exit 29
 fi
 
 "$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$DASHBOARD_HOST" "$DASHBOARD_PORT" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" "$coverage_timer_was_enabled" <<'PY'
@@ -146,14 +158,16 @@ from datetime import datetime, timezone
 import json, pathlib, sys
 (path, manifest, commit, dashboard_host, dashboard_port, v1_active,
  backup_was_enabled, backup_enabled, coverage_was_enabled) = sys.argv[1:]
+release_dir = pathlib.Path(path).parent
 data = {
     'product': 'Sabi Boy',
     'branch': 'v2',
     'commit': commit,
     'staged_at': datetime.now(timezone.utc).isoformat(),
     'backup_manifest': manifest,
-    'acceptance_report': str(pathlib.Path(path).with_name('acceptance-latest.json')),
-    'migration_report': str(pathlib.Path(path).with_name('migration-latest.json')),
+    'acceptance_report': str(release_dir / 'acceptance-latest.json'),
+    'coverage_acceptance_report': str(release_dir / 'coverage-acceptance-latest.json'),
+    'migration_report': str(release_dir / 'migration-latest.json'),
     'v2_service': 'sabi-boy-dashboard.service',
     'v2_host': dashboard_host,
     'v2_port': int(dashboard_port),
@@ -177,7 +191,8 @@ cat <<EOF
 Sabi Boy V2 is staged and running on ${DASHBOARD_HOST}:${DASHBOARD_PORT}.
 Verified backups, settlement, local health, the no-model coverage radar, and bounded research are enabled.
 The coverage radar refreshes independently from AI research and does not place wagers.
-Backup manifest: $manifest
-Acceptance:     $RELEASE_DIR/acceptance-latest.json
-Staging state:  $STATE_FILE
+Backup manifest:     $manifest
+Release acceptance:  $RELEASE_DIR/acceptance-latest.json
+Coverage acceptance: $RELEASE_DIR/coverage-acceptance-latest.json
+Staging state:       $STATE_FILE
 EOF

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -9,6 +9,8 @@ from typing import Any
 from sabiai.storage import CoverageStore, ResearchSliceStore, SabiDatabase
 
 from .decision import CrossSportDecisionPass
+from .market_inventory import MarketInventoryNormalizer
+from .prefilter import CoveragePrefilter, canonical_action_book
 
 
 @dataclass(frozen=True)
@@ -34,10 +36,6 @@ class ShardedDailyResearch:
 
     def run(self, *, day: str, events: list[dict[str, Any]], source_failures: list[str] | None = None) -> dict[str, Any]:
         run_id = datetime.now(timezone.utc).isoformat()
-        # V2.4 deliberately decouples discovery from model analysis. The 30-minute
-        # deterministic radar may contain thousands of events; only a bounded, sport-balanced
-        # priced shortlist enters the model layer. The legacy same-day collector remains a
-        # fallback and its richer rows are merged rather than discarded.
         events = merge_research_universe(
             self.settings,
             self.coverage_store,
@@ -52,8 +50,6 @@ class ShardedDailyResearch:
         usage: dict[str, Any] = {"requests": 0, "cache_hits": 0, "input_tokens": 0, "output_tokens": 0}
         notes: list[str] = []
         if not slices:
-            # Keep the scheduled job's provider-readiness failure visible even on a
-            # no-fixture day. This is a tiny bounded probe, not a research request.
             from sabiai.system.research_heartbeat import call_research_model
             try:
                 _, probe_model, probe_usage = call_research_model(
@@ -88,7 +84,7 @@ class ShardedDailyResearch:
                         cache_hit=False,
                         events=list(item.events),
                         recommendations=[],
-                        error="No usable decimal price in slice",
+                        error="No verified SportyBet/Bet9ja decimal price in slice",
                     )
                 )
                 continue
@@ -140,8 +136,6 @@ class ShardedDailyResearch:
                 item = futures[future]
                 try:
                     slice_item, key, recs, model, item_usage, item_notes = future.result()
-                    # SQLite writes stay on the coordinator thread; concurrent cache writes
-                    # recreate the lock contention this layer is designed to avoid.
                     self.store.put_cached(
                         cache_key=key,
                         scan_date=day,
@@ -211,11 +205,10 @@ class ShardedDailyResearch:
 
         discovery_run_id = self.coverage_store.latest_run_id()
         if discovery_run_id:
-            researched_count = len({(item.sport, str(event.get("event") or "")) for item in slices for event in item.events})
             self.coverage_store.update_run(
                 discovery_run_id,
                 prefiltered_events=len(events),
-                researched_events=researched_count,
+                researched_events=len(events),
                 selected_recommendations=len(selected["recommendations"]),
             )
             coverage["discovery_funnel"] = self.coverage_store.funnel(discovery_run_id)
@@ -233,14 +226,28 @@ class ShardedDailyResearch:
         }
 
 
-def merge_research_universe(settings, coverage_store: CoverageStore, *, day: str, supplied: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    limit = max(1, int(getattr(settings, "research_max_events", 120)))
-    prefilter_limit = max(limit, int(getattr(settings, "prefilter_max_events", 300)))
+def merge_research_universe(
+    settings,
+    coverage_store: CoverageStore,
+    *,
+    day: str,
+    supplied: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Merge today's verified action-book packet into the large deterministic radar.
+
+    The legacy/direct collector is still useful because it can carry fresh SportyBet prices.
+    Persist those prices into the market inventory first. The prefilter can then compare them
+    against broad sensor consensus while exposing only action-book prices to the model.
+    """
+
+    _persist_supplied_action_prices(coverage_store, supplied)
+    research_limit = max(1, int(getattr(settings, "research_max_events", 120)))
+    prefilter_limit = max(research_limit, int(getattr(settings, "prefilter_max_events", 300)))
     try:
-        radar = coverage_store.research_candidates(
+        radar = CoveragePrefilter(settings, coverage_store).select(
             day,
-            timezone_name=getattr(settings, "timezone", "Africa/Lagos"),
             limit=prefilter_limit,
+            actionable_only=True,
         )
     except Exception:
         radar = []
@@ -252,6 +259,10 @@ def merge_research_universe(settings, coverage_store: CoverageStore, *, day: str
         event = str(item.get("event") or "").strip()
         if not event:
             continue
+        if item in supplied and not canonical_action_book(item.get("source")):
+            # Automatic research is price-bound to the two action books. Sensor-only supplied
+            # rows remain in CoverageStore/radar and can still be researched on demand.
+            continue
         key = (
             str(item.get("sport") or "unknown").casefold(),
             _norm_event(event),
@@ -260,31 +271,109 @@ def merge_research_universe(settings, coverage_store: CoverageStore, *, day: str
         existing = merged.get(key)
         merged[key] = _prefer_richer(existing, item) if existing else dict(item)
 
-    # Research breadth should not be determined by iteration order. Round-robin through
-    # sports after each sport's events are ranked by market/source richness.
-    buckets: dict[str, deque[dict[str, Any]]] = defaultdict(deque)
-    by_sport: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for item in merged.values():
-        by_sport[str(item.get("sport") or "unknown")].append(item)
-    for sport, rows in by_sport.items():
-        rows.sort(key=lambda item: (-_event_richness(item), str(item.get("starts_at") or ""), str(item.get("event") or "")))
-        buckets[sport] = deque(rows)
+    return _breadth_then_quality(settings, list(merged.values()), research_limit)
 
-    result: list[dict[str, Any]] = []
-    while buckets and len(result) < limit:
-        progressed = False
-        for sport in sorted(list(buckets)):
-            bucket = buckets[sport]
-            if bucket:
-                result.append(bucket.popleft())
-                progressed = True
-            if not bucket:
-                buckets.pop(sport, None)
-            if len(result) >= limit:
+
+def _persist_supplied_action_prices(store: CoverageStore, supplied: list[dict[str, Any]]) -> None:
+    now = datetime.now(timezone.utc)
+    for item in supplied:
+        if not isinstance(item, dict):
+            continue
+        source = canonical_action_book(item.get("source"))
+        if not source or not isinstance(item.get("odds"), list) or not item.get("odds"):
+            continue
+        event = _semantic_action_odds(dict(item), source)
+        try:
+            event_id = store.upsert_event(
+                event,
+                source_name=source,
+                source_payload=event,
+                now=now,
+            )
+            catalogue, offers = MarketInventoryNormalizer(source).embedded(event, event_id=event_id)
+            for market in catalogue:
+                store.upsert_market(event_id, market)
+            for offer in offers:
+                store.record_offer(event_id, offer)
+        except (TypeError, ValueError):
+            # A malformed direct-source row should not break the rest of the daily universe.
+            continue
+
+
+def _semantic_action_odds(event: dict[str, Any], source: str) -> dict[str, Any]:
+    home = str(event.get("home") or "").strip()
+    away = str(event.get("away") or "").strip()
+    normalized = []
+    for row in event.get("odds") or []:
+        if not isinstance(row, dict):
+            continue
+        item = dict(row)
+        raw_label = str(item.get("label") or "").strip()
+        key = _norm_event(raw_label)
+        if key in {"home", "homeodds"} and home:
+            item["label"] = home
+            item.setdefault("market", "winner")
+        elif key in {"away", "awayodds"} and away:
+            item["label"] = away
+            item.setdefault("market", "winner")
+        elif key in {"draw", "drawodds", "tie"}:
+            item["label"] = "Draw"
+            item.setdefault("market", "winner")
+        item["bookmaker"] = source
+        normalized.append(item)
+    event["odds"] = normalized
+    event["source"] = source
+    return event
+
+
+def _breadth_then_quality(settings, rows: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    rows.sort(
+        key=lambda item: (
+            -_event_richness(item),
+            str(item.get("starts_at") or ""),
+            str(item.get("event") or ""),
+        )
+    )
+    min_per_sport = max(1, int(getattr(settings, "research_min_events_per_active_sport", 2)))
+    max_per_sport = max(min_per_sport, int(getattr(settings, "research_max_events_per_sport", 40)))
+    by_sport: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in rows:
+        by_sport[str(item.get("sport") or "unknown")].append(item)
+
+    selected: list[dict[str, Any]] = []
+    selected_ids: set[tuple[str, str, str]] = set()
+    counts: dict[str, int] = defaultdict(int)
+
+    def identifier(item: dict[str, Any]) -> tuple[str, str, str]:
+        return (
+            str(item.get("sport") or "unknown"),
+            _norm_event(str(item.get("event") or "")),
+            str(item.get("starts_at") or "")[:16],
+        )
+
+    for round_index in range(min_per_sport):
+        for sport in sorted(by_sport):
+            if len(selected) >= limit:
                 break
-        if not progressed:
+            sport_rows = by_sport[sport]
+            if round_index >= len(sport_rows):
+                continue
+            item = sport_rows[round_index]
+            selected.append(item)
+            selected_ids.add(identifier(item))
+            counts[sport] += 1
+
+    for item in rows:
+        if len(selected) >= limit:
             break
-    return result
+        sport = str(item.get("sport") or "unknown")
+        key = identifier(item)
+        if key in selected_ids or counts[sport] >= max_per_sport:
+            continue
+        selected.append(item)
+        selected_ids.add(key)
+        counts[sport] += 1
+    return selected
 
 
 def build_slices(day: str, events: list[dict[str, Any]]) -> list[ResearchSlice]:
@@ -334,7 +423,18 @@ def _event_richness(item: dict[str, Any]) -> float:
         for row in odds
         if isinstance(row, dict) and str(row.get("bookmaker") or "")
     }
-    return float(len(odds)) + (len(families) * 4.0) + (len(books) * 2.0) + float(item.get("source_count") or 0)
+    consensus = item.get("market_consensus") if isinstance(item.get("market_consensus"), list) else []
+    disagreement = max(
+        (float(row.get("price_disagreement_pct") or 0) for row in consensus if isinstance(row, dict)),
+        default=0.0,
+    )
+    return (
+        float(len(odds))
+        + (len(families) * 4.0)
+        + (len(books) * 2.0)
+        + float(item.get("source_count") or 0)
+        + min(disagreement, 12.0)
+    )
 
 
 def _norm_event(value: str) -> str:
