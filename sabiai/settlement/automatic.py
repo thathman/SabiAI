@@ -55,6 +55,10 @@ class AutomaticSettlementReport:
 ResultFetcher = Callable[[str], ResultSnapshot]
 
 
+def _norm(value: object) -> str:
+    return " ".join(str(value or "").casefold().replace("–", "-").split())
+
+
 class TheSportsDbResultFetcher:
     def __init__(self, api_key: str = "123"):
         self.adapter = TheSportsDBAdapter(api_key=api_key)
@@ -142,6 +146,7 @@ class AutomaticSettlementService:
         self.fetchers = fetchers or {
             "thesportsdb": TheSportsDbResultFetcher(self.settings.thesportsdb_key)
         }
+        self._thesportsdb_fallback = TheSportsDbResultFetcher(self.settings.thesportsdb_key)
         self.settlements = SettlementService(self.db)
 
     def run(self, *, max_events: int = 100) -> AutomaticSettlementReport:
@@ -150,13 +155,16 @@ class AutomaticSettlementService:
         errors: list[str] = []
 
         for event in self._pending_events(max_events=max_events):
-            fetcher = self.fetchers.get(event["source_key"])
-            if fetcher is None:
-                skipped += event["pending_records"]
-                continue
             checked += 1
             try:
-                snapshot = fetcher(event["source_event_id"])
+                fetcher = self.fetchers.get(event["source_key"])
+                if fetcher is not None:
+                    snapshot = fetcher(event["source_event_id"])
+                elif event["source_key"] != "thesportsdb":
+                    snapshot = self._fetch_via_thesportsdb_search(event)
+                else:
+                    skipped += event["pending_records"]
+                    continue
             except Exception as exc:
                 errors.append(f"{event['id']}: {type(exc).__name__}: {str(exc)[:180]}")
                 continue
@@ -266,13 +274,20 @@ class AutomaticSettlementService:
         now = datetime.now(timezone.utc).isoformat()
         with self.db.connect() as conn:
             rows = conn.execute(
-                """SELECT e.id, esi.source_name, esi.source_event_id,
+                """SELECT e.id, e.name, e.starts_at, esi.source_name, esi.source_event_id,
                           (SELECT COUNT(*) FROM picks_v2 p WHERE p.event_id=e.id AND p.outcome='pending') +
                           (SELECT COUNT(*) FROM ticket_legs l WHERE l.event_id=e.id AND l.outcome='pending') AS pending_records
                    FROM events e
                    JOIN event_source_ids esi ON esi.event_id=e.id
                    WHERE e.starts_at<=?
-                     AND LOWER(REPLACE(esi.source_name,' ',''))='thesportsdb'
+                     AND (
+                       LOWER(REPLACE(esi.source_name,' ',''))='thesportsdb'
+                       OR NOT EXISTS(
+                         SELECT 1 FROM event_source_ids preferred
+                         WHERE preferred.event_id=e.id
+                           AND LOWER(REPLACE(preferred.source_name,' ',''))='thesportsdb'
+                       )
+                     )
                      AND (
                        EXISTS(SELECT 1 FROM picks_v2 p WHERE p.event_id=e.id AND p.outcome='pending')
                        OR EXISTS(SELECT 1 FROM ticket_legs l WHERE l.event_id=e.id AND l.outcome='pending')
@@ -284,12 +299,53 @@ class AutomaticSettlementService:
         return [
             {
                 "id": row["id"],
+                "name": row["name"],
+                "starts_at": row["starts_at"],
                 "source_key": "".join(ch for ch in row["source_name"].casefold() if ch.isalnum()),
                 "source_event_id": row["source_event_id"],
                 "pending_records": int(row["pending_records"] or 0),
             }
             for row in rows
         ]
+
+    def _fetch_via_thesportsdb_search(self, event: dict) -> ResultSnapshot:
+        """Resolve a non-TSD provider event conservatively through a free TSD search.
+
+        Parse/bookmaker feeds often provide a useful name but not a result-provider ID.
+        We only use an exact-name/date candidate and then fetch the final score by the
+        resolved TSD ID; an ambiguous or missing match remains pending.
+        """
+        name = str(event.get("name") or "").strip()
+        if not name:
+            raise RuntimeError("No event name is available for TheSportsDB result lookup.")
+        response = self._thesportsdb_fallback.adapter.fetch(
+            SourceRequest(
+                request_key=f"auto-settlement:thesportsdb-search:{_norm(name)}",
+                capability="event_search",
+                ttl_seconds=0,
+                metadata={"event": name},
+                source_names=("TheSportsDB",),
+            )
+        )
+        raw = (response or {}).get("raw") if isinstance(response, dict) else None
+        candidates = raw.get("events") if isinstance(raw, dict) else None
+        if not isinstance(candidates, list):
+            raise RuntimeError("TheSportsDB event search returned no candidates.")
+        expected = _norm(name)
+        expected_day = str(event.get("starts_at") or "")[:10]
+        matches = []
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            candidate_name = _norm(candidate.get("strEvent") or "")
+            candidate_day = str(candidate.get("dateEvent") or candidate.get("strTimestamp") or "")[:10]
+            if candidate_name == expected and (not expected_day or not candidate_day or candidate_day == expected_day):
+                event_id = candidate.get("idEvent") or candidate.get("idEventLocal")
+                if event_id:
+                    matches.append(str(event_id))
+        if len(matches) != 1:
+            raise RuntimeError("TheSportsDB event search was missing a unique exact match.")
+        return self._thesportsdb_fallback(matches[0])
 
     def _pending_records(self, event_id: str):
         sql = """SELECT 'pick' AS entity_type, p.id AS entity_id,

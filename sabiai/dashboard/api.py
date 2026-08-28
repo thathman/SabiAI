@@ -14,8 +14,10 @@ from sabiai.storage import (
     HistoryService,
     PerformanceAnalytics,
     SabiDatabase,
+    StrategyPlanStore,
 )
 from sabiai.system import SystemReadinessService
+from sabiai.strategy import StrategyLearningService
 
 
 def _post(post) -> dict:
@@ -50,15 +52,18 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
     @router.get("/overview")
     def overview():
         database = db()
+        database.initialize()
         readiness = SystemReadinessService(database).assess()
         read_service = DashboardReadService(database)
         return {
             "product": "Sabi Boy",
-            "summary": HistoryService(database).summary(),
-            "streaks": PerformanceAnalytics(database).streaks(),
+            "summary": HistoryService(database).summary(owner="sabi_boy", record_kind="pick"),
+            "streaks": PerformanceAnalytics(database).streaks(owner="sabi_boy", record_kind="pick"),
             "profit_loss": PerformanceAnalytics(database).profit_loss(),
-            "recent_picks": read_service.picks(limit=8),
+            "recent_picks": read_service.picks(limit=8, owner="sabi_boy", record_kind="pick"),
             "recent_tickets": read_service.tickets(limit=5),
+            "strategy_plans": StrategyPlanStore(database).latest_by_strategy(),
+            "strategy_learning": StrategyLearningService(database).summaries(owner="sabi_boy"),
             "readiness": {
                 "state": readiness.label,
                 "database_ok": readiness.database_ok,
@@ -81,6 +86,8 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
         outcome: str | None = None,
         sport: str | None = None,
         strategy: str | None = None,
+        owner: str | None = None,
+        record_kind: str | None = None,
     ):
         return {
             "rows": reads().picks(
@@ -88,6 +95,8 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
                 outcome=outcome,
                 sport=sport,
                 strategy=strategy,
+                owner=owner,
+                record_kind=record_kind,
             )
         }
 
@@ -120,31 +129,59 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
         return {
             "sports": service.sports(),
             "strategies": service.strategies(),
+            "owners": ["sabi_boy", "hendrix"],
+            "record_kinds": ["pick", "tip"],
         }
 
     @router.get("/performance/sports")
     def performance_sports():
-        return {"rows": history().by_sport()}
+        return {"rows": history().by_sport(owner="sabi_boy", record_kind="pick")}
 
     @router.get("/performance/markets")
     def performance_markets():
-        return {"rows": history().by_market()}
+        return {"rows": history().by_market(owner="sabi_boy", record_kind="pick")}
 
     @router.get("/performance/bookmakers")
     def performance_bookmakers():
-        return {"rows": history().by_bookmaker()}
+        return {"rows": history().by_bookmaker(owner="sabi_boy", record_kind="pick")}
 
     @router.get("/performance/strategies")
     def performance_strategies():
-        return {"rows": analytics().by_strategy()}
+        return {"rows": analytics().by_strategy(owner="sabi_boy", record_kind="pick")}
+
+    @router.get("/strategies/plans")
+    def strategy_plans(
+        limit: int = Query(30, ge=1, le=200),
+        strategy_code: str | None = None,
+    ):
+        database = db()
+        database.initialize()
+        return {"rows": StrategyPlanStore(database).latest(limit=limit, strategy_code=strategy_code)}
+
+    @router.get("/strategies/learning")
+    def strategy_learning(
+        owner: str = Query("sabi_boy"),
+        limit: int = Query(50, ge=1, le=250),
+    ):
+        database = db()
+        database.initialize()
+        return {
+            "owner": owner,
+            "rows": StrategyLearningService(database).summaries(owner=owner, limit=limit),
+            "policy": {
+                "minimum_sample": StrategyLearningService.MIN_SAMPLE,
+                "policy_sample": StrategyLearningService.POLICY_SAMPLE,
+                "automatic_changes": False,
+            },
+        }
 
     @router.get("/performance/competitions")
     def performance_competitions():
-        return {"rows": analytics().by_competition()}
+        return {"rows": analytics().by_competition(owner="sabi_boy", record_kind="pick")}
 
     @router.get("/performance/odds-bands")
     def performance_odds_bands():
-        return {"rows": analytics().by_odds_band()}
+        return {"rows": analytics().by_odds_band(owner="sabi_boy", record_kind="pick")}
 
     @router.get("/performance/ticket-sizes")
     def performance_ticket_sizes():
@@ -183,7 +220,7 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
 
     @router.get("/series/outcomes")
     def outcome_series(days: int = Query(90, ge=1, le=730)):
-        return {"rows": analytics().daily_outcomes(days)}
+        return {"rows": analytics().daily_outcomes(days, owner="sabi_boy", record_kind="pick")}
 
     @router.get("/series/bankroll")
     def bankroll_series(limit: int = Query(365, ge=1, le=5000)):

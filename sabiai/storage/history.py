@@ -12,10 +12,20 @@ class HistoryService:
     def __init__(self, database: SabiDatabase | str | Path):
         self.db = database if isinstance(database, SabiDatabase) else SabiDatabase(database)
 
-    def summary(self) -> dict:
+    def summary(self, *, owner: str | None = None, record_kind: str | None = None) -> dict:
+        clauses: list[str] = []
+        owner_params: list[str] = []
+        if owner:
+            clauses.append("COALESCE(owner, 'sabi_boy')=?")
+            owner_params.append(owner.strip().casefold())
+        if record_kind:
+            clauses.append("COALESCE(record_kind, 'pick')=?")
+            owner_params.append(record_kind.strip().casefold())
+        owner_clause = " WHERE " + " AND ".join(clauses) if clauses else ""
         with self.db.connect() as conn:
             pick_rows = conn.execute(
-                "SELECT outcome, COUNT(*) AS n FROM picks_v2 GROUP BY outcome"
+                f"SELECT outcome, COUNT(*) AS n FROM picks_v2{owner_clause} GROUP BY outcome",
+                tuple(owner_params),
             ).fetchall()
             ticket_rows = conn.execute(
                 "SELECT status, COUNT(*) AS n FROM tickets GROUP BY status"
@@ -43,15 +53,18 @@ class HistoryService:
             "bankroll": str(Decimal(str(bankroll[0])).quantize(Decimal("0.01"))) if bankroll and bankroll[0] is not None else "0.00",
         }
 
-    def by_sport(self) -> list[dict]:
+    def by_sport(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
         with self.db.connect() as conn:
             rows = conn.execute(
-                """SELECT s.name AS sport, p.outcome, COUNT(*) AS n
+                f"""SELECT s.name AS sport, p.outcome, COUNT(*) AS n
                    FROM picks_v2 p
                    JOIN events e ON e.id=p.event_id
                    JOIN sports s ON s.id=e.sport_id
+                   {where}
                    GROUP BY s.name, p.outcome
-                   ORDER BY s.name COLLATE NOCASE"""
+                   ORDER BY s.name COLLATE NOCASE""",
+                params,
             ).fetchall()
         grouped: dict[str, dict[str, int]] = {}
         for row in rows:
@@ -73,25 +86,31 @@ class HistoryService:
             )
         return result
 
-    def by_market(self) -> list[dict]:
+    def by_market(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
         with self.db.connect() as conn:
             rows = conn.execute(
-                """SELECT m.label AS market, p.outcome, COUNT(*) AS n
+                f"""SELECT m.label AS market, p.outcome, COUNT(*) AS n
                    FROM picks_v2 p
                    JOIN markets m ON m.id=p.market_id
+                   {where}
                    GROUP BY m.label, p.outcome
-                   ORDER BY m.label COLLATE NOCASE"""
+                   ORDER BY m.label COLLATE NOCASE""",
+                params,
             ).fetchall()
         return self._group_outcomes(rows, "market")
 
-    def by_bookmaker(self) -> list[dict]:
+    def by_bookmaker(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
         with self.db.connect() as conn:
             rows = conn.execute(
-                """SELECT COALESCE(b.name, 'Unknown') AS bookmaker, p.outcome, COUNT(*) AS n
+                f"""SELECT COALESCE(b.name, 'Unknown') AS bookmaker, p.outcome, COUNT(*) AS n
                    FROM picks_v2 p
                    LEFT JOIN bookmakers b ON b.id=p.bookmaker_id
+                   {where}
                    GROUP BY COALESCE(b.name, 'Unknown'), p.outcome
-                   ORDER BY bookmaker COLLATE NOCASE"""
+                   ORDER BY bookmaker COLLATE NOCASE""",
+                params,
             ).fetchall()
         return self._group_outcomes(rows, "bookmaker")
 
@@ -116,3 +135,15 @@ class HistoryService:
                 }
             )
         return result
+
+
+def _pick_where(*, owner: str | None = None, record_kind: str | None = None) -> tuple[str, tuple[str, ...]]:
+    clauses: list[str] = []
+    params: list[str] = []
+    if owner:
+        clauses.append("COALESCE(p.owner, 'sabi_boy')=?")
+        params.append(owner.strip().casefold())
+    if record_kind:
+        clauses.append("COALESCE(p.record_kind, 'pick')=?")
+        params.append(record_kind.strip().casefold())
+    return ("WHERE " + " AND ".join(clauses) if clauses else "", tuple(params))

@@ -18,6 +18,8 @@ class DashboardReadService:
         outcome: str | None = None,
         sport: str | None = None,
         strategy: str | None = None,
+        owner: str | None = None,
+        record_kind: str | None = None,
     ) -> list[dict]:
         where: list[str] = []
         params: list[object] = []
@@ -30,6 +32,12 @@ class DashboardReadService:
         if strategy:
             where.append("LOWER(COALESCE(p.strategy,''))=LOWER(?)")
             params.append(strategy.strip())
+        if owner:
+            where.append("LOWER(COALESCE(p.owner,'sabi_boy'))=LOWER(?)")
+            params.append(owner.strip())
+        if record_kind:
+            where.append("LOWER(COALESCE(p.record_kind,'pick'))=LOWER(?)")
+            params.append(record_kind.strip())
         sql = """SELECT p.id,
                         e.name AS event,
                         e.starts_at,
@@ -40,6 +48,11 @@ class DashboardReadService:
                         p.decimal_odds,
                         p.confidence_pct,
                         p.strategy,
+                        COALESCE(p.strategy_code, p.strategy) AS strategy_code,
+                        COALESCE(p.owner, 'sabi_boy') AS owner,
+                        COALESCE(p.record_kind, 'pick') AS record_kind,
+                        p.source_run_id,
+                        p.model_generation,
                         p.selected,
                         p.outcome,
                         p.stake,
@@ -83,6 +96,8 @@ class DashboardReadService:
                         t.source_type,
                         t.source_reference,
                         t.version_no,
+                        COALESCE(t.owner, 'sabi_boy') AS owner,
+                        t.strategy_code,
                         t.booking_code,
                         t.status,
                         t.combined_odds,

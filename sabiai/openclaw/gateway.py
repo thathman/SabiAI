@@ -28,6 +28,7 @@ from .settlement_tools import SettlementTools
 from .source_tools import SourceTools
 from .sports_insight_tools import SportsInsightTools
 from .sports_tools import SportsTools
+from .strategy_tools import StrategyTools
 from .system_tools import SystemTools
 from .ticket_candidate_tools import TicketCandidateTools
 from .ticket_research_tools import TicketResearchTools
@@ -74,6 +75,7 @@ class SabiToolGateway:
             SystemTools(self),
             SourceTools(self),
             SportsTools(self),
+            StrategyTools(self),
             SportsInsightTools(self),
             ResearchTools(self),
             MarketTools(self),

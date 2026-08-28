@@ -21,6 +21,18 @@ def _pct(won: int, lost: int) -> float | None:
     return round((won / decided) * 100, 1) if decided else None
 
 
+def _pick_where(*, owner: str | None = None, record_kind: str | None = None) -> tuple[str, tuple[str, ...]]:
+    clauses: list[str] = []
+    params: list[str] = []
+    if owner:
+        clauses.append("COALESCE(p.owner, 'sabi_boy')=?")
+        params.append(owner.strip().casefold())
+    if record_kind:
+        clauses.append("COALESCE(p.record_kind, 'pick')=?")
+        params.append(record_kind.strip().casefold())
+    return ("WHERE " + " AND ".join(clauses) if clauses else "", tuple(params))
+
+
 class PerformanceAnalytics:
     """Read-only analytics for our own Sabi Boy history.
 
@@ -31,14 +43,22 @@ class PerformanceAnalytics:
     def __init__(self, database: SabiDatabase | str | Path):
         self.db = database if isinstance(database, SabiDatabase) else SabiDatabase(database)
 
-    def streaks(self) -> dict:
+    def streaks(self, *, owner: str | None = None, record_kind: str | None = None) -> dict:
+        where = "WHERE outcome IN ('won','lost')"
+        params: list[str] = []
+        if owner:
+            where += " AND COALESCE(owner, 'sabi_boy')=?"
+            params.append(owner.strip().casefold())
+        if record_kind:
+            where += " AND COALESCE(record_kind, 'pick')=?"
+            params.append(record_kind.strip().casefold())
         with self.db.connect() as conn:
             rows = conn.execute(
                 """SELECT outcome, COALESCE(settled_at, created_at) AS stamp
                    FROM picks_v2
-                   WHERE outcome IN ('won','lost')
+                   """ + where + """
                    ORDER BY COALESCE(settled_at, created_at), created_at, id"""
-            ).fetchall()
+                , tuple(params)).fetchall()
 
         outcomes = [row["outcome"] for row in rows]
         if not outcomes:
@@ -109,22 +129,25 @@ class PerformanceAnalytics:
             "bankroll": str(_money(balance[0]) if balance and balance[0] is not None else _DECIMAL_ZERO),
         }
 
-    def by_strategy(self) -> list[dict]:
-        return self._pick_breakdown("COALESCE(NULLIF(strategy,''), 'Unspecified')", "strategy")
+    def by_strategy(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        return self._pick_breakdown("COALESCE(NULLIF(strategy,''), 'Unspecified')", "strategy", owner=owner, record_kind=record_kind)
 
-    def by_competition(self) -> list[dict]:
+    def by_competition(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
         with self.db.connect() as conn:
             rows = conn.execute(
                 """SELECT COALESCE(c.name, 'Unknown') AS competition, p.outcome, COUNT(*) AS n
                    FROM picks_v2 p
                    JOIN events e ON e.id=p.event_id
                    LEFT JOIN competitions c ON c.id=e.competition_id
+                   """ + where + """
                    GROUP BY COALESCE(c.name, 'Unknown'), p.outcome
                    ORDER BY competition COLLATE NOCASE"""
-            ).fetchall()
+                , params).fetchall()
         return self._group_outcomes(rows, "competition")
 
-    def by_odds_band(self) -> list[dict]:
+    def by_odds_band(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
         with self.db.connect() as conn:
             rows = conn.execute(
                 """SELECT
@@ -137,10 +160,11 @@ class PerformanceAnalytics:
                      END AS odds_band,
                      outcome,
                      COUNT(*) AS n
-                   FROM picks_v2
+                   FROM picks_v2 p
+                   """ + where + """
                    GROUP BY odds_band, outcome
                    ORDER BY MIN(CAST(decimal_odds AS REAL))"""
-            ).fetchall()
+                , params).fetchall()
         return self._group_outcomes(rows, "odds_band")
 
     def by_ticket_size(self) -> list[dict]:
@@ -249,18 +273,27 @@ class PerformanceAnalytics:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def daily_outcomes(self, limit_days: int = 90) -> list[dict]:
+    def daily_outcomes(self, limit_days: int = 90, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where = "WHERE outcome IN ('won','lost','draw','void')"
+        params: list[object] = []
+        if owner:
+            where += " AND COALESCE(owner, 'sabi_boy')=?"
+            params.append(owner.strip().casefold())
+        if record_kind:
+            where += " AND COALESCE(record_kind, 'pick')=?"
+            params.append(record_kind.strip().casefold())
+        params.append(max(int(limit_days), 1) * 4)
         with self.db.connect() as conn:
             rows = conn.execute(
                 """SELECT date(COALESCE(settled_at, created_at)) AS day,
                           outcome,
                           COUNT(*) AS n
                    FROM picks_v2
-                   WHERE outcome IN ('won','lost','draw','void')
+                   """ + where + """
                    GROUP BY day, outcome
                    ORDER BY day DESC
                    LIMIT ?""",
-                (max(int(limit_days), 1) * 4,),
+                tuple(params),
             ).fetchall()
         grouped: dict[str, dict[str, int]] = defaultdict(dict)
         for row in rows:
@@ -296,16 +329,18 @@ class PerformanceAnalytics:
             for row in reversed(rows)
         ]
 
-    def _pick_breakdown(self, label_sql: str, label_key: str) -> list[dict]:
+    def _pick_breakdown(self, label_sql: str, label_key: str, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
         with self.db.connect() as conn:
             rows = conn.execute(
                 f"""SELECT {label_sql} AS {label_key}, outcome, COUNT(*) AS n
-                    FROM picks_v2
+                    FROM picks_v2 p
+                    {where}
                     GROUP BY {label_sql}, outcome
-                    ORDER BY {label_key} COLLATE NOCASE"""
+                    ORDER BY {label_key} COLLATE NOCASE""",
+                params,
             ).fetchall()
         return self._group_outcomes(rows, label_key)
-
     @staticmethod
     def _group_outcomes(rows, label_key: str) -> list[dict]:
         grouped: dict[object, dict[str, int]] = defaultdict(dict)

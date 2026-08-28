@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import InvalidOperation
 import hashlib
 import json
 from pathlib import Path
@@ -13,7 +14,8 @@ from zoneinfo import ZoneInfo
 from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport, WebPushService
 from sabiai.sources import SourceRequest, SourceService, default_source_bundle
-from sabiai.storage import DailyResearchLog, SabiDatabase
+from sabiai.storage import BankrollLedger, DailyResearchLog, PickRecordService, SabiDatabase, StrategyPlanStore
+from sabiai.strategy import StrategyLearningService, StrategyPlanner, StrategyTicketService
 
 from .jobs import JobService
 
@@ -267,14 +269,35 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
         day, events, failures = collect_fixtures(settings, now=now)
         result, model, usage = call_research_model(settings, day=day, events=events)
         recommendations = _validated_recommendations(result, events)
+        generated_at = datetime.now(timezone.utc)
+        run_id = generated_at.isoformat()
+        recent_scans = DailyResearchLog(database).list(limit=6)
+        strategy_plans = StrategyPlanner().build(
+            recommendations,
+            bankroll=BankrollLedger(database).current_balance(),
+            source_run_id=run_id,
+            generated_at=generated_at,
+            recent_scans=recent_scans,
+        )
+        recorded_picks = _record_strategy_picks(database, strategy_plans, model=model, source_run_id=run_id)
+        recorded_tickets = StrategyTicketService(database).materialize(
+            strategy_plans,
+            model=model,
+            source_run_id=run_id,
+        )
+        strategy_learning = StrategyLearningService(database).summaries(owner="sabi_boy")
         report: dict[str, Any] = {
             "ok": True,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": run_id,
             "date": day,
             "model": model,
             "events_considered": len(events),
             "source_failures": failures,
             "recommendations": recommendations,
+            "strategy_plans": strategy_plans,
+            "recorded_picks": recorded_picks,
+            "recorded_tickets": recorded_tickets,
+            "strategy_learning": strategy_learning,
             "notes": _notes(result),
             "usage": usage,
         }
@@ -286,7 +309,8 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "expired": push.expired,
             "failed": push.failed,
         }
-        report["run_id"] = report["generated_at"]
+        report["run_id"] = run_id
+        StrategyPlanStore(database).save_many(strategy_plans)
         DailyResearchLog(database).save(report)
         report_path = settings.data_dir / "reports" / "daily-picks-latest.json"
         _write_report(report_path, report)
@@ -295,6 +319,65 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
     except Exception as exc:
         jobs.failure("daily-picks", _safe_error(exc))
         raise
+
+
+def _record_strategy_picks(
+    database: SabiDatabase,
+    plans: list[dict],
+    *,
+    model: str,
+    source_run_id: str,
+) -> list[dict]:
+    """Promote only the precision plan's top candidate into Sabi Boy's record.
+
+    Chain and long-shot plans are materialized separately as tickets so their combined
+    stake and leg lineage cannot be mistaken for unrelated bankroll positions.
+    """
+
+    precision = next((plan for plan in plans if plan.get("strategy_code") == StrategyPlanner.PRECISION_CODE), None)
+    if not precision or precision.get("status") != "ready" or not precision.get("candidates"):
+        return []
+    candidate = precision["candidates"][0]
+    try:
+        return [
+            PickRecordService(database).record(
+                {
+                    "sport": candidate.get("sport"),
+                    "competition": candidate.get("competition"),
+                    "event": candidate.get("event"),
+                    "starts_at": candidate.get("starts_at"),
+                    "market": candidate.get("market") or "Match winner",
+                    "pick": candidate.get("pick"),
+                    "decimal_odds": candidate.get("decimal_odds"),
+                    "confidence_pct": candidate.get("confidence_pct"),
+                    "rationale": candidate.get("reason"),
+                    "strategy": precision.get("name"),
+                    "strategy_code": precision.get("strategy_code"),
+                    "stake": precision.get("suggested_stake"),
+                    "source_name": candidate.get("source"),
+                    "source_event_id": candidate.get("source_event_id"),
+                    "bookmaker": _bookmaker_for_source(candidate.get("source")),
+                    "source_run_id": source_run_id,
+                    "model_generation": model,
+                    "owner": "sabi_boy",
+                    "record_kind": "pick",
+                    "selected": True,
+                }
+            )
+        ]
+    except (KeyError, TypeError, ValueError, InvalidOperation) as exc:
+        # A malformed model row must never make the entire daily scan disappear. The
+        # report still carries the strategy plan and the reason for the skipped record.
+        return [{"skipped": True, "reason": _safe_error(exc)}]
+
+
+def _bookmaker_for_source(source: object) -> str | None:
+    text = str(source or "").casefold()
+    if "sportybet" in text:
+        return "sportybet"
+    if "bet9ja" in text:
+        return "bet9ja"
+    return None
 
 
 def _parse_model_result(response: dict[str, Any]) -> dict[str, Any]:
@@ -347,6 +430,9 @@ def _validated_recommendations(result: dict[str, Any], events: list[dict[str, An
                 "confidence_pct": round(confidence, 1),
                 "reason": str(item.get("reason") or "").strip()[:500],
                 "source": source_event.get("source"),
+                "competition": source_event.get("competition"),
+                "starts_at": source_event.get("starts_at"),
+                "source_event_id": source_event.get("event_id"),
             }
         )
     return valid

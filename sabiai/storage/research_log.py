@@ -22,7 +22,8 @@ class DailyResearchLog:
                 """INSERT INTO daily_research_runs(
                        run_key,scan_date,generated_at,model,events_considered,
                        source_failures_json,recommendations_json,notes_json,usage_json,push_json
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?)
+                       ,strategy_plans_json
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(run_key) DO UPDATE SET
                        scan_date=excluded.scan_date,
                        generated_at=excluded.generated_at,
@@ -32,7 +33,8 @@ class DailyResearchLog:
                        recommendations_json=excluded.recommendations_json,
                        notes_json=excluded.notes_json,
                        usage_json=excluded.usage_json,
-                       push_json=excluded.push_json""",
+                       push_json=excluded.push_json,
+                       strategy_plans_json=excluded.strategy_plans_json""",
                 (
                     run_key,
                     str(report.get("date") or ""),
@@ -44,6 +46,7 @@ class DailyResearchLog:
                     _json(report.get("notes") or []),
                     _json(report.get("usage") or {}),
                     _json(report.get("push") or {}),
+                    _json(report.get("strategy_plans") or []),
                 ),
             )
         return self.get(run_key) or {}
@@ -73,12 +76,32 @@ class DailyResearchLog:
 
     def context(self, limit: int = 5) -> dict[str, Any]:
         rows = self.list(limit)
+        latest = rows[0] if rows else None
+        recorded_picks: list[dict[str, Any]] = []
+        recorded_tickets: list[dict[str, Any]] = []
+        if latest:
+            with self.db.connect() as conn:
+                pick_rows = conn.execute(
+                    """SELECT p.id,p.event_id,p.strategy,p.strategy_code,p.owner,p.record_kind,
+                              p.decimal_odds,p.confidence_pct,p.stake,p.outcome
+                       FROM picks_v2 p WHERE p.source_run_id=? ORDER BY p.created_at""",
+                    (latest["run_id"],),
+                ).fetchall()
+                ticket_rows = conn.execute(
+                    """SELECT id,strategy_code,owner,status,combined_odds,stake
+                       FROM tickets WHERE source_reference=? ORDER BY created_at""",
+                    (latest["run_id"],),
+                ).fetchall()
+            recorded_picks = [dict(row) for row in pick_rows]
+            recorded_tickets = [dict(row) for row in ticket_rows]
         return {
-            "latest": rows[0] if rows else None,
+            "latest": latest,
             "recent_scans": rows,
+            "recorded_picks": recorded_picks,
+            "recorded_tickets": recorded_tickets,
             "note": (
-                "These are direct system scans, not placed wagers. Recommendations are observations to verify "
-                "with fresh prices and research before ticket work."
+                "These are direct system scans. Recorded selections are internal positions; they do not confirm "
+                "an external wager. Verify fresh prices and settlement rules before ticket work."
             ),
         }
 
@@ -95,6 +118,7 @@ class DailyResearchLog:
             "notes": _load(row["notes_json"], []),
             "usage": _load(row["usage_json"], {}),
             "push": _load(row["push_json"], {}),
+            "strategy_plans": _load(row["strategy_plans_json"], []),
         }
 
 

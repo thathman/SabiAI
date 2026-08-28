@@ -117,7 +117,7 @@ class SettlementService:
         target = self.normalize_outcome(outcome)
         with self.db.transaction() as conn:
             row = conn.execute(
-                "SELECT ticket_id, outcome FROM ticket_legs WHERE id=?", (leg_id,)
+                "SELECT ticket_id, outcome, pick_id FROM ticket_legs WHERE id=?", (leg_id,)
             ).fetchone()
             if row is None:
                 raise KeyError(f"Unknown ticket leg: {leg_id}")
@@ -128,6 +128,21 @@ class SettlementService:
                 self._validate_change(previous, target, correction=correction, reason=reason)
                 conn.execute("UPDATE ticket_legs SET outcome=? WHERE id=?", (target, leg_id))
                 self._audit(conn, "ticket_leg", leg_id, previous, target, source, reason)
+                linked_pick_id = row["pick_id"]
+                if linked_pick_id:
+                    pick = conn.execute(
+                        "SELECT outcome FROM picks_v2 WHERE id=?", (linked_pick_id,)
+                    ).fetchone()
+                    if pick is not None and pick["outcome"] != target:
+                        self._validate_change(
+                            pick["outcome"], target, correction=correction, reason=reason
+                        )
+                        stamp = datetime.now(timezone.utc).isoformat() if target in self.FINAL_OUTCOMES else None
+                        conn.execute(
+                            "UPDATE picks_v2 SET outcome=?, settled_at=? WHERE id=?",
+                            (target, stamp, linked_pick_id),
+                        )
+                        self._audit(conn, "pick", linked_pick_id, pick["outcome"], target, source, reason)
 
         ticket_result = self.refresh_ticket(ticket_id, source=source, reason=reason)
         return (

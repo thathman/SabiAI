@@ -25,7 +25,8 @@
     '/picks': ['picks', 'Picks'],
     '/tickets': ['tickets', 'Tickets'],
     '/performance': ['performance', 'Performance'],
-    '/finance': ['finance', 'Finance'],
+    '/finance': ['finance', 'Bankroll'],
+    '/hendrix': ['hendrix', "Hendrix's Record"],
     '/strategies': ['strategies', 'Strategies'],
     '/history': ['history', 'History'],
     '/notifications': ['notifications', 'Notifications'],
@@ -227,7 +228,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.1.0.8',
+      icon: '/assets/icon-192.png?v=2.2.0.0',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -239,7 +240,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.8', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.2.0.0', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
@@ -283,7 +284,7 @@
   }
 
   function lineChart(rows, xKey, yKey) {
-    if (!rows || rows.length < 2) return empty('Not enough history for a trend line', 'The chart will appear as our record grows.');
+    if (!rows || rows.length < 2) return empty('Not enough history for a trend line', 'The chart will appear as results accumulate.');
     const data = rows.map(r => ({x: r[xKey], y: Number(r[yKey])})).filter(r => Number.isFinite(r.y));
     if (data.length < 2) return empty('Not enough history for a trend line');
     const ys = data.map(d => d.y);
@@ -339,19 +340,21 @@
     view.innerHTML = `
       <section class="section"><div class="hero-grid">
         ${metric('Bankroll', money(o.summary.bankroll), 'Current recorded balance', 'accent')}
-        ${metric('Betting P/L', money(pl.profit_loss), 'Stakes, payouts and refunds only', pnlN >= 0 ? 'positive' : 'negative')}
-        ${metric('Win rate', pct(p.win_percentage), `${p.won || 0} won · ${p.lost || 0} lost`)}
+        ${metric('Profit / Loss', money(pl.profit_loss), 'Net result from picks and tickets', pnlN >= 0 ? 'positive' : 'negative')}
+        ${metric('Open positions', num(p.pending), `${p.total || 0} picks in record`)}
         ${metric('Current streak', streakText, `Best: ${o.streaks.best_win_streak || 0}W · Worst: ${o.streaks.worst_losing_streak || 0}L`)}
       </div></section>
 
       <section class="section grid-2">
         <div class="panel"><div class="panel-head"><h3>Bankroll over time</h3><span>${bankrollRows.length} ledger points</span></div><div class="panel-body">${lineChart(bankrollRows, 'occurred_at', 'balance')}</div></div>
-        <div class="panel"><div class="panel-head"><h3>By sport</h3><span>Our record only</span></div><div class="panel-body">${barList(sports.rows || [], 'sport')}</div></div>
+        <div class="panel"><div class="panel-head"><h3>By sport</h3><span>Win rate</span></div><div class="panel-body">${barList(sports.rows || [], 'sport')}</div></div>
       </section>
+
+      <section class="section"><div class="panel strategy-board"><div class="panel-head"><h3>Strategy board</h3><span>Latest scan</span></div><div class="panel-body">${strategyPlanCards(o.strategy_plans || [])}</div></div></section>
 
       <section class="section grid-equal">
         <div class="panel"><div class="panel-head"><h3>Win rate trend</h3><span>Settled picks</span></div><div class="panel-body">${outcomeTrend(outcomes.rows || [])}</div></div>
-        <div class="panel"><div class="panel-head"><h3>Record</h3><span>All picks</span></div><div class="panel-body stat-stack">
+        <div class="panel"><div class="panel-head"><h3>Record</h3><span>Sabi Boy picks</span></div><div class="panel-body stat-stack">
           <div class="stat-line"><span>Won</span><strong>${num(p.won)}</strong></div>
           <div class="stat-line"><span>Lost</span><strong>${num(p.lost)}</strong></div>
           <div class="stat-line"><span>Draw</span><strong>${num(p.draw)}</strong></div>
@@ -360,11 +363,11 @@
         </div></div>
       </section>
 
-      <section class="section">${sectionHead('Recent games', 'The latest picks in our record')}
+      <section class="section">${sectionHead('Recent picks', 'The latest selections')}
         <div class="panel flush"><div class="panel-body">${picksTable(o.recent_picks || [])}</div></div>
       </section>
 
-      <section class="section">${sectionHead('Recent tickets', 'The latest ticket versions in our record')}
+      <section class="section">${sectionHead('Recent tickets', 'The latest ticket versions')}
         ${ticketCards(o.recent_tickets || [])}
       </section>`;
   }
@@ -374,7 +377,11 @@
       {label:'Game', render:r => `<span class="primary-cell">${esc(r.event)}</span><span class="sub-cell">${esc(r.sport || '')}${r.competition ? ` · ${esc(r.competition)}` : ''}</span>`},
       {label:'Pick', render:r => `<span class="primary-cell">${esc(r.selection)}</span><span class="sub-cell">${esc(r.market || '')}</span>`},
       {label:'Odds', num:true, render:r => odds(r.decimal_odds)},
+      {label:'Confidence', num:true, render:r => pct(r.confidence_pct)},
+      {label:'Stake', num:true, render:r => money(r.stake)},
+      {label:'Type', render:r => esc(String(r.record_kind || 'pick').toLowerCase() === 'tip' ? 'Tip' : 'Pick')},
       {label:'Strategy', render:r => esc(r.strategy || '—')},
+      {label:'Record', render:r => esc(String(r.owner || 'sabi_boy').toLowerCase() === 'hendrix' ? 'Hendrix' : 'Sabi Boy')},
       {label:'Result', render:r => outcomeBadge(r.outcome)},
       {label:'Date', render:r => date(r.created_at)},
     ], rows);
@@ -384,7 +391,7 @@
     if (!rows.length) return empty('No tickets recorded yet');
     return `<div class="ticket-list">${rows.map(r => `<article class="ticket-card" data-ticket-id="${esc(r.id)}">
       <div class="ticket-top"><div><div class="ticket-code">${esc(r.bookmaker || r.source_type || 'Ticket')}</div><div class="ticket-odds">${odds(r.combined_odds)}</div></div>${outcomeBadge(r.status)}</div>
-      <div class="ticket-meta"><span>${num(r.leg_count)} games</span><span>${date(r.created_at)}</span>${r.booking_code ? `<span>Code ${esc(r.booking_code)}</span>` : ''}</div>
+      <div class="ticket-meta"><span>${num(r.leg_count)} games</span><span>${date(r.created_at)}</span>${r.strategy_code ? `<span>${esc(r.strategy_code)}</span>` : ''}${r.booking_code ? `<span>Code ${esc(r.booking_code)}</span>` : ''}</div>
       <div class="ticket-result-line"><span><b>${num(r.won_legs)}</b> won</span><span><b>${num(r.lost_legs)}</b> lost</span><span><b>${num(r.pending_legs)}</b> pending</span>${r.parent_ticket_id ? '<span>Edited version</span>' : '<span>Original</span>'}</div>
     </article>`).join('')}</div>`;
   }
@@ -396,6 +403,8 @@
         <select id="pick-result"><option value="">All results</option>${['won','lost','draw','void','pending'].map(x => `<option>${x}</option>`).join('')}</select>
         <select id="pick-sport"><option value="">All sports</option>${(filters.sports||[]).map(x => `<option>${esc(x)}</option>`).join('')}</select>
         <select id="pick-strategy"><option value="">All strategies</option>${(filters.strategies||[]).map(x => `<option>${esc(x)}</option>`).join('')}</select>
+        <select id="pick-owner"><option value="">All records</option><option value="sabi_boy">Sabi Boy</option><option value="hendrix">Hendrix</option></select>
+        <select id="pick-kind"><option value="">Picks and tips</option><option value="pick">Picks</option><option value="tip">Tips</option></select>
       </div>
       <div class="panel flush"><div class="panel-body" id="picks-table">${picksTable(data.rows || [])}</div></div></section>`;
 
@@ -403,14 +412,18 @@
       const result = document.getElementById('pick-result').value;
       const sport = document.getElementById('pick-sport').value;
       const strategy = document.getElementById('pick-strategy').value;
+      const owner = document.getElementById('pick-owner').value;
+      const recordKind = document.getElementById('pick-kind').value;
       const qs = new URLSearchParams({limit:'500'});
       if (result) qs.set('outcome', result);
       if (sport) qs.set('sport', sport);
       if (strategy) qs.set('strategy', strategy);
+      if (owner) qs.set('owner', owner);
+      if (recordKind) qs.set('record_kind', recordKind);
       const rows = (await api(`/picks?${qs}`, true)).rows || [];
       document.getElementById('picks-table').innerHTML = picksTable(rows);
     };
-    ['pick-result','pick-sport','pick-strategy'].forEach(id => document.getElementById(id).addEventListener('change', update));
+    ['pick-result','pick-sport','pick-strategy','pick-owner','pick-kind'].forEach(id => document.getElementById(id).addEventListener('change', update));
   }
 
   async function renderTickets() {
@@ -449,15 +462,15 @@
         <div class="panel flush"><div class="panel-body">${performanceTable(markets.rows||[])}</div></div>
       </section>
       <section class="section grid-equal">
-        <div class="panel flush"><div class="panel-head"><h3>Bookmakers</h3><span>Our recorded picks</span></div><div class="panel-body">${performanceTable(books.rows||[])}</div></div>
-        <div class="panel flush"><div class="panel-head"><h3>Competitions</h3><span>Our recorded picks</span></div><div class="panel-body">${performanceTable(competitions.rows||[])}</div></div>
+        <div class="panel flush"><div class="panel-head"><h3>Bookmakers</h3><span>Recorded picks</span></div><div class="panel-body">${performanceTable(books.rows||[])}</div></div>
+        <div class="panel flush"><div class="panel-head"><h3>Competitions</h3><span>Recorded picks</span></div><div class="panel-body">${performanceTable(competitions.rows||[])}</div></div>
       </section>`;
   }
 
   async function renderFinance() {
     // Profit/loss is part of the read-only overview payload; there is no
     // separate /history/profit_loss route. Reuse the canonical endpoint so
-    // Finance remains functional instead of falling back to the app shell.
+    // Bankroll remains functional instead of falling back to the app shell.
     const [overview, series] = await Promise.all([api('/overview'), api('/series/bankroll?limit=1000')]);
     const pl = overview.profit_loss || {};
     const b = pl.betting || {}, f = pl.funding || {};
@@ -465,7 +478,7 @@
     view.innerHTML = `
       <section class="section"><div class="hero-grid">
         ${metric('Bankroll', money(pl.bankroll), 'Recorded balance', 'accent')}
-        ${metric('Betting P/L', money(b.profit_loss), 'Excludes deposits and withdrawals', pnlN >= 0 ? 'positive' : 'negative')}
+        ${metric('Profit / Loss', money(b.profit_loss), 'Excludes deposits and withdrawals', pnlN >= 0 ? 'positive' : 'negative')}
         ${metric('Total stakes', money(b.stakes), 'Stake ledger entries')}
         ${metric('Payouts', money(b.payouts), `Refunds ${money(b.refunds)}`)}
       </div></section>
@@ -475,7 +488,7 @@
           <div class="stat-line"><span>Stakes</span><strong>${money(b.stakes)}</strong></div>
           <div class="stat-line"><span>Payouts</span><strong>${money(b.payouts)}</strong></div>
           <div class="stat-line"><span>Refunds</span><strong>${money(b.refunds)}</strong></div>
-          <div class="stat-line"><span>Net betting P/L</span><strong class="${pnlN >= 0 ? 'positive':'negative'}">${money(b.profit_loss)}</strong></div>
+          <div class="stat-line"><span>Profit / Loss</span><strong class="${pnlN >= 0 ? 'positive':'negative'}">${money(b.profit_loss)}</strong></div>
         </div></div>
         <div class="panel"><div class="panel-head"><h3>Funding</h3><span>Not counted as profit</span></div><div class="panel-body stat-stack">
           <div class="stat-line"><span>Deposits + opening</span><strong>${money(f.deposits_and_opening)}</strong></div>
@@ -485,25 +498,55 @@
       </section>`;
   }
 
+  function strategyPlanCards(rows) {
+    if (!rows.length) return empty('No strategy plans yet', 'The next system scan will publish strategy decisions here.');
+    return `<div class="strategy-plans">${rows.map(row => {
+      const status = String(row.status || 'watch');
+      const candidateText = row.candidate_count ? `${num(row.candidate_count)} candidate${row.candidate_count === 1 ? '' : 's'}` : 'No candidates';
+      const legs = (row.candidates || []).slice(0, 6).map(candidate => `<li><span>${esc(candidate.event)}</span><b>${esc(candidate.pick)} @ ${odds(candidate.decimal_odds)}</b></li>`).join('');
+      return `<article class="strategy-plan ${esc(status)}"><div class="strategy-plan-top"><div><span class="eyebrow">${esc(row.strategy_code || '')}</span><h3>${esc(row.name)}</h3></div>${outcomeBadge(status)}</div>
+        <div class="strategy-plan-metrics"><div><span>Target</span><strong>${row.target_odds ? odds(row.target_odds) : '—'}</strong></div><div><span>Combined</span><strong>${row.combined_odds ? odds(row.combined_odds) : '—'}</strong></div><div><span>Stake</span><strong>${row.suggested_stake ? money(row.suggested_stake) : '—'}</strong></div><div><span>Confidence</span><strong>${row.confidence_pct == null ? '—' : pct(row.confidence_pct)}</strong></div></div>
+        <p class="strategy-plan-rationale">${esc(row.rationale || '')}</p><div class="strategy-plan-foot"><span>${candidateText}</span><span>${dateTime(row.generated_at)}</span></div>${legs ? `<details><summary>Show selections</summary><ul>${legs}</ul></details>` : ''}</article>`;
+    }).join('')}</div>`;
+  }
+
   async function renderStrategies() {
-    const data = await api('/performance/strategies');
+    const [plans, performance, bankroll, learning] = await Promise.all([
+      api('/strategies/plans?limit=30'),
+      api('/performance/strategies'),
+      api('/series/bankroll?limit=90'),
+      api('/strategies/learning?owner=sabi_boy&limit=50'),
+    ]);
+    const rows = performance.rows || [];
+    view.innerHTML = `<section class="section">${sectionHead('Strategies', 'What Sabi Boy is considering now, and how each approach has performed')}
+      <div class="panel strategy-board"><div class="panel-head"><h3>Current strategy board</h3><span>Latest system scan</span></div><div class="panel-body">${strategyPlanCards(plans.rows || [])}</div></div></section>
+      <section class="section grid-equal"><div class="panel"><div class="panel-head"><h3>Strategy performance</h3><span>Decided picks</span></div><div class="panel-body">${barList(rows,'strategy')}</div></div>
+        <div class="panel"><div class="panel-head"><h3>Bankroll context</h3><span>Last 90 ledger points</span></div><div class="panel-body">${lineChart(bankroll.rows || [], 'occurred_at', 'balance')}</div></div></section>
+      <section class="section"><div class="panel"><div class="panel-head"><h3>Learning policy</h3><span>${num(learning.policy?.minimum_sample || 8)} settled before changes</span></div><div class="panel-body">${learningCards(learning.rows || [])}</div></div></section>
+      <section class="section"><div class="panel flush"><div class="panel-head"><h3>Historical breakdown</h3><span>Recorded picks</span></div><div class="panel-body">${table([
+        {label:'Strategy', render:r=>`<span class="primary-cell">${esc(r.strategy)}</span>`},
+        {label:'Played', num:true, render:r=>num(r.played)},
+        {label:'Won', num:true, render:r=>num(r.won)},
+        {label:'Lost', num:true, render:r=>num(r.lost)},
+        {label:'Win rate', num:true, render:r=>pct(r.win_percentage)},
+      ], rows)}</div></div></section>`;
+  }
+
+  function learningCards(rows) {
+    if (!rows.length) return empty('No strategy outcomes yet', 'The policy starts learning after recorded results settle.');
+    return `<div class="learning-list">${rows.map(row => `<article class="learning-row"><div><span class="eyebrow">${esc(row.strategy_code)}</span><h3>${esc(row.strategy)}</h3><p>${esc(row.rationale || '')}</p></div><div class="learning-metrics"><strong>${row.win_percentage == null ? '—' : pct(row.win_percentage)}</strong><span>${num(row.settled_picks)} settled · ${esc(row.policy || 'hold').replaceAll('_',' ')}</span></div></article>`).join('')}</div>`;
+  }
+
+  async function renderHendrix() {
+    const data = await api('/picks?limit=300&owner=hendrix');
     const rows = data.rows || [];
-    view.innerHTML = `<section class="section">${sectionHead('Strategies', 'How each of our recorded approaches has performed')}
-      <div class="grid-equal">
-        <div class="panel"><div class="panel-head"><h3>Win rate</h3><span>Decided picks</span></div><div class="panel-body">${barList(rows,'strategy')}</div></div>
-        <div class="panel flush"><div class="panel-head"><h3>Breakdown</h3><span>Our record</span></div><div class="panel-body">${table([
-          {label:'Strategy', render:r=>`<span class="primary-cell">${esc(r.strategy)}</span>`},
-          {label:'Played', num:true, render:r=>num(r.played)},
-          {label:'Won', num:true, render:r=>num(r.won)},
-          {label:'Lost', num:true, render:r=>num(r.lost)},
-          {label:'Win rate', num:true, render:r=>pct(r.win_percentage)},
-        ], rows)}</div></div>
-      </div></section>`;
+    view.innerHTML = `<section class="section">${sectionHead("Hendrix's Record", 'Picks you have forwarded to Sabi Boy', `${num(rows.length)} shown`)}
+      <div class="panel flush"><div class="panel-body">${picksTable(rows)}</div></div></section>`;
   }
 
   async function renderHistory() {
     const [picks, sources, combined, outcomes] = await Promise.all([
-      api('/picks?limit=500'), api('/tickets/sources'), api('/performance/combined-odds'), api('/series/outcomes?days=180')
+      api('/picks?limit=500&owner=sabi_boy'), api('/tickets/sources'), api('/performance/combined-odds'), api('/series/outcomes?days=180')
     ]);
     view.innerHTML = `
       <section class="section grid-equal">
@@ -612,7 +655,7 @@
     </section>`;
   }
 
-  const renderers = { overview:renderOverview, picks:renderPicks, tickets:renderTickets, performance:renderPerformance, finance:renderFinance, strategies:renderStrategies, history:renderHistory, notifications:renderNotifications, blog:renderBlog, system:renderSystem };
+  const renderers = { overview:renderOverview, picks:renderPicks, tickets:renderTickets, performance:renderPerformance, finance:renderFinance, strategies:renderStrategies, hendrix:renderHendrix, history:renderHistory, notifications:renderNotifications, blog:renderBlog, system:renderSystem };
 
   function pathRoute(pathname) {
     if (pathname.startsWith('/blog/') && pathname.length > 6) return ['blog-post','Blog'];
@@ -626,7 +669,7 @@
     title.textContent = pageTitle;
     document.title = 'Sabi Boy knows ball';
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (name === 'blog-post' ? 'blog' : name === 'ticket-detail' ? 'tickets' : name)));
-    view.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading our record…</p></div>';
+    view.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>';
     try {
       if (name === 'blog-post') await renderBlogPost(decodeURIComponent(location.pathname.slice('/blog/'.length)));
       else if (name === 'ticket-detail') await renderTicketDetail(decodeURIComponent(location.pathname.slice('/tickets/'.length)));

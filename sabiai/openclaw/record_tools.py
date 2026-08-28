@@ -5,6 +5,7 @@ from sabiai.storage import (
     BankrollLedger,
     DashboardReadService,
     HistoryService,
+    PickRecordService,
     PerformanceAnalytics,
 )
 
@@ -18,6 +19,7 @@ class RecordTools:
     def handlers(self) -> dict:
         return {
             "record.bankroll": self.record_bankroll,
+            "record.pick": self.record_pick,
             "history.picks": self.picks,
             "history.summary": self.summary,
             "history.by_sport": self.by_sport,
@@ -53,6 +55,10 @@ class RecordTools:
         )
         return ledger_to_dict(entry)
 
+    def record_pick(self, args: dict) -> dict:
+        """Record a Sabi Boy or Hendrix pick in the canonical V2 ledger."""
+        return PickRecordService(self.app._db(initialize=True)).record(args)
+
     def _history(self) -> HistoryService:
         return HistoryService(self.app._db(initialize=True))
 
@@ -63,7 +69,7 @@ class RecordTools:
         return AdvancedAnalytics(self.app._db(initialize=True))
 
     def summary(self, args: dict) -> dict:
-        return self._history().summary()
+        return self._history().summary(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))
 
     def picks(self, args: dict) -> dict:
         """Return the canonical pick ledger rows for Sabi Boy conversation context."""
@@ -74,17 +80,19 @@ class RecordTools:
                 outcome=args.get("outcome"),
                 sport=args.get("sport"),
                 strategy=args.get("strategy"),
+                owner=args.get("owner", "sabi_boy"),
+                record_kind=args.get("record_kind", "pick"),
             )
         }
 
     def by_sport(self, args: dict) -> dict:
-        return {"rows": self._history().by_sport()}
+        return {"rows": self._history().by_sport(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def by_market(self, args: dict) -> dict:
-        return {"rows": self._history().by_market()}
+        return {"rows": self._history().by_market(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def by_bookmaker(self, args: dict) -> dict:
-        return {"rows": self._history().by_bookmaker()}
+        return {"rows": self._history().by_bookmaker(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def bankroll(self, args: dict) -> dict:
         ledger = BankrollLedger(self.app._db(initialize=True))
@@ -95,19 +103,19 @@ class RecordTools:
         }
 
     def streaks(self, args: dict) -> dict:
-        return self._analytics().streaks()
+        return self._analytics().streaks(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))
 
     def profit_loss(self, args: dict) -> dict:
         return self._analytics().profit_loss()
 
     def by_strategy(self, args: dict) -> dict:
-        return {"rows": self._analytics().by_strategy()}
+        return {"rows": self._analytics().by_strategy(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def by_competition(self, args: dict) -> dict:
-        return {"rows": self._analytics().by_competition()}
+        return {"rows": self._analytics().by_competition(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def by_odds_band(self, args: dict) -> dict:
-        return {"rows": self._analytics().by_odds_band()}
+        return {"rows": self._analytics().by_odds_band(owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def by_ticket_size(self, args: dict) -> dict:
         return {"rows": self._analytics().by_ticket_size()}
@@ -122,7 +130,7 @@ class RecordTools:
         return {"rows": self._analytics().ticket_killers(int(args.get("limit", 25)))}
 
     def daily_outcomes(self, args: dict) -> dict:
-        return {"rows": self._analytics().daily_outcomes(int(args.get("days", 90)))}
+        return {"rows": self._analytics().daily_outcomes(int(args.get("days", 90)), owner=args.get("owner", "sabi_boy"), record_kind=args.get("record_kind", "pick"))}
 
     def bankroll_series(self, args: dict) -> dict:
         return {"rows": self._analytics().bankroll_series(int(args.get("limit", 365)))}
