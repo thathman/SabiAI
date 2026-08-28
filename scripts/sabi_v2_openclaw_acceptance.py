@@ -47,6 +47,7 @@ REQUIRED_TOOLS = (
     "bookmaker.browser_build.plan",
     "bookmaker.build.verify",
     "bookmaker.browser_health",
+    "history.picks",
     "history.ticket_versions",
     "history.bookmaker_prices",
     "history.price_disagreements",

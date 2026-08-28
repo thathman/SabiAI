@@ -37,6 +37,7 @@ class OpenClawGatewayTests(unittest.TestCase):
             "bookmaker.booking_code.restore",
             "system.readiness",
             "system.daily_research",
+            "history.picks",
             "ticket.draft.lineage",
         }
         self.assertTrue(expected.issubset(set(tools)))
@@ -47,6 +48,47 @@ class OpenClawGatewayTests(unittest.TestCase):
         readiness = self.gateway.dispatch("system.readiness")
         self.assertTrue(readiness["ok"])
         self.assertEqual(readiness["data"]["state"], "READY")
+
+    def test_history_picks_returns_canonical_pick_rows(self):
+        db = self.gateway._db(initialize=True)
+        with db.transaction() as conn:
+            conn.execute("INSERT INTO sports(id,slug,name) VALUES('sport_football','football','Football')")
+            conn.execute(
+                "INSERT INTO events(id,sport_id,name,starts_at,status) VALUES(?,?,?,?,?)",
+                ("event_1", "sport_football", "Arsenal vs Chelsea", "2026-08-28T18:00:00+00:00", "scheduled"),
+            )
+            conn.execute(
+                "INSERT INTO markets(id,event_id,kind,label) VALUES(?,?,?,?)",
+                ("market_1", "event_1", "winner", "Arsenal to win"),
+            )
+            conn.execute(
+                "INSERT INTO selections(id,market_id,label) VALUES(?,?,?)",
+                ("selection_1", "market_1", "Arsenal to win"),
+            )
+            conn.execute(
+                """INSERT INTO picks_v2(
+                       id,event_id,market_id,selection_id,decimal_odds,confidence_pct,
+                       rationale,strategy,outcome,created_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    "pick_1",
+                    "event_1",
+                    "market_1",
+                    "selection_1",
+                    "1.80",
+                    64,
+                    "Home form and availability support the selection.",
+                    "value",
+                    "pending",
+                    "2026-08-28T08:00:00+00:00",
+                ),
+            )
+
+        result = self.gateway.dispatch("history.picks", {"limit": 10})
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["data"]["rows"][0]["event"], "Arsenal vs Chelsea")
+        self.assertEqual(result["data"]["rows"][0]["selection"], "Arsenal to win")
+        self.assertEqual(result["data"]["rows"][0]["outcome"], "pending")
 
     def test_plain_market_language_still_works_after_refactor(self):
         result = self.gateway.dispatch(

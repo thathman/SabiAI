@@ -28,6 +28,11 @@ Treat recommendations as unplaced observations: confirm current prices, exact ma
 and the relevant research evidence before ticket work, and never claim that a scan placed a
 bet or settled a result.
 
+When the user asks about a recorded or previously settled pick, query `history.picks` for the
+canonical pick rows (including event, market, selection, decimal odds, confidence, rationale,
+bookmaker and outcome). Use `history.summary` for aggregate totals, but do not infer a specific
+pick from an aggregate.
+
 ## Language
 
 User-facing output is simple and explicit:

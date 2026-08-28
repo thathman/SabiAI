@@ -93,6 +93,7 @@ def test_required_tool_gate_covers_final_v2_workflows():
         "research.case.summary",
         "research.scan.context",
         "ticket.research.plan",
+        "history.picks",
         "ticket.draft.lineage",
         "ticket.higher_odds.from_verified_offers",
         "ticket.candidates.compare",

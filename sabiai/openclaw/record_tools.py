@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from sabiai.storage import AdvancedAnalytics, BankrollLedger, HistoryService, PerformanceAnalytics
+from sabiai.storage import (
+    AdvancedAnalytics,
+    BankrollLedger,
+    DashboardReadService,
+    HistoryService,
+    PerformanceAnalytics,
+)
 
 from .serializers import ledger_to_dict
 
@@ -12,6 +18,7 @@ class RecordTools:
     def handlers(self) -> dict:
         return {
             "record.bankroll": self.record_bankroll,
+            "history.picks": self.picks,
             "history.summary": self.summary,
             "history.by_sport": self.by_sport,
             "history.by_market": self.by_market,
@@ -57,6 +64,18 @@ class RecordTools:
 
     def summary(self, args: dict) -> dict:
         return self._history().summary()
+
+    def picks(self, args: dict) -> dict:
+        """Return the canonical pick ledger rows for Sabi Boy conversation context."""
+        reads = DashboardReadService(self.app._db(initialize=True))
+        return {
+            "rows": reads.picks(
+                limit=int(args.get("limit", 100)),
+                outcome=args.get("outcome"),
+                sport=args.get("sport"),
+                strategy=args.get("strategy"),
+            )
+        }
 
     def by_sport(self, args: dict) -> dict:
         return {"rows": self._history().by_sport()}
