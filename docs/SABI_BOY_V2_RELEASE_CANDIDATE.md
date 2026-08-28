@@ -135,6 +135,7 @@ RSS/Atom is deliberately deferred because it is not required for V2 acceptance a
 - fixed thirty-minute local source/readiness health timer; it reads the V2 database and does not wake a language model;
 - fixed daily direct research timer at 08:00 `Africa/Lagos`; it sends a compact packet to the configured model without loading OpenClaw agent context;
 - durable direct-scan log and gateway context reads for Sabi Boy (`system.daily_research`, `research.scan.*`, `ticket.research.plan`), plus canonical recorded-pick reads through `history.picks`;
+- dashboard notification history with aggregate push delivery status and endpoint-safe retention;
 - unsupported markets and payouts remain manual rather than being guessed;
 - push notification delivery for material automatic settlement changes;
 - durable job start/success/failure/consecutive-failure bookkeeping;

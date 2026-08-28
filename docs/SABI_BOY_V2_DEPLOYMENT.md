@@ -73,6 +73,12 @@ Direct daily research and picks:
 - output: `data/reports/daily-picks-latest.json` and a Web Push notification; recommendations are never written as placed wagers
 - context: successful scans are persisted in `daily_research_runs`; Sabi Boy can read them through `system.daily_research`, `research.scan.latest`, `research.scan.history` and `research.scan.context`. `ticket.research.plan` includes the recent scan context, while `history.picks` reads canonical recorded picks for pick-specific questions. Scan recommendations remain observations and must be rechecked before ticket work.
 
+Notification history:
+
+- every system push delivery is recorded in `notification_history` with its title, message, tag, destination path and aggregate delivery counts;
+- the read-only `GET /api/v2/notifications` endpoint and dashboard Notifications page show delivery status without exposing browser endpoints, p256dh keys or auth secrets;
+- notification history is observability only; it does not change the subscription toggle or send additional messages.
+
 Verified backup schedule:
 
 - service: `sabi-boy-backup.service`

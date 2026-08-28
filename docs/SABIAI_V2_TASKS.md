@@ -487,6 +487,12 @@
 - Dell verification after `e8c78f6`: the 2026-08-28 scan persisted run `2026-08-28T00:10:02.866181+00:00` with 53 events, zero source failures and three recommendations; `system.readiness`, `research.scan.context` and `ticket.research.plan` all returned the same latest scan context. The direct scan remained an unplaced observation and ticket research still requires fresh price/rule/evidence checks.
 - Targeted gateway/research acceptance: **25 passed**. Local full suite at the follow-up implementation: **255 passed, 1 warning** (the existing Starlette/httpx deprecation warning).
 
+### Phase 16 follow-up evidence — 2026-08-28 (notification history)
+
+- Implementation commit `0113b2f` adds migration `0010_notification_history.sql`, records every system push event with user-facing message and aggregate delivery result, and deliberately excludes browser endpoints and encryption keys. The read-only dashboard exposes `GET /api/v2/notifications` and a dedicated Notifications page with delivered, failed, expired and unavailable states.
+- PWA cache version advanced to `2.1.0.7` so the new page and service-worker shell cannot be hidden by the prior iOS cache. The active Dell dashboard was restarted from the Forgejo `v2` checkout and served `/notifications` successfully; the notification history endpoint currently returns an empty list until the next system push (prior pushes predate migration 0010).
+- Local dashboard/PWA acceptance: **11 passed, 1 warning**. The full local suite at this commit: **257 passed, 1 warning** (the existing Starlette/httpx deprecation warning). Dell dashboard/PWA acceptance also passed **11 tests, 1 warning**.
+
 ---
 
 ## Current release commands
