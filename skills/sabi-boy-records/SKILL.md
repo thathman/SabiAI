@@ -51,6 +51,7 @@ If the ledger does not reconcile, respect `system.readiness`; action-oriented ti
 
 Useful breakdowns include:
 
+- specific recorded picks and their event, market, price, rationale, confidence, bookmaker and outcome (`history.picks`);
 - overall W/L/D/void/pending;
 - bankroll and betting P/L over time;
 - current/best/worst streaks;
