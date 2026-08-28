@@ -28,6 +28,7 @@
     '/finance': ['finance', 'Finance'],
     '/strategies': ['strategies', 'Strategies'],
     '/history': ['history', 'History'],
+    '/notifications': ['notifications', 'Notifications'],
     '/blog': ['blog', "Sabi's Blog"],
     '/system': ['system', 'System'],
   };
@@ -56,10 +57,27 @@
     return Number.isNaN(d.getTime()) ? esc(value) : d.toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'numeric'});
   };
 
+  const dateTime = (value) => {
+    if (!value) return '—';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? esc(value) : d.toLocaleString(undefined, {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  };
+
   function outcomeBadge(value) {
     const text = String(value || 'unknown');
     const cls = text.toLowerCase().replaceAll(' ', '-');
     return `<span class="badge ${esc(cls)}">${esc(text)}</span>`;
+  }
+
+  function notificationStatus(row) {
+    const attempted = Number(row.attempted || 0);
+    const delivered = Number(row.delivered || 0);
+    const issues = Number(row.failed || 0) + Number(row.expired || 0);
+    if (!row.enabled) return outcomeBadge('Unavailable');
+    if (!attempted) return outcomeBadge('No subscribers');
+    if (issues) return outcomeBadge(delivered ? 'Partial' : 'Failed');
+    if (delivered === attempted) return outcomeBadge('Delivered');
+    return outcomeBadge('Pending');
   }
 
   async function api(path, force = false) {
@@ -209,7 +227,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.1.0.6',
+      icon: '/assets/icon-192.png?v=2.1.0.7',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -221,7 +239,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.6', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.1.0.7', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
@@ -506,6 +524,30 @@
       </section>`;
   }
 
+  async function renderNotifications() {
+    const data = await api('/notifications?limit=100');
+    const rows = data.rows || [];
+    const attempted = rows.reduce((sum, row) => sum + Number(row.attempted || 0), 0);
+    const delivered = rows.reduce((sum, row) => sum + Number(row.delivered || 0), 0);
+    const issues = rows.reduce((sum, row) => sum + Number(row.failed || 0) + Number(row.expired || 0), 0);
+    view.innerHTML = `
+      <section class="section"><div class="hero-grid">
+        ${metric('Events', num(rows.length), 'Latest notification records')}
+        ${metric('Delivered', num(delivered), `${num(attempted)} delivery attempts`, 'positive')}
+        ${metric('Issues', num(issues), 'Failed or expired deliveries', issues ? 'negative' : 'positive')}
+        ${metric('Latest', rows.length ? dateTime(rows[0].created_at) : '—', 'Most recent event')}
+      </div></section>
+      <section class="section">${sectionHead('Notification history')}
+        <div class="panel flush"><div class="panel-body">${table([
+          {label:'Notification', render:r=>`<span class="primary-cell">${esc(r.title)}</span><span class="sub-cell notification-copy">${esc(r.body)}</span>`},
+          {label:'When', render:r=>`<span class="primary-cell">${dateTime(r.created_at)}</span><span class="sub-cell">${esc(r.tag || 'Push event')}</span>`},
+          {label:'Status', render:r=>notificationStatus(r)},
+          {label:'Devices', num:true, render:r=>`${num(r.delivered)} / ${num(r.attempted)}`},
+          {label:'Issues', num:true, render:r=>num(Number(r.failed || 0) + Number(r.expired || 0))},
+        ], rows)}</div></div>
+      </section>`;
+  }
+
   async function renderBlog() {
     const data = await api('/blog?limit=100');
     const posts = data.posts || [];
@@ -570,7 +612,7 @@
     </section>`;
   }
 
-  const renderers = { overview:renderOverview, picks:renderPicks, tickets:renderTickets, performance:renderPerformance, finance:renderFinance, strategies:renderStrategies, history:renderHistory, blog:renderBlog, system:renderSystem };
+  const renderers = { overview:renderOverview, picks:renderPicks, tickets:renderTickets, performance:renderPerformance, finance:renderFinance, strategies:renderStrategies, history:renderHistory, notifications:renderNotifications, blog:renderBlog, system:renderSystem };
 
   function pathRoute(pathname) {
     if (pathname.startsWith('/blog/') && pathname.length > 6) return ['blog-post','Blog'];

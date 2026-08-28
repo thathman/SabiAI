@@ -9,6 +9,8 @@ from typing import Any
 from sabiai.config import Settings
 from sabiai.storage import SabiDatabase
 
+from .history import NotificationHistory
+
 
 @dataclass(frozen=True, slots=True)
 class PushDeliveryReport:
@@ -83,7 +85,9 @@ class WebPushService:
 
     def send(self, payload: dict[str, Any]) -> PushDeliveryReport:
         if not self.enabled:
-            return PushDeliveryReport(False, 0, 0, 0, 0)
+            report = PushDeliveryReport(False, 0, 0, 0, 0)
+            self._record_history(payload, report)
+            return report
 
         from pywebpush import WebPushException, webpush
 
@@ -126,7 +130,24 @@ class WebPushService:
                 delivered += 1
                 self._mark_success(endpoint)
 
-        return PushDeliveryReport(True, len(rows), delivered, expired, failed)
+        report = PushDeliveryReport(True, len(rows), delivered, expired, failed)
+        self._record_history(payload, report)
+        return report
+
+    def _record_history(self, payload: dict[str, Any], report: PushDeliveryReport) -> None:
+        # Notification history is observability. A logging failure must never turn a
+        # successful push into an application failure or expose endpoint material.
+        try:
+            NotificationHistory(self.db).record(
+                payload,
+                enabled=report.enabled,
+                attempted=report.attempted,
+                delivered=report.delivered,
+                expired=report.expired,
+                failed=report.failed,
+            )
+        except Exception:
+            pass
 
     def _mark_success(self, endpoint: str) -> None:
         stamp = datetime.now(timezone.utc).isoformat()

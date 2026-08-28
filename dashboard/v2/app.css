@@ -144,6 +144,7 @@ tbody tr:hover { background: rgba(255,255,255,.015); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .primary-cell { color: var(--text); font-weight: 600; }
 .sub-cell { color: var(--dim); font-size: 9px; display: block; margin-top: 3px; }
+.notification-copy { max-width: 520px; white-space: normal; line-height: 1.45; }
 
 .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .badge.won, .badge.ready { color: var(--good); border-color: rgba(100,198,143,.26); background: rgba(100,198,143,.07); }

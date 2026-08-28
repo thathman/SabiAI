@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from sabiai.config import Settings
 from sabiai.dashboard import create_v2_dashboard_router
+from sabiai.notifications import NotificationHistory
 from sabiai.storage import SabiDatabase
 
 
@@ -37,6 +38,7 @@ def test_v2_dashboard_router_has_no_mutating_http_methods(tmp_path):
     assert not ({"POST", "PUT", "PATCH", "DELETE"} & methods)
     assert "/api/v2/overview" in paths
     assert "/api/v2/picks" in paths
+    assert "/api/v2/notifications" in paths
     assert "/api/v2/tickets" in paths
     assert "/api/v2/blog" in paths
     assert "/api/v2/system/readiness" in paths
@@ -61,6 +63,28 @@ def test_dashboard_router_exposes_detailed_ticket_and_performance_reads(tmp_path
         "/api/v2/series/bankroll",
     }
     assert expected.issubset(paths)
+
+
+def test_notification_history_is_readable_from_dashboard(tmp_path):
+    settings = _settings(tmp_path)
+    database = SabiDatabase(settings.v2_db)
+    database.initialize()
+    NotificationHistory(database).record(
+        {"title": "Sabi Boy picks", "body": "Liverpool to win @ 1.58", "tag": "sabi-boy-daily-picks", "url": "/picks"},
+        enabled=True,
+        attempted=2,
+        delivered=2,
+        expired=0,
+        failed=0,
+    )
+    app = FastAPI()
+    app.include_router(create_v2_dashboard_router(settings))
+
+    response = TestClient(app).get("/api/v2/notifications?limit=10")
+
+    assert response.status_code == 200
+    assert response.json()["rows"][0]["title"] == "Sabi Boy picks"
+    assert response.json()["rows"][0]["delivered"] == 2
 
 
 def test_static_ticket_analytics_routes_are_not_shadowed_by_ticket_detail(tmp_path):

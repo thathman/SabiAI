@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from dashboard.v2_app import app as dashboard_app
 from sabiai.config import Settings
 from sabiai.dashboard import create_push_router
+from sabiai.notifications import NotificationHistory, WebPushService
 from sabiai.storage import SabiDatabase
 
 
@@ -21,7 +22,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert data["display"] == "standalone"
     assert {icon["sizes"] for icon in data["icons"]} >= {"192x192", "512x512"}
     assert any(icon.get("purpose") == "maskable" for icon in data["icons"])
-    assert all("?v=2.1.0.6" in icon["src"] for icon in data["icons"])
+    assert all("?v=2.1.0.7" in icon["src"] for icon in data["icons"])
 
     worker = client.get("/sw.js")
     assert worker.status_code == 200
@@ -40,11 +41,12 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert 'class="notification-icon"' in shell.text
     assert 'rel="apple-touch-icon"' in shell.text
     assert 'name="apple-mobile-web-app-capable"' in shell.text
-    assert '/assets/app.js?v=2.1.0.6' in shell.text
-    assert '/assets/app.css?v=2.1.0.6' in shell.text
+    assert '/assets/app.js?v=2.1.0.7' in shell.text
+    assert '/assets/app.css?v=2.1.0.7' in shell.text
     assert '<strong>Sabi Boy</strong>' in shell.text
     assert '<title>Sabi Boy knows ball</title>' in shell.text
     assert '<span>Picks</span>' in shell.text
+    assert '<span>Notifications</span>' in shell.text
     css = client.get('/assets/app.css').text
     assert 'padding-top: calc(24px + env(safe-area-inset-top))' in css
     assert 'Our record</span>' not in shell.text
@@ -54,7 +56,7 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert '> Online<' not in sidebar
     assert 'id="readiness-chip"' not in topbar
     assert '<div class="brand-mark">SB</div>' not in shell.text
-    assert '<img class="brand-mark" src="/favicon.ico?v=2.1.0.6" alt="">' in shell.text
+    assert '<img class="brand-mark" src="/favicon.ico?v=2.1.0.7" alt="">' in shell.text
     assert '<span>Sabi\'s Blog</span>' in shell.text
 
     favicon = client.get("/favicon.ico")
@@ -79,6 +81,41 @@ def test_dashboard_exposes_installable_pwa_shell_and_backdrop_only_mobile_close(
     assert "pushManager.subscribe" in app_script.text
     assert "Notification.requestPermission" not in app_script.text
     assert "r.state === 'not_used_yet' ? 'Not used yet' : r.state" in app_script.text
+    assert "'/notifications': ['notifications', 'Notifications']" in app_script.text
+    assert "api('/notifications?limit=100')" in app_script.text
+
+
+def test_push_delivery_is_recorded_without_retaining_endpoint_material(tmp_path):
+    settings = Settings(
+        repo_root=tmp_path,
+        data_dir=tmp_path / "data",
+        legacy_bets_db=tmp_path / "legacy.db",
+        v2_db=tmp_path / "v2.db",
+        timezone="Africa/Lagos",
+        paid_sources_enabled=False,
+    )
+    database = SabiDatabase(settings.v2_db)
+    database.initialize()
+
+    report = WebPushService(database, settings).send(
+        {
+            "title": "Sabi Boy picks",
+            "body": "Liverpool to win @ 1.58",
+            "tag": "sabi-boy-daily-picks",
+            "url": "/picks",
+            "endpoint": "https://web.push.apple.com/should-never-be-stored",
+        }
+    )
+
+    assert report.enabled is False
+    rows = NotificationHistory(database).list()
+    assert rows[0]["title"] == "Sabi Boy picks"
+    assert rows[0]["body"] == "Liverpool to win @ 1.58"
+    assert rows[0]["attempted"] == 0
+    assert "endpoint" not in rows[0]
+    with database.connect() as conn:
+        raw = conn.execute("SELECT payload_json FROM notification_history").fetchone()[0]
+    assert "should-never-be-stored" not in raw
 
 
 def _settings(tmp_path: Path) -> Settings:

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from sabiai.blog import BlogService
 from sabiai.config import Settings
+from sabiai.notifications import NotificationHistory
 from sabiai.sources import SourceHealthService, default_source_bundle
 from sabiai.storage import (
     AdvancedAnalytics,
@@ -89,6 +90,15 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
                 strategy=strategy,
             )
         }
+
+    @router.get("/notifications")
+    def notifications(
+        limit: int = Query(100, ge=1, le=500),
+        tag: str | None = None,
+    ):
+        database = db()
+        database.initialize()
+        return {"rows": NotificationHistory(database).list(limit=limit, tag=tag)}
 
     @router.get("/tickets")
     def tickets(
