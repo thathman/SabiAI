@@ -6,6 +6,7 @@ from .drafts import TicketDraft, TicketDraftStore
 from .history import HistoryService
 from .offers import OfferObservation, OfferObservationStore
 from .sqlite import SabiDatabase
+from .research_log import DailyResearchLog
 
 __all__ = [
     "AdvancedAnalytics",
@@ -17,6 +18,7 @@ __all__ = [
     "OfferObservationStore",
     "PerformanceAnalytics",
     "SabiDatabase",
+    "DailyResearchLog",
     "TicketDraft",
     "TicketDraftStore",
 ]

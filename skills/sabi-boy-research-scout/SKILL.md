@@ -26,6 +26,11 @@ Prefer fresh cache/evidence, verified learned sources, open/public data, officia
 
 Use `source.discovery.plan` before rediscovering an unfamiliar league/source from scratch. When a genuinely useful public/official source is found, save it with `source.discovery.save`, verify it with `source.discovery.verify`, and record later health checks with `source.discovery.check`.
 
+When a user refers to the daily scan or a previously generated pick, query
+`research.scan.context` (or `research.scan.latest`) first. The scan log is durable system
+context and may identify the event, source and observed price, but it is not a substitute
+for fresh form/availability/market research.
+
 Do not bypass access controls.
 
 ## Base checks

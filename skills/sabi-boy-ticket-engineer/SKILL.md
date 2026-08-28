@@ -28,12 +28,13 @@ Most Ticket Workshop operations accept `draft_id` directly. Prefer that over man
 
 For requests such as `make this stronger`, `remove weak games`, or `check every game`:
 
-1. `ticket.research.plan`;
-2. create/reuse durable research cases when appropriate;
-3. gather evidence per leg;
-4. run `ticket.research.snapshot` / match research where appropriate;
-5. use a Skeptic pass when required;
-6. only then rank/remove/replace based on actual research.
+1. query `research.scan.context` when the leg came from the daily scan, so the exact event/source/observed price is carried forward;
+2. `ticket.research.plan`;
+3. create/reuse durable research cases when appropriate;
+4. gather evidence per leg;
+5. run `ticket.research.snapshot` / match research where appropriate;
+6. use a Skeptic pass when required;
+7. only then rank/remove/replace based on actual research.
 
 Do not create a fake strength score from bookmaker odds alone.
 

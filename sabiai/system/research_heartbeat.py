@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport, WebPushService
 from sabiai.sources import SourceRequest, SourceService, default_source_bundle
-from sabiai.storage import SabiDatabase
+from sabiai.storage import DailyResearchLog, SabiDatabase
 
 from .jobs import JobService
 
@@ -286,6 +286,8 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "expired": push.expired,
             "failed": push.failed,
         }
+        report["run_id"] = report["generated_at"]
+        DailyResearchLog(database).save(report)
         report_path = settings.data_dir / "reports" / "daily-picks-latest.json"
         _write_report(report_path, report)
         jobs.success("daily-picks")

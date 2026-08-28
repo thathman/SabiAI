@@ -82,6 +82,7 @@ def test_required_tool_gate_covers_final_v2_workflows():
     expected = {
         "system.tools",
         "system.readiness",
+        "system.daily_research",
         "system.jobs.failure",
         "source.discovery.plan",
         "source.discovery.verify",
@@ -90,6 +91,7 @@ def test_required_tool_gate_covers_final_v2_workflows():
         "research.case.create",
         "research.case.attach",
         "research.case.summary",
+        "research.scan.context",
         "ticket.research.plan",
         "ticket.draft.lineage",
         "ticket.higher_odds.from_verified_offers",

@@ -36,6 +36,7 @@ class OpenClawGatewayTests(unittest.TestCase):
             "bookmaker.browser.playbook",
             "bookmaker.booking_code.restore",
             "system.readiness",
+            "system.daily_research",
             "ticket.draft.lineage",
         }
         self.assertTrue(expected.issubset(set(tools)))

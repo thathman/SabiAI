@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from sabiai.config import Settings
+from sabiai.storage import DailyResearchLog, SabiDatabase
+from sabiai.openclaw.gateway import SabiToolGateway
 from sabiai.system import research_heartbeat as heartbeat
 
 
@@ -123,6 +125,40 @@ def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_p
     assert usage["prompt_tokens"] == 68
     assert captured["model"] == "qwen3.8-max-preview"
     assert captured["api_key"] == "test-key"
+
+
+def test_scan_log_is_available_to_gateway_context(tmp_path):
+    config = settings(tmp_path)
+    db = SabiDatabase(config.v2_db)
+    db.initialize()
+    DailyResearchLog(db).save(
+        {
+            "run_id": "2026-08-28T08:00:00+00:00",
+            "date": "2026-08-28",
+            "generated_at": "2026-08-28T08:00:00+00:00",
+            "model": "qwen3.8-max",
+            "events_considered": 2,
+            "source_failures": [],
+            "recommendations": [
+                {
+                    "sport": "football",
+                    "event": "Home vs Away",
+                    "pick": "Home",
+                    "decimal_odds": 1.8,
+                    "confidence_pct": 64,
+                }
+            ],
+            "notes": [],
+            "usage": {"prompt_tokens": 10},
+            "push": {"delivered": 1},
+        }
+    )
+    gateway = SabiToolGateway(config)
+    latest = gateway.dispatch("research.scan.latest")
+    context = gateway.dispatch("system.daily_research")
+    assert latest["ok"] is True
+    assert latest["data"]["scan"]["recommendations"][0]["pick"] == "Home"
+    assert context["data"]["latest"]["model"] == "qwen3.8-max"
 
 
 def test_system_timer_owns_daily_research_and_agent_cron_is_disabled():

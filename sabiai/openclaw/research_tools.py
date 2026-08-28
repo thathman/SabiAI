@@ -10,6 +10,7 @@ from sabiai.research import (
     ResearchTaskPlanner,
     SkepticReviewPlanner,
 )
+from sabiai.storage import DailyResearchLog
 
 from .serializers import json_value
 
@@ -37,6 +38,9 @@ class ResearchTools:
             "research.case.next": self.case_next,
             "research.case.summary": self.case_summary,
             "research.review.plan": self.review_plan,
+            "research.scan.latest": self.scan_latest,
+            "research.scan.history": self.scan_history,
+            "research.scan.context": self.scan_context,
         }
 
     def _case_store(self) -> ResearchCaseStore:
@@ -267,6 +271,21 @@ class ResearchTools:
         data = json_value(plan)
         data["case_id"] = case_id
         return data
+
+    def scan_latest(self, args: dict) -> dict:
+        return {"scan": DailyResearchLog(self.app._db(initialize=True)).latest()}
+
+    def scan_history(self, args: dict) -> dict:
+        return {
+            "scans": DailyResearchLog(self.app._db(initialize=True)).list(
+                limit=int(args.get("limit", 20))
+            )
+        }
+
+    def scan_context(self, args: dict) -> dict:
+        return DailyResearchLog(self.app._db(initialize=True)).context(
+            limit=int(args.get("limit", 5))
+        )
 
     def _assessment(self, args: dict):
         context = self._case_context(args)

@@ -18,6 +18,16 @@ Read these workspace files when deeper operating context is needed:
 
 Use `system.tools` as the capability truth. Never infer a tool exists just because a plan or old skill mentions it.
 
+## Direct daily scan context
+
+The daily fixture/price scan runs as a system service so it does not load the full agent
+context. When the user asks about the latest scan, generated picks, or whether a scanned
+event belongs in a ticket, query `system.daily_research` or `research.scan.context` first.
+Use `research.scan.latest` for the newest run and `research.scan.history` for prior runs.
+Treat recommendations as unplaced observations: confirm current prices, exact market rules
+and the relevant research evidence before ticket work, and never claim that a scan placed a
+bet or settled a result.
+
 ## Language
 
 User-facing output is simple and explicit:

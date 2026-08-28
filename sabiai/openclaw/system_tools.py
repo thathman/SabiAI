@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sabiai import __version__
 from sabiai.sources import SourceHealthService
+from sabiai.storage import DailyResearchLog
 from sabiai.system import JobService, SystemReadinessService
 
 from .serializers import json_value
@@ -25,6 +26,7 @@ class SystemTools:
             "system.jobs.success": self.jobs_success,
             "system.jobs.failure": self.jobs_failure,
             "system.jobs.enable": self.jobs_enable,
+            "system.daily_research": self.daily_research,
         }
 
     def initialize(self, args: dict) -> dict:
@@ -61,6 +63,7 @@ class SystemTools:
                 "counts": db.table_counts(),
                 "readiness": json_value(readiness),
                 "jobs": [json_value(job) for job in JobService(db).list(enabled_only=True)],
+                "latest_daily_research": DailyResearchLog(db).latest(),
             }
         except Exception as exc:
             return {
@@ -92,6 +95,12 @@ class SystemTools:
 
     def api_economy(self, args: dict) -> dict:
         return SourceHealthService(self.app._db(initialize=True)).economy()
+
+    def daily_research(self, args: dict) -> dict:
+        """Return the direct system scan so Sabi Boy can use it as conversation context."""
+        return DailyResearchLog(self.app._db(initialize=True)).context(
+            limit=int(args.get("limit", 5))
+        )
 
     def jobs_seed(self, args: dict) -> dict:
         jobs = JobService(self.app._db(initialize=True)).seed_defaults()

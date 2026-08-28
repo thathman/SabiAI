@@ -26,6 +26,7 @@ REQUIRED_SKILLS = (
 REQUIRED_TOOLS = (
     "system.tools",
     "system.readiness",
+    "system.daily_research",
     "system.jobs.failure",
     "source.discovery.plan",
     "source.discovery.verify",
@@ -34,6 +35,7 @@ REQUIRED_TOOLS = (
     "research.case.create",
     "research.case.attach",
     "research.case.summary",
+    "research.scan.context",
     "ticket.research.plan",
     "ticket.draft.lineage",
     "ticket.higher_odds.from_verified_offers",
