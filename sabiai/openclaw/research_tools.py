@@ -10,7 +10,7 @@ from sabiai.research import (
     ResearchTaskPlanner,
     SkepticReviewPlanner,
 )
-from sabiai.storage import DailyResearchLog
+from sabiai.storage import DailyResearchLog, ResearchSliceStore
 
 from .serializers import json_value
 
@@ -41,6 +41,8 @@ class ResearchTools:
             "research.scan.latest": self.scan_latest,
             "research.scan.history": self.scan_history,
             "research.scan.context": self.scan_context,
+            "research.coverage": self.coverage,
+            "research.cache.lookup": self.cache_lookup,
         }
 
     def _case_store(self) -> ResearchCaseStore:
@@ -286,6 +288,22 @@ class ResearchTools:
         return DailyResearchLog(self.app._db(initialize=True)).context(
             limit=int(args.get("limit", 5))
         )
+
+    def coverage(self, args: dict) -> dict:
+        database = self.app._db(initialize=True)
+        return ResearchSliceStore(database).coverage(args.get("run_id"))
+
+    def cache_lookup(self, args: dict) -> dict:
+        event = str(args.get("event") or "").strip()
+        if not event:
+            raise ValueError("research.cache.lookup needs event.")
+        database = self.app._db(initialize=True)
+        result = ResearchSliceStore(database).find_event(
+            event,
+            scan_date=args.get("scan_date"),
+            max_age_seconds=int(args.get("max_age_seconds", 86400)),
+        )
+        return result or {"cache_hit": False, "event": event, "recommendations": []}
 
     def _assessment(self, args: dict):
         context = self._case_context(args)

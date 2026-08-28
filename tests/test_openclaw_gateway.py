@@ -42,6 +42,8 @@ class OpenClawGatewayTests(unittest.TestCase):
             "record.pick",
             "strategy.plans",
             "strategy.learning",
+            "research.coverage",
+            "research.cache.lookup",
         }
         self.assertTrue(expected.issubset(set(tools)))
 

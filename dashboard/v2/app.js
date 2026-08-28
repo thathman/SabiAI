@@ -228,7 +228,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.2.0.0',
+      icon: '/assets/icon-192.png?v=2.3.0.0',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -240,7 +240,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.2.0.0', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.3.0.0', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
@@ -615,7 +615,7 @@
   }
 
   async function renderSystem() {
-    const [ready, sources, economy] = await Promise.all([api('/system/readiness'), api('/system/sources'), api('/system/api-economy')]);
+    const [ready, sources, economy, coverage] = await Promise.all([api('/system/readiness'), api('/system/sources'), api('/system/api-economy'), api('/research/coverage')]);
     const sourceRows = sources.sources || [];
     view.innerHTML = `
       <section class="section"><div class="system-grid">
@@ -631,6 +631,16 @@
         <div class="panel"><div class="panel-head"><h3>Readiness issues</h3><span>${(ready.issues||[]).length}</span></div><div class="panel-body issue-list">
           ${(ready.issues||[]).length ? ready.issues.map(i=>`<div class="issue"><div>${outcomeBadge(i.severity)}</div><p><b>${esc(i.area)}</b> — ${esc(i.message)}</p></div>`).join('') : '<div class="stat-line"><span>No current readiness issues</span><strong>✓</strong></div>'}
         </div></div>
+      </section>
+      <section class="section">${sectionHead('Coverage map', 'Every sport is split into country, competition and division slices before decisions are made')}
+        <div class="panel flush"><div class="panel-body">${table([
+          {label:'Sport', render:r=>`<span class="primary-cell">${esc(r.sport)}</span>`},
+          {label:'Slices', num:true, render:r=>num(r.slices)},
+          {label:'Games', num:true, render:r=>num(r.events)},
+          {label:'Candidates', num:true, render:r=>num(r.recommendations)},
+          {label:'Cache reuse', num:true, render:r=>num(r.cache_hits)},
+          {label:'Issues', num:true, render:r=>num(r.failures)},
+        ], coverage.by_sport || []) || '<div class="empty-state">No daily coverage recorded yet.</div>'}</div></div>
       </section>
       <section class="section">${sectionHead('Sources', 'What Sabi Boy has actually been using and how those sources are behaving')}
         <div class="panel flush"><div class="panel-body">${table([

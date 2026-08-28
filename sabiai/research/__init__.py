@@ -6,6 +6,8 @@ from .persistence import PersistentResearchCase, ResearchCaseStore
 from .reviewer import ReviewQuestion, SkepticReviewPlan, SkepticReviewPlanner
 from .synthesis import ResearchSummary, ResearchSynthesizer
 from .tasks import ResearchTask, ResearchTaskPlanner
+from .decision import CrossSportDecisionPass
+from .sharded import ResearchSlice, ShardedDailyResearch, build_slices
 
 __all__ = [
     "Evidence",
@@ -29,4 +31,8 @@ __all__ = [
     "ReviewQuestion",
     "SkepticReviewPlan",
     "SkepticReviewPlanner",
+    "CrossSportDecisionPass",
+    "ResearchSlice",
+    "ShardedDailyResearch",
+    "build_slices",
 ]

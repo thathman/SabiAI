@@ -21,9 +21,9 @@ class DailyResearchLog:
             conn.execute(
                 """INSERT INTO daily_research_runs(
                        run_key,scan_date,generated_at,model,events_considered,
-                       source_failures_json,recommendations_json,notes_json,usage_json,push_json
-                       ,strategy_plans_json
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                       source_failures_json,recommendations_json,all_recommendations_json,coverage_json,
+                       notes_json,usage_json,push_json,strategy_plans_json
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(run_key) DO UPDATE SET
                        scan_date=excluded.scan_date,
                        generated_at=excluded.generated_at,
@@ -31,6 +31,8 @@ class DailyResearchLog:
                        events_considered=excluded.events_considered,
                        source_failures_json=excluded.source_failures_json,
                        recommendations_json=excluded.recommendations_json,
+                       all_recommendations_json=excluded.all_recommendations_json,
+                       coverage_json=excluded.coverage_json,
                        notes_json=excluded.notes_json,
                        usage_json=excluded.usage_json,
                        push_json=excluded.push_json,
@@ -43,6 +45,8 @@ class DailyResearchLog:
                     int(report.get("events_considered") or 0),
                     _json(report.get("source_failures") or []),
                     _json(report.get("recommendations") or []),
+                    _json(report.get("all_recommendations") or report.get("recommendations") or []),
+                    _json(report.get("coverage") or {}),
                     _json(report.get("notes") or []),
                     _json(report.get("usage") or {}),
                     _json(report.get("push") or {}),
@@ -115,6 +119,8 @@ class DailyResearchLog:
             "events_considered": int(row["events_considered"] or 0),
             "source_failures": _load(row["source_failures_json"], []),
             "recommendations": _load(row["recommendations_json"], []),
+            "all_recommendations": _load(row["all_recommendations_json"], []),
+            "coverage": _load(row["coverage_json"], {}),
             "notes": _load(row["notes_json"], []),
             "usage": _load(row["usage_json"], {}),
             "push": _load(row["push_json"], {}),

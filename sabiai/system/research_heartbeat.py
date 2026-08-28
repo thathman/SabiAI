@@ -15,6 +15,7 @@ from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport, WebPushService
 from sabiai.sources import SourceRequest, SourceService, default_source_bundle
 from sabiai.storage import BankrollLedger, DailyResearchLog, PickRecordService, SabiDatabase, StrategyPlanStore
+from sabiai.research import ShardedDailyResearch
 from sabiai.strategy import StrategyChainStore, StrategyLearningService, StrategyPlanner, StrategyTicketService
 
 from .jobs import JobService
@@ -27,6 +28,15 @@ _LEAGUES = {
     "baseball": ("mlb", "baseball"),
     "ice_hockey": ("nhl", "hockey"),
     "ice hockey": ("nhl", "hockey"),
+}
+
+_SCOPE_DEFAULTS = {
+    "football": ("England", "1"),
+    "soccer": ("England", "1"),
+    "basketball": ("USA", "1"),
+    "baseball": ("USA", "1"),
+    "ice_hockey": ("USA", "1"),
+    "ice hockey": ("USA", "1"),
 }
 
 
@@ -47,10 +57,11 @@ def collect_fixtures(
     settings: Settings,
     *,
     now: datetime | None = None,
-    max_events: int = 60,
+    max_events: int | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
     """Collect a small, normalized fixture packet using direct source adapters only."""
 
+    max_events = max(1, int(max_events if max_events is not None else getattr(settings, "research_max_events", 60)))
     database = SabiDatabase(settings.v2_db)
     database.initialize()
     bundle = default_source_bundle(settings)
@@ -60,7 +71,10 @@ def collect_fixtures(
     failures: list[str] = []
     seen: set[tuple[str, str]] = set()
 
-    for raw_sport in settings.research_sports:
+    configured_sports = [str(raw).strip().casefold() for raw in settings.research_sports if str(raw).strip()]
+    per_sport_limit = max(1, min(int(getattr(settings, "research_max_events_per_sport", 20)), max_events))
+    sport_counts: dict[str, int] = {}
+    for raw_sport in configured_sports:
         sport = str(raw_sport).strip().casefold()
         if not sport:
             continue
@@ -85,7 +99,11 @@ def collect_fixtures(
             )
             try:
                 response = service.execute(request, bundle.fetchers, allow_paid=False)
+                default_country, default_division = _SCOPE_DEFAULTS.get(sport, ("Unresolved", "Unresolved"))
                 for event in _normalize_events(response.payload, sport=sport, source=response.source_name):
+                    event.setdefault("competition", league or "Unresolved")
+                    event.setdefault("country", default_country)
+                    event.setdefault("division", default_division)
                     # Providers may return a useful surrounding schedule even when
                     # a date was supplied. A daily run must never promote a future
                     # or past fixture; enforce the local calendar date here.
@@ -95,7 +113,10 @@ def collect_fixtures(
                     if not key[0] or key in seen:
                         continue
                     seen.add(key)
+                    if sport_counts.get(sport, 0) >= per_sport_limit:
+                        continue
                     events.append(event)
+                    sport_counts[sport] = sport_counts.get(sport, 0) + 1
                     sport_events_added = True
                     if len(events) >= max_events:
                         break
@@ -172,6 +193,14 @@ def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[d
             continue
         starts_at = _first(row, "strTimestamp", "date", "startTime", "dateEvent", "starts_at", "kickoffTime")
         league = _first(row, "strLeague", "tournament", "league", "competition", "category")
+        competition_row = competitions[0] if competitions and isinstance(competitions[0], dict) else {}
+        country = _first(row, "strCountry", "country", "countryName", "country_name", "region", "nation")
+        division = _first(row, "strDivision", "division", "divisionName", "division_name", "tier", "level", "leagueLevel")
+        if isinstance(competition_row, dict):
+            league_obj = competition_row.get("league") if isinstance(competition_row.get("league"), dict) else {}
+            country = country or _first(competition_row, "country", "countryName", "region") or _first(league_obj, "country", "countryName")
+            division = division or _first(competition_row, "division", "divisionName", "tier", "level") or _first(league_obj, "division", "divisionName", "tier", "level")
+            league = league or _first(competition_row, "name", "displayName") or _first(league_obj, "name", "displayName")
         event_id = _first(row, "idEvent", "eventId", "id", "uid")
         item: dict[str, Any] = {
             "sport": sport,
@@ -179,6 +208,8 @@ def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[d
             "home": home,
             "away": away,
             "competition": league,
+            "country": country,
+            "division": division,
             "starts_at": starts_at,
             "event_id": event_id,
             "source": source,
@@ -243,21 +274,23 @@ def call_research_model(
     *,
     day: str,
     events: list[dict[str, Any]],
+    scope: dict[str, str] | None = None,
+    max_tokens: int = 2200,
 ) -> tuple[dict[str, Any], str, dict[str, Any]]:
     if not settings.research_api_key:
         raise RuntimeError(
             "Direct research model key is not configured. Set SABIAI_RESEARCH_API_KEY "
             "or ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY in the private runtime environment."
         )
-    packet = {"date": day, "events": events}
+    packet = {"date": day, "scope": scope or {}, "events": events}
     prompt = (
         "You are the compact Sabi Boy daily pick analyst. Use only the supplied fixture packet; "
         "never invent an event, price, injury, result or source. Return JSON only in this shape: "
         '{"recommendations":[{"sport":"...","event":"exact supplied event","market":"...",'
-        '"pick":"...","decimal_odds":2.1,"confidence_pct":65,"reason":"..."}],'
+        '"pick":"...","decimal_odds":2.1,"confidence_pct":65,"estimated_probability_pct":67,"reason":"..."}],'
         '"notes":["..."]}. Recommend only when the packet includes a usable decimal price; '
         "otherwise return no recommendation and explain the missing price in notes. Use decimal odds "
-        "and confidence percentages. Never recommend Stake or 1xBet, never claim a bet was placed, "
+        "and confidence percentages. Include estimated_probability_pct only when justified by the supplied packet. Never recommend Stake or 1xBet, never claim a bet was placed, "
         "and never write to a betting ledger. Keep reasons short and identify the supplied source.\n\n"
         + json.dumps(packet, ensure_ascii=False, separators=(",", ":"))
     )
@@ -268,7 +301,7 @@ def call_research_model(
             {"role": "user", "content": prompt},
         ],
         "temperature": 0,
-        "max_tokens": 2200,
+        "max_tokens": max(400, int(max_tokens)),
     }
     try:
         response = _post_chat(settings.research_api_base_url, settings.research_api_key, body)
@@ -317,10 +350,16 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
     jobs.start("daily-picks")
     try:
         day, events, failures = collect_fixtures(settings, now=now)
-        result, model, usage = call_research_model(settings, day=day, events=events)
-        recommendations = _validated_recommendations(result, events)
+        sharded = ShardedDailyResearch(settings, database).run(day=day, events=events, source_failures=failures)
+        recommendations = sharded["recommendations"]
+        all_recommendations = sharded["all_recommendations"]
+        model = sharded["model"]
+        usage = sharded["usage"]
+        failures = sharded["failures"]
         generated_at = datetime.now(timezone.utc)
-        run_id = generated_at.isoformat()
+        # The slice audit rows and the consolidated daily log share one stable
+        # run id so the coverage map can be opened by the same identifier.
+        run_id = str(sharded.get("run_id") or generated_at.isoformat())
         # The current run plus six prior daily runs form the seven-day window for
         # the weekly long-shot strategy. The daily chain itself only sees `current`.
         recent_scans = DailyResearchLog(database).list(limit=6)
@@ -352,12 +391,15 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "events_considered": len(events),
             "source_failures": failures,
             "recommendations": recommendations,
+            "all_recommendations": all_recommendations,
+            "coverage": sharded["coverage"],
+            "slices": sharded["slice_rows"],
             "strategy_plans": strategy_plans,
             "recorded_picks": recorded_picks,
             "recorded_tickets": recorded_tickets,
             "strategy_learning": strategy_learning,
             "chain_legacy_reconciliation": legacy_chain_reconciliation,
-            "notes": _notes(result),
+            "notes": _notes(sharded.get("notes") or []),
             "usage": usage,
         }
         push = WebPushService(database, settings).send(_push_payload(day, recommendations, failures))
@@ -507,6 +549,8 @@ def _validated_recommendations(result: dict[str, Any], events: list[dict[str, An
                 "reason": str(item.get("reason") or "").strip()[:500],
                 "source": source_event.get("source"),
                 "competition": source_event.get("competition"),
+                "country": source_event.get("country") or "Unresolved",
+                "division": source_event.get("division") or "Unresolved",
                 "starts_at": source_event.get("starts_at"),
                 "source_event_id": source_event.get("event_id"),
             }

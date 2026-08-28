@@ -50,6 +50,11 @@ class Settings:
         "baseball",
         "ice_hockey",
     )
+    research_max_events: int = 60
+    research_max_events_per_sport: int = 20
+    research_slice_workers: int = 4
+    research_slice_ttl_seconds: int = 86400
+    research_max_recommendations: int = 18
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -169,6 +174,11 @@ class Settings:
                 if item.strip()
             )
             or cls.research_sports,
+            research_max_events=max(1, int(os.getenv("SABIAI_RESEARCH_MAX_EVENTS", "60"))),
+            research_max_events_per_sport=max(1, int(os.getenv("SABIAI_RESEARCH_MAX_EVENTS_PER_SPORT", "20"))),
+            research_slice_workers=max(1, min(int(os.getenv("SABIAI_RESEARCH_SLICE_WORKERS", "4")), 12)),
+            research_slice_ttl_seconds=max(300, int(os.getenv("SABIAI_RESEARCH_SLICE_TTL_SECONDS", "86400"))),
+            research_max_recommendations=max(1, min(int(os.getenv("SABIAI_RESEARCH_MAX_RECOMMENDATIONS", "18")), 100)),
         )
 
 

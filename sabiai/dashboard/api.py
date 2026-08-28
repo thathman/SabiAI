@@ -15,6 +15,7 @@ from sabiai.storage import (
     PerformanceAnalytics,
     SabiDatabase,
     StrategyPlanStore,
+    ResearchSliceStore,
 )
 from sabiai.system import SystemReadinessService
 from sabiai.strategy import StrategyChainStore, StrategyLearningService
@@ -180,6 +181,19 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
         database = db()
         database.initialize()
         return {"chain": StrategyChainStore(database).get()}
+
+    @router.get("/research/coverage")
+    def research_coverage(run_id: str | None = None):
+        database = db()
+        database.initialize()
+        return ResearchSliceStore(database).coverage(run_id)
+
+    @router.get("/research/cache")
+    def research_cache(event: str = Query(..., min_length=1), scan_date: str | None = None,
+                       max_age_seconds: int = Query(86400, ge=60, le=604800)):
+        database = db()
+        database.initialize()
+        return ResearchSliceStore(database).find_event(event, scan_date=scan_date, max_age_seconds=max_age_seconds) or {"cache_hit": False, "event": event, "recommendations": []}
 
     @router.get("/performance/competitions")
     def performance_competitions():

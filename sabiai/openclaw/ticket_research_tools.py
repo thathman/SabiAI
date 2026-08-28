@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sabiai.tickets import TicketResearchPlanner
-from sabiai.storage import DailyResearchLog
+from sabiai.storage import DailyResearchLog, ResearchSliceStore
 
 from .helpers import ticket_from_args
 from .serializers import json_value
@@ -29,6 +29,12 @@ class TicketResearchTools:
         result["daily_scan_context"] = DailyResearchLog(
             self.app._db(initialize=True)
         ).context(limit=int(args.get("scan_limit", 3)))
+        cache = ResearchSliceStore(self.app._db(initialize=True))
+        result["cached_event_context"] = {
+            leg.event: cache.find_event(leg.event, scan_date=args.get("scan_date"), max_age_seconds=int(args.get("cache_max_age_seconds", 86400)))
+            for leg in plan.legs
+            if leg.event
+        }
         return result
 
     def snapshot(self, args: dict) -> dict:

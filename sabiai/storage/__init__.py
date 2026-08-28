@@ -7,6 +7,7 @@ from .history import HistoryService
 from .offers import OfferObservation, OfferObservationStore
 from .sqlite import SabiDatabase
 from .research_log import DailyResearchLog
+from .research_slices import ResearchSliceStore
 from .picks import PickRecordService
 from .strategy import StrategyPlanStore
 
@@ -21,6 +22,7 @@ __all__ = [
     "PerformanceAnalytics",
     "SabiDatabase",
     "DailyResearchLog",
+    "ResearchSliceStore",
     "PickRecordService",
     "StrategyPlanStore",
     "TicketDraft",

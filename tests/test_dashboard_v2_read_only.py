@@ -44,6 +44,8 @@ def test_v2_dashboard_router_has_no_mutating_http_methods(tmp_path):
     assert "/api/v2/system/readiness" in paths
     assert "/api/v2/strategies/plans" in paths
     assert "/api/v2/strategies/learning" in paths
+    assert "/api/v2/research/coverage" in paths
+    assert "/api/v2/research/cache" in paths
 
 
 def test_dashboard_router_exposes_detailed_ticket_and_performance_reads(tmp_path):
