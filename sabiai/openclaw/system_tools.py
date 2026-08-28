@@ -83,6 +83,9 @@ class SystemTools:
         data["state"] = report.label
         data["can_research"] = report.can_research
         data["can_build_ticket"] = report.can_build_ticket
+        data["latest_daily_research"] = DailyResearchLog(
+            self.app._db(initialize=True)
+        ).latest()
         return data
 
     def sources(self, args: dict) -> dict:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sabiai.tickets import TicketResearchPlanner
+from sabiai.storage import DailyResearchLog
 
 from .helpers import ticket_from_args
 from .serializers import json_value
@@ -24,7 +25,11 @@ class TicketResearchTools:
     def plan(self, args: dict) -> dict:
         ticket = ticket_from_args(self.app, args)
         plan = self.planner.plan(ticket)
-        return json_value(plan)
+        result = json_value(plan)
+        result["daily_scan_context"] = DailyResearchLog(
+            self.app._db(initialize=True)
+        ).context(limit=int(args.get("scan_limit", 3)))
+        return result
 
     def snapshot(self, args: dict) -> dict:
         ticket = ticket_from_args(self.app, args)

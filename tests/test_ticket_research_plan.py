@@ -52,6 +52,8 @@ def test_ticket_research_plan_is_market_specific_and_explicit(tmp_path: Path):
     assert data["legs"][0]["market_focus"]
     assert data["legs"][1]["sport"] == "Volleyball"
     assert data["legs"][1]["market_focus"]
+    assert "daily_scan_context" in data
+    assert data["daily_scan_context"]["latest"] is None
 
 
 def test_large_ticket_automatically_requests_skeptic_review(tmp_path: Path):
