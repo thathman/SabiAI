@@ -125,7 +125,7 @@ class ResearchSliceStore:
             bucket["recommendations"] += len(row.get("recommendations") or [])
             bucket["cache_hits"] += 1 if row.get("cache_hit") else 0
             bucket["failures"] += len(row.get("source_failures") or []) + (1 if row.get("status") == "failed" else 0)
-            if row.get("status") in {"failed", "empty"} or row.get("country") == "Unresolved" or row.get("division") == "Unresolved":
+            if row.get("status") in {"failed", "empty", "skipped_no_price"} or row.get("country") == "Unresolved" or row.get("division") == "Unresolved":
                 gaps.append({key: row.get(key) for key in ("sport", "country", "competition", "division", "status", "error")})
         return {"run_id": run_id, "slices": rows, "by_sport": list(by_sport.values()), "gaps": gaps,
                 "slice_count": len(rows), "cache_hits": sum(1 for row in rows if row.get("cache_hit")),
