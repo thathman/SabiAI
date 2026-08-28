@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from sabiai.config import Settings
+from sabiai.notifications import PushDeliveryReport
 from sabiai.storage import DailyResearchLog, SabiDatabase
 from sabiai.openclaw.gateway import SabiToolGateway
 from sabiai.system import research_heartbeat as heartbeat
@@ -172,3 +173,60 @@ def test_system_timer_owns_daily_research_and_agent_cron_is_disabled():
     assert "OnCalendar=*-*-* 08:00:00" in timer
     assert 'disable_agent_job "sabi-boy-daily-picks"' in installer
     assert "sabi-boy-research.service" in prepare
+
+
+def test_daily_heartbeat_persists_strategy_plans_and_records_precision_pick(monkeypatch, tmp_path):
+    config = settings(tmp_path)
+    database = SabiDatabase(config.v2_db)
+    database.initialize()
+    from sabiai.storage import BankrollLedger
+
+    BankrollLedger(database).record("opening_balance", "1000")
+    monkeypatch.setattr(
+        heartbeat,
+        "collect_fixtures",
+        lambda settings, now=None: (
+            "2026-08-28",
+            [{
+                "sport": "football",
+                "event": "Home vs Away",
+                "competition": "Premier League",
+                "starts_at": "2099-08-28T18:00:00+00:00",
+                "event_id": "sr:match:1",
+                "source": "Parse · SportyBet",
+                "odds": [{"label": "Home", "decimal_odds": 1.80}],
+            }],
+            [],
+        ),
+    )
+    monkeypatch.setattr(
+        heartbeat,
+        "call_research_model",
+        lambda settings, day, events: (
+            {"recommendations": [{
+                "sport": "football",
+                "event": "Home vs Away",
+                "market": "Home to win",
+                "pick": "Home",
+                "decimal_odds": 1.80,
+                "confidence_pct": 67,
+                "reason": "Fresh source price.",
+            }], "notes": []},
+            "qwen3.8-max-preview",
+            {"prompt_tokens": 10, "completion_tokens": 5},
+        ),
+    )
+    monkeypatch.setattr(
+        heartbeat.WebPushService,
+        "send",
+        lambda self, payload: PushDeliveryReport(False, 0, 0, 0, 0),
+    )
+
+    report = heartbeat.run_research_heartbeat(config)
+    assert report["strategy_plans"]
+    assert report["recorded_picks"][0]["owner"] == "sabi_boy"
+    assert DailyResearchLog(database).latest()["strategy_plans"]
+    with database.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM picks_v2 WHERE owner='sabi_boy' AND record_kind='pick'").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM picks_v2 WHERE owner='sabi_boy' AND record_kind='tip'").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM tickets WHERE strategy_code='daily_chain_1_30'").fetchone()[0] == 1

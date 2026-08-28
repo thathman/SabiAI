@@ -103,6 +103,29 @@ def test_live_heartbeat_updates_event_without_settling(tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM settlement_audit").fetchone()[0] == 0
 
 
+def test_non_thesportsdb_source_can_resolve_exact_event_for_result_heartbeat(tmp_path):
+    db = _db(tmp_path)
+    with db.connect() as conn:
+        event_day = conn.execute("SELECT starts_at FROM events WHERE id='e1'").fetchone()[0][:10]
+    with db.transaction() as conn:
+        conn.execute("DELETE FROM event_source_ids WHERE event_id='e1'")
+        conn.execute("INSERT INTO event_source_ids(event_id,source_name,source_event_id) VALUES('e1','Parse · SportyBet','sr:match:1')")
+    service = AutomaticSettlementService(db, fetchers={})
+    calls = []
+
+    def fake_fetch(request):
+        calls.append(request.capability)
+        if request.capability == "event_search":
+            return {"raw": {"events": [{"strEvent": "Home vs Away", "dateEvent": event_day, "idEvent": "99"}]}}
+        return {"raw": {"event": {"strStatus": "FT", "intHomeScore": "2", "intAwayScore": "1"}}}
+
+    service._thesportsdb_fallback.adapter.fetch = fake_fetch
+    report = service.run()
+    assert report.finished_events == 1
+    assert report.picks_settled == 3
+    assert calls == ["event_search", "event_lookup"]
+
+
 def test_score_evaluator_handles_draw_no_bet_and_team_totals():
     snapshot = _snapshot()
     base = {

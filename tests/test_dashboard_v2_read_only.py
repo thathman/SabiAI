@@ -42,6 +42,8 @@ def test_v2_dashboard_router_has_no_mutating_http_methods(tmp_path):
     assert "/api/v2/tickets" in paths
     assert "/api/v2/blog" in paths
     assert "/api/v2/system/readiness" in paths
+    assert "/api/v2/strategies/plans" in paths
+    assert "/api/v2/strategies/learning" in paths
 
 
 def test_dashboard_router_exposes_detailed_ticket_and_performance_reads(tmp_path):
@@ -85,6 +87,47 @@ def test_notification_history_is_readable_from_dashboard(tmp_path):
     assert response.status_code == 200
     assert response.json()["rows"][0]["title"] == "Sabi Boy picks"
     assert response.json()["rows"][0]["delivered"] == 2
+
+
+def test_strategy_plan_read_model_is_readable_from_dashboard(tmp_path):
+    settings = _settings(tmp_path)
+    database = SabiDatabase(settings.v2_db)
+    database.initialize()
+    from sabiai.storage import StrategyPlanStore
+
+    StrategyPlanStore(database).save_many(
+        [{
+            "id": "plan-1",
+            "strategy_code": "daily_chain_1_30",
+            "name": "Daily 1.30 Chain",
+            "status": "ready",
+            "target_odds": "1.30",
+            "combined_odds": "1.34",
+            "suggested_stake": "300.00",
+            "confidence_pct": 65,
+            "rationale": "Fresh legs.",
+            "candidate_count": 2,
+            "candidates": [],
+            "generated_at": "2026-08-28T08:00:00+00:00",
+        }]
+    )
+    app = FastAPI()
+    app.include_router(create_v2_dashboard_router(settings))
+    response = TestClient(app).get("/api/v2/strategies/plans")
+    assert response.status_code == 200
+    assert response.json()["rows"][0]["strategy_code"] == "daily_chain_1_30"
+
+
+def test_strategy_learning_read_model_is_owner_scoped(tmp_path):
+    settings = _settings(tmp_path)
+    db = SabiDatabase(settings.v2_db)
+    db.initialize()
+    app = FastAPI()
+    app.include_router(create_v2_dashboard_router(settings))
+    response = TestClient(app).get("/api/v2/strategies/learning")
+    assert response.status_code == 200
+    assert response.json()["owner"] == "sabi_boy"
+    assert response.json()["policy"]["automatic_changes"] is False
 
 
 def test_static_ticket_analytics_routes_are_not_shadowed_by_ticket_detail(tmp_path):
