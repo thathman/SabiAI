@@ -111,6 +111,7 @@ def test_parse_sportybet_fixture_data_is_normalized_with_prices():
 def test_event_local_date_handles_iso_epoch_and_rejects_unknown():
     assert heartbeat._event_local_date("2026-08-28T00:30:00+00:00", "Africa/Lagos") == "2026-08-28"
     assert heartbeat._event_local_date("1787913000000", "Africa/Lagos") == "2026-08-28"
+    assert heartbeat._event_local_date(1787913000, "Africa/Lagos") == "2026-08-28"
     assert heartbeat._event_local_date("not-a-date", "Africa/Lagos") is None
 
 

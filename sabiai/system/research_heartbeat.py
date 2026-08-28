@@ -118,6 +118,14 @@ def _event_local_date(value: object, timezone_name: str) -> str | None:
         zone = ZoneInfo(timezone_name)
     except Exception:
         zone = timezone.utc
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            epoch = float(value)
+            if epoch > 100_000_000_000:
+                epoch /= 1000
+            return datetime.fromtimestamp(epoch, timezone.utc).astimezone(zone).date().isoformat()
+        except (OverflowError, OSError, ValueError):
+            return None
     text = str(value).strip()
     if text.isdigit():
         try:
