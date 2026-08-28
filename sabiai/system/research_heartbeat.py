@@ -237,7 +237,13 @@ def call_research_model(
             and settings.research_fallback_api_base_url
         ):
             raise RuntimeError(f"Primary research model failed: {_safe_error(primary_exc)}") from primary_exc
-        fallback_body = {**body, "model": settings.research_fallback_model}
+        # Keep fallback responses compact: this path is for availability, not
+        # for expanding the research context or spending a second full budget.
+        fallback_body = {
+            **body,
+            "model": settings.research_fallback_model,
+            "max_tokens": min(int(body.get("max_tokens") or 2200), 1600),
+        }
         try:
             response = _post_chat(
                 settings.research_fallback_api_base_url,

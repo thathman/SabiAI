@@ -137,13 +137,28 @@ class Settings:
                 os.getenv("SABIAI_RESEARCH_MODEL", "qwen3.8-max-preview").strip()
                 or "qwen3.8-max-preview"
             ),
-            research_fallback_model=(os.getenv("SABIAI_RESEARCH_FALLBACK_MODEL") or "").strip()
-            or None,
-            research_fallback_api_key=(os.getenv("SABIAI_RESEARCH_FALLBACK_API_KEY") or "").strip()
-            or None,
+            # Keep the daily system-owned scan alive when the preview model is
+            # temporarily busy.  The lower-latency Alibaba fallback uses the
+            # same private token-plan endpoint/key unless an explicit fallback
+            # endpoint is supplied.  OpenCode can still be selected by setting
+            # all three SABIAI_RESEARCH_FALLBACK_* variables in the private
+            # runtime environment.
+            research_fallback_model=(
+                os.getenv("SABIAI_RESEARCH_FALLBACK_MODEL", "qwen3.6-flash").strip()
+                or "qwen3.6-flash"
+            ),
+            research_fallback_api_key=(
+                os.getenv("SABIAI_RESEARCH_FALLBACK_API_KEY") or os.getenv("SABIAI_RESEARCH_API_KEY")
+                or os.getenv("ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY") or ""
+            ).strip() or None,
             research_fallback_api_base_url=(
-                (os.getenv("SABIAI_RESEARCH_FALLBACK_API_BASE_URL") or "").strip().rstrip("/")
-                or None
+                (
+                    os.getenv("SABIAI_RESEARCH_FALLBACK_API_BASE_URL")
+                    or os.getenv(
+                        "SABIAI_RESEARCH_API_BASE_URL",
+                        "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+                    )
+                ).strip().rstrip("/") or None
             ),
             research_sports=tuple(
                 item.strip()

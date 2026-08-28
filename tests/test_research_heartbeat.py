@@ -128,6 +128,41 @@ def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_p
     assert captured["api_key"] == "test-key"
 
 
+def test_primary_model_timeout_uses_configured_fallback(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_post(base_url, api_key, body):
+        calls.append((base_url, api_key, body["model"], body["max_tokens"]))
+        if body["model"] == "qwen3.8-max-preview":
+            raise RuntimeError("read operation timed out")
+        return {
+            "model": "qwen3.6-flash",
+            "choices": [{"message": {"content": '{"recommendations": [], "notes": ["fallback"]}'}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14},
+        }
+
+    monkeypatch.setattr(heartbeat, "_post_chat", fake_post)
+    config = settings(
+        tmp_path,
+        research_fallback_model="qwen3.6-flash",
+        research_fallback_api_key="fallback-key",
+        research_fallback_api_base_url="https://fallback.example/v1",
+    )
+    result, model, usage = heartbeat.call_research_model(config, day="2026-08-28", events=[])
+    assert result["notes"] == ["fallback"]
+    assert model == "qwen3.6-flash"
+    assert usage["total_tokens"] == 14
+    assert calls == [
+        (
+            config.research_api_base_url,
+            "test-key",
+            "qwen3.8-max-preview",
+            2200,
+        ),
+        ("https://fallback.example/v1", "fallback-key", "qwen3.6-flash", 1600),
+    ]
+
+
 def test_scan_log_is_available_to_gateway_context(tmp_path):
     config = settings(tmp_path)
     db = SabiDatabase(config.v2_db)
