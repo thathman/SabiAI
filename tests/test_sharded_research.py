@@ -78,3 +78,16 @@ def test_sharded_research_reuses_cache_without_second_model_call(monkeypatch, tm
     assert first["recommendations"] and second["recommendations"]
     assert len(calls) == 1
     assert second["coverage"]["cache_hits"] == 1
+
+
+def test_sharded_research_does_not_spend_model_call_without_prices(monkeypatch, tmp_path):
+    settings = _settings(tmp_path)
+    db = SabiDatabase(settings.v2_db)
+    db.initialize()
+    calls = []
+    monkeypatch.setattr(research_heartbeat, "call_research_model", lambda *args, **kwargs: calls.append(1))
+    event = _event("football", "No Price FC vs No Price Town", "England", "Premier League", "1")
+    event.pop("odds")
+    result = ShardedDailyResearch(settings, db).run(day="2026-08-28", events=[event])
+    assert calls == []
+    assert result["slice_rows"][0]["status"] == "skipped_no_price"

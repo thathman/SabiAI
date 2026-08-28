@@ -60,6 +60,11 @@ class ShardedDailyResearch:
         uncached: list[tuple[ResearchSlice, str]] = []
         for item in slices:
             key = self.store.cache_key(day, item.scope, item.events)
+            if not any(event.get("odds") for event in item.events):
+                # The direct analyst is price-bound. Do not spend a model call
+                # on a slice that cannot produce a validated recommendation.
+                slice_rows.append(self.store.record_run(run_id=run_id, scan_date=day, scope=item.scope, event_count=len(item.events), status="skipped_no_price", cache_hit=False, events=list(item.events), recommendations=[], source_failures=["No usable decimal price in slice"]))
+                continue
             cached = self.store.get_cached(key)
             if cached:
                 recs = cached.get("recommendations") or []
