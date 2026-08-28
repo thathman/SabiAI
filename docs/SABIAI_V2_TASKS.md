@@ -506,6 +506,13 @@
 - Live HTTPS/PWA smoke passed: `/health` identifies Sabi Boy V2, `/api/v2/strategies/learning` returns the bounded policy, the shell title is `Sabi Boy knows ball`, `/strategies` renders the strategy board and learning policy, and `/hendrix` renders the separate Hendrix record. The expected strict CSP blocks an optional Cloudflare Insights script; application functionality remains healthy.
 - Dell OpenClaw acceptance passed at the current checkout: agent `prediction` resolves to `/home/hendrix/.openclaw/workspace-prediction`, all seven current-format Sabi Boy skills are visible, the V2 gateway exposes 140 tools with no required-tool gaps, and readiness reports `READY`. The latest persisted direct scan remains available to Sabi Boy with three recommendations and two successful push deliveries.
 
+### Phase 16 follow-up evidence — 2026-08-28 (daily research timer recovery)
+
+- The scheduled daily research timer did fire at 08:00 `Africa/Lagos` (07:00 UTC), but the Alibaba `qwen3.8-max-preview` request timed out before producing a report. No picks or tickets were written by that failed attempt.
+- Fix commit `6afc997ff325f29faf803eba927fabe62f5b65cf` adds a default same-credential Alibaba `qwen3.6-flash` fallback when no explicit fallback endpoint is configured, and caps fallback output at 1,600 tokens. Explicit `SABIAI_RESEARCH_FALLBACK_*` variables can still point at another direct provider.
+- Follow-up commit `618965d25e7e8e36abc07bbd4247e228572cf2aa` records a failure notification and installs bounded systemd retry (`Restart=on-failure`, two-minute delay, two starts per 30 minutes). The installed Dell unit was refreshed through the runtime preparation script and the research timer remains active.
+- A manual recovery run at 09:44 UTC completed at 09:46 UTC with the primary model: 53 events, three validated recommendations, one Sabi Boy Precision pick, one Daily 1.30 Chain ticket, three delivered push notifications and no external wager. The public overview and strategy routes now expose the new records.
+
 ---
 
 ## Current release commands

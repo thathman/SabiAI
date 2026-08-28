@@ -40,7 +40,7 @@ Important variables:
 - `SABIAI_RESEARCH_MODEL` — direct daily research model (default `qwen3.8-max-preview`)
 - `SABIAI_RESEARCH_API_KEY` — optional dedicated key; the Dell may use the private `ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY`
 - `SABIAI_RESEARCH_SPORTS` — comma-separated daily fixture sports
-- `SABIAI_RESEARCH_FALLBACK_API_BASE_URL`, `SABIAI_RESEARCH_FALLBACK_API_KEY`, `SABIAI_RESEARCH_FALLBACK_MODEL` — optional direct fallback
+- `SABIAI_RESEARCH_FALLBACK_API_BASE_URL`, `SABIAI_RESEARCH_FALLBACK_API_KEY`, `SABIAI_RESEARCH_FALLBACK_MODEL` — optional direct fallback; when omitted, V2 uses `qwen3.6-flash` on the same Alibaba token-plan endpoint/key for transient primary-model failures
 
 V2 dashboard service:
 
