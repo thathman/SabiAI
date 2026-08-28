@@ -84,14 +84,17 @@ class ShardedDailyResearch:
                     raise
                 result, model, item_usage = call_research_model(self.settings, day=day, events=list(item.events))
             recs = _validated_recommendations(result, list(item.events))
-            self.store.put_cached(cache_key=key, scan_date=day, scope=item.scope, events=list(item.events), recommendations=recs, model=model, usage=item_usage, ttl_seconds=self.settings.research_slice_ttl_seconds)
-            return item, recs, model, item_usage, result.get("notes") if isinstance(result, dict) else []
+            # SQLite writes stay on the coordinator thread. The model calls may
+            # run concurrently, but concurrent cache writes would recreate the
+            # database-lock condition this layer is meant to avoid.
+            return item, key, recs, model, item_usage, result.get("notes") if isinstance(result, dict) else []
         with ThreadPoolExecutor(max_workers=max(1, int(self.settings.research_slice_workers))) as pool:
             futures = {pool.submit(research_one, pair): pair[0] for pair in uncached}
             for future in as_completed(futures):
                 item = futures[future]
                 try:
-                    slice_item, recs, model, item_usage, item_notes = future.result()
+                    slice_item, key, recs, model, item_usage, item_notes = future.result()
+                    self.store.put_cached(cache_key=key, scan_date=day, scope=slice_item.scope, events=list(slice_item.events), recommendations=recs, model=model, usage=item_usage, ttl_seconds=self.settings.research_slice_ttl_seconds)
                     if isinstance(item_notes, list):
                         notes.extend(str(note).strip()[:500] for note in item_notes if str(note).strip())
                     all_rows.extend(recs)

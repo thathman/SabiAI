@@ -76,9 +76,14 @@ class CrossSportDecisionPass:
     @staticmethod
     def _coverage(all_rows: list[dict[str, Any]], selected: list[dict[str, Any]]) -> dict[str, Any]:
         scopes: defaultdict[tuple[str, str, str, str], dict[str, Any]] = defaultdict(lambda: {"events": 0, "candidates": 0, "selected": 0})
+        seen_events: set[tuple[str, str, str, str, str]] = set()
         for row in all_rows:
             key = tuple(str(row.get(field) or "Unresolved") for field in ("sport", "country", "competition", "division"))
             scopes[key]["candidates"] += 1
+            event_key = (*key, str(row.get("event") or ""))
+            if event_key not in seen_events:
+                scopes[key]["events"] += 1
+                seen_events.add(event_key)
         for row in selected:
             key = tuple(str(row.get(field) or "Unresolved") for field in ("sport", "country", "competition", "division"))
             scopes[key]["selected"] += 1
