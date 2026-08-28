@@ -277,6 +277,29 @@ def test_collect_fixtures_prefers_price_bearing_flashscore_feed(monkeypatch, tmp
     assert calls[0][3]["day_offset"] == 0
 
 
+def test_collect_fixtures_rejects_provider_fallback_to_wrong_sport(monkeypatch, tmp_path):
+    config = settings(
+        tmp_path,
+        research_sports=("cycling",),
+        parse_api_key="parse-key",
+        parse_flashscore_scraper_id="flashscore",
+    )
+
+    class Response:
+        source_name = "Parse · Flashscore"
+        failures = ()
+        payload = {"raw": {"data": {"sport": "football", "matches": [{"match_id": "wrong"}]}}}
+
+    monkeypatch.setattr(heartbeat.SourceService, "execute", lambda *_args, **_kwargs: Response())
+    _day, events, failures = heartbeat.collect_fixtures(
+        config,
+        now=datetime(2026, 8, 28, 8, 0, tzinfo=ZoneInfo("Africa/Lagos")),
+    )
+
+    assert events == []
+    assert any("returned football data for requested cycling" in item for item in failures)
+
+
 def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_path):
     captured = {}
 

@@ -142,6 +142,11 @@ def collect_fixtures(
             try:
                 response = service.execute(request, bundle.fetchers, allow_paid=False)
                 failures.extend(getattr(response, "failures", ()) or ())
+                provider_sport = _provider_sport(response.payload)
+                if provider_sport and not _same_sport(provider_sport, sport):
+                    raise RuntimeError(
+                        f"{response.source_name} returned {provider_sport} data for requested {sport}; ignored."
+                    )
                 default_country, default_division = _SCOPE_DEFAULTS.get(sport, ("Unresolved", "Unresolved"))
                 for event in _normalize_events(response.payload, sport=sport, source=response.source_name):
                     event.setdefault("competition", league or "Unresolved")
@@ -241,6 +246,35 @@ def _event_merge_key(event: dict[str, Any], timezone_name: str) -> tuple[str, st
     name = _norm(str(event.get("event") or ""))
     local_day = _event_local_date(event.get("starts_at"), timezone_name)
     return name, local_day or str(event.get("starts_at") or "")
+
+
+def _provider_sport(payload: object) -> str | None:
+    """Read a source-declared sport when a provider exposes one at the envelope level."""
+
+    if not isinstance(payload, dict):
+        return None
+    raw = payload.get("raw")
+    data = raw.get("data") if isinstance(raw, dict) and isinstance(raw.get("data"), dict) else None
+    for candidate in (data, raw, payload):
+        if isinstance(candidate, dict):
+            value = candidate.get("sport")
+            if value is not None and str(value).strip():
+                return str(value).strip()
+    return None
+
+
+def _same_sport(left: str, right: str) -> bool:
+    aliases = {
+        "soccer": "football",
+        "ice_hockey": "hockey",
+        "ice hockey": "hockey",
+        "table tennis": "table_tennis",
+        "beach volleyball": "beach_volleyball",
+        "american football": "american_football",
+    }
+    left_key = aliases.get(left.casefold().replace("-", "_"), left.casefold().replace("-", "_"))
+    right_key = aliases.get(right.casefold().replace("-", "_"), right.casefold().replace("-", "_"))
+    return left_key == right_key
 
 
 def _merge_event(target: dict[str, Any], incoming: dict[str, Any]) -> None:
