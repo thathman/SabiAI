@@ -523,6 +523,13 @@
 - This code push does not itself claim a fresh Dell deployment or a green final-release gate; the Dell must pull this exact SHA through the controlled runtime workflow before its timers use the date/chain fixes.
 - A read-only second-model review identified and the fix commit closes four correctness gaps: per-sport source fallback after Parse failure, one chain ticket per calendar date, safe void/refund reconciliation for pre-chain pending tickets, and retry-safe payout/chain side effects when a SQLite lock interrupts settlement.
 
+### Phase 16 follow-up evidence — 2026-08-28 (sharded multi-sport research)
+
+- Implementation commit `1e65a1dc8dc88542598358d64ae8e0d6a3f17028` adds the bounded sport → country → competition/division research slices described in ADR 0001. Fixture collection now applies a per-sport cap and preserves provider geography/division metadata, so a large football schedule cannot consume the entire daily packet.
+- Each slice is independently model-assessed, retried without cancelling sibling slices, and stored in the V2 `research_slice_cache` with a same-day freshness window. A ticket research plan can look up an exact event in that cache, avoiding a repeat full-day scan. Slice outcomes, cache hits, failures and coverage gaps are recorded in `research_slice_runs` and linked to the consolidated daily run.
+- The cross-sport Decision Pass calculates implied probability and value edge, requires a confidence/value floor, and round-robins qualifying sports with per-sport and per-competition exposure caps. It does not pad a report when no sport has a supported edge. The dashboard System page exposes the resulting Coverage map; OpenClaw exposes `research.coverage` and `research.cache.lookup`.
+- PWA cache/version advanced to `2.3.0.0` so the coverage surface cannot be hidden by an older mobile shell. Local validation at this commit: **286 passed, 1 warning** (the existing Starlette/httpx deprecation warning); compile and diff checks passed. Dell deployment remains a separate controlled pull of this exact SHA.
+
 ---
 
 ## Current release commands
