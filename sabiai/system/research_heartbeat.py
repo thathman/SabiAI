@@ -48,8 +48,15 @@ def _local_date(settings: Settings, now: datetime | None = None) -> str:
     return (now or datetime.now(timezone.utc)).astimezone(zone).date().isoformat()
 
 
-def _request_key(sport: str, day: str, source: str | None = None) -> str:
-    digest = hashlib.sha256(f"daily-fixtures|{sport}|{day}|{source or 'fallback'}".encode()).hexdigest()[:24]
+def _request_key(
+    sport: str,
+    day: str,
+    source: str | None = None,
+    capability: str = "fixtures",
+) -> str:
+    digest = hashlib.sha256(
+        f"daily-fixtures|{capability}|{sport}|{day}|{source or 'fallback'}".encode()
+    ).hexdigest()[:24]
     return f"daily-fixtures:{digest}"
 
 
@@ -86,23 +93,55 @@ def collect_fixtures(
         metadata: dict[str, Any] = {"date": day}
         if league:
             metadata.update({"league": league, "league_slug": league, "espn_sport": espn_sport})
-        source_order: tuple[str | None, ...] = (
-            ("Parse · SportyBet", None)
-            if "Parse · SportyBet" in bundle.fetchers and sport in {"football", "soccer", "basketball", "ice_hockey"}
-            else (None,)
-        )
+        # Use the Nigerian bookmaker feed first where configured, then use
+        # Parse's odds-bearing Flashscore/ESPN feeds to fill non-football and
+        # missing-price coverage.  The final generic request remains a
+        # schedule-only fallback.  Each provider gets its own cache key so a
+        # schedule response can never mask a later odds response.
+        attempts: list[tuple[str, str | None, dict[str, Any], bool]] = []
+        if (
+            "Parse · SportyBet" in bundle.fetchers
+            and sport in {"football", "soccer", "basketball", "ice_hockey"}
+        ):
+            attempts.append(("fixtures", "Parse · SportyBet", metadata, True))
+        if "Parse · Flashscore" in bundle.fetchers:
+            attempts.append(
+                (
+                    "fixtures_with_odds",
+                    "Parse · Flashscore",
+                    {"sport": sport, "day_offset": 0},
+                    True,
+                )
+            )
+        if "Parse · ESPN" in bundle.fetchers and league:
+            attempts.append(
+                (
+                    "fixtures_with_odds",
+                    "Parse · ESPN",
+                    {
+                        "league": league,
+                        "dates": day.replace("-", ""),
+                        "limit": per_sport_limit,
+                    },
+                    True,
+                )
+            )
+        attempts.append(("fixtures", None, metadata, False))
+
         sport_events_added = False
-        for source_name in source_order:
+        sport_price_source_succeeded = False
+        for capability, source_name, request_metadata, price_capable in attempts:
             request = SourceRequest(
-                request_key=_request_key(sport, day, source_name),
-                capability="fixtures",
+                request_key=_request_key(sport, day, source_name, capability),
+                capability=capability,
                 sport=sport,
                 ttl_seconds=900,
-                metadata=metadata,
+                metadata=request_metadata,
                 source_names=(source_name,) if source_name else (),
             )
             try:
                 response = service.execute(request, bundle.fetchers, allow_paid=False)
+                failures.extend(getattr(response, "failures", ()) or ())
                 default_country, default_division = _SCOPE_DEFAULTS.get(sport, ("Unresolved", "Unresolved"))
                 for event in _normalize_events(response.payload, sport=sport, source=response.source_name):
                     event.setdefault("competition", league or "Unresolved")
@@ -113,22 +152,45 @@ def collect_fixtures(
                     # or past fixture; enforce the local calendar date here.
                     if _event_local_date(event.get("starts_at"), settings.timezone) != day:
                         continue
-                    key = (_norm(str(event.get("event") or "")), str(event.get("starts_at") or ""))
-                    if not key[0] or key in seen:
+                    key = _event_merge_key(event, settings.timezone)
+                    if not key[0]:
                         continue
-                    seen.add(key)
-                    if sport_counts.get(sport, 0) >= per_sport_limit:
+                    existing_index = next(
+                        (index for index, row in enumerate(events) if _event_merge_key(row, settings.timezone) == key),
+                        None,
+                    )
+                    if existing_index is not None:
+                        _merge_event(events[existing_index], event)
+                        continue
+                    if sport_counts.get(sport, 0) >= per_sport_limit or len(events) >= max_events:
                         continue
                     events.append(event)
+                    seen.add(key)
                     sport_counts[sport] = sport_counts.get(sport, 0) + 1
                     sport_events_added = True
                     if len(events) >= max_events:
                         break
+                if price_capable and any(
+                    item.get("sport") == sport and item.get("odds") for item in events
+                ):
+                    sport_price_source_succeeded = True
             except Exception as exc:
                 failures.append(f"{sport}{f' via {source_name}' if source_name else ''}: {_safe_error(exc)}")
-            if sport_events_added and source_name == "Parse · SportyBet":
+
+            # A source that supplied a full per-sport budget with prices is
+            # sufficient; avoid spending another provider credit. If prices
+            # are still missing, continue through the odds-capable attempts so
+            # one provider's sparse coverage can be enriched by another.
+            sport_rows = [item for item in events if item.get("sport") == sport]
+            has_full_priced_budget = (
+                len(sport_rows) >= per_sport_limit
+                and all(item.get("odds") for item in sport_rows)
+            )
+            if has_full_priced_budget and price_capable:
                 break
             if len(events) >= max_events:
+                break
+            if source_name is None and (sport_events_added or sport_price_source_succeeded):
                 break
         if len(events) >= max_events:
             break
@@ -173,31 +235,73 @@ def _event_local_date(value: object, timezone_name: str) -> str | None:
     return parsed.astimezone(zone).date().isoformat()
 
 
+def _event_merge_key(event: dict[str, Any], timezone_name: str) -> tuple[str, str]:
+    """Build a provider-independent key for merging the same day's fixture."""
+
+    name = _norm(str(event.get("event") or ""))
+    local_day = _event_local_date(event.get("starts_at"), timezone_name)
+    return name, local_day or str(event.get("starts_at") or "")
+
+
+def _merge_event(target: dict[str, Any], incoming: dict[str, Any]) -> None:
+    """Merge richer provider fields without replacing the original fixture identity."""
+
+    for key in ("home", "away", "competition", "country", "division", "starts_at", "event_id"):
+        if not target.get(key) and incoming.get(key):
+            target[key] = incoming[key]
+    incoming_odds = incoming.get("odds")
+    if not isinstance(incoming_odds, list) or not incoming_odds:
+        return
+    merged: list[dict[str, Any]] = [item for item in target.get("odds", []) if isinstance(item, dict)]
+    existing_keys = {
+        (_norm(str(item.get("label") or "")), str(item.get("decimal_odds") or ""))
+        for item in merged
+    }
+    for item in incoming_odds:
+        if not isinstance(item, dict):
+            continue
+        key = (_norm(str(item.get("label") or "")), str(item.get("decimal_odds") or ""))
+        if key not in existing_keys:
+            merged.append(item)
+            existing_keys.add(key)
+    target["odds"] = merged
+    sources = target.setdefault("odds_sources", [])
+    incoming_source = str(incoming.get("source") or "").strip()
+    if incoming_source and incoming_source not in sources:
+        sources.append(incoming_source)
+    target["price_source"] = incoming_source or target.get("price_source")
+
+
 def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[dict[str, Any]]:
     for row in _event_rows(payload):
         name = _first(row, "strEvent", "event", "name", "shortName", "displayName")
-        home = _first(row, "strHomeTeam", "homeTeamName", "homeTeam", "home", "home_name")
-        away = _first(row, "strAwayTeam", "awayTeamName", "awayTeam", "away", "away_name")
+        # Parse/Flashscore uses home_team/away_team objects while ESPN uses a
+        # competitors array.  Keep both shapes in the same canonical event
+        # packet so a price-bearing fixture source can feed every sport.
+        home = _first(row, "strHomeTeam", "homeTeamName", "homeTeam", "home_team", "home", "home_name")
+        away = _first(row, "strAwayTeam", "awayTeamName", "awayTeam", "away_team", "away", "away_name")
         competitions = row.get("competitions") if isinstance(row.get("competitions"), list) else []
+        competitors = row.get("competitors") if isinstance(row.get("competitors"), list) else []
         if (not home or not away) and competitions and isinstance(competitions[0], dict):
-            competitors = competitions[0].get("competitors")
-            if isinstance(competitors, list):
-                for competitor in competitors:
-                    if not isinstance(competitor, dict):
-                        continue
-                    team = competitor.get("team") if isinstance(competitor.get("team"), dict) else competitor
-                    label = _first(team, "displayName", "name", "shortName")
-                    if competitor.get("homeAway") == "home":
-                        home = home or label
-                    elif competitor.get("homeAway") == "away":
-                        away = away or label
+            competitors = competitions[0].get("competitors") if isinstance(competitions[0].get("competitors"), list) else []
+        if not home or not away:
+            for competitor in competitors:
+                if not isinstance(competitor, dict):
+                    continue
+                team = competitor.get("team") if isinstance(competitor.get("team"), dict) else competitor
+                label = _first(team, "displayName", "name", "shortName")
+                if competitor.get("homeAway") == "home":
+                    home = home or label
+                elif competitor.get("homeAway") == "away":
+                    away = away or label
         if not name and home and away:
             name = f"{home} vs {away}"
         if not name:
             continue
-        starts_at = _first(row, "strTimestamp", "date", "startTime", "dateEvent", "starts_at", "kickoffTime")
+        starts_at = _first(row, "strTimestamp", "date", "startTime", "start_time", "dateEvent", "starts_at", "kickoffTime")
         league = _first(row, "strLeague", "tournament", "league", "competition", "category")
         competition_row = competitions[0] if competitions and isinstance(competitions[0], dict) else {}
+        competition_details = row.get("competition") if isinstance(row.get("competition"), dict) else {}
         country = _first(row, "strCountry", "country", "countryName", "country_name", "region", "nation")
         division = _first(row, "strDivision", "division", "divisionName", "division_name", "tier", "level", "leagueLevel")
         if isinstance(competition_row, dict):
@@ -205,7 +309,11 @@ def _normalize_events(payload: object, *, sport: str, source: str) -> Iterable[d
             country = country or _first(competition_row, "country", "countryName", "region") or _first(league_obj, "country", "countryName")
             division = division or _first(competition_row, "division", "divisionName", "tier", "level") or _first(league_obj, "division", "divisionName", "tier", "level")
             league = league or _first(competition_row, "name", "displayName") or _first(league_obj, "name", "displayName")
-        event_id = _first(row, "idEvent", "eventId", "id", "uid")
+        if competition_details:
+            country = country or _first(competition_details, "country", "countryName", "region")
+            division = division or _first(competition_details, "division", "divisionName", "tier", "level")
+            league = league or _first(competition_details, "name", "displayName", "league")
+        event_id = _first(row, "idEvent", "eventId", "match_id", "id", "uid")
         item: dict[str, Any] = {
             "sport": sport,
             "event": name,
@@ -256,6 +364,9 @@ def _extract_odds(row: dict[str, Any]) -> list[dict[str, Any]]:
                     "homeodds",
                     "drawodds",
                     "awayodds",
+                    "home_win",
+                    "draw",
+                    "away_win",
                 }:
                     try:
                         numeric = float(child)
@@ -657,7 +768,20 @@ def _nested_event_rows(value: object) -> list[dict[str, Any]]:
     for key in ("events", "event", "fixtures", "games", "matches", "data"):
         if key in value:
             rows.extend(_nested_event_rows(value[key]))
-    if any(key in value for key in ("strEvent", "eventId", "idEvent", "homeTeamName", "strHomeTeam", "name")):
+    if any(
+        key in value
+        for key in (
+            "strEvent",
+            "eventId",
+            "idEvent",
+            "match_id",
+            "homeTeamName",
+            "strHomeTeam",
+            "home_team",
+            "competitors",
+            "name",
+        )
+    ):
         rows.append(value)
     return rows
 

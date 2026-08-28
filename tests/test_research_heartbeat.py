@@ -108,6 +108,43 @@ def test_parse_sportybet_fixture_data_is_normalized_with_prices():
     assert len(rows[0]["odds"]) == 3
 
 
+def test_parse_flashscore_fixtures_with_odds_are_normalized_for_non_football_sports():
+    payload = {
+        "raw": {
+            "data": {
+                "sport": "basketball",
+                "matches": [
+                    {
+                        "match_id": "AuWkvAkC",
+                        "status": "not_started",
+                        "start_time": "2026-08-28T15:00:00+00:00",
+                        "home_team": {"name": "Cape Verde", "id": "home-1"},
+                        "away_team": {"name": "Guinea", "id": "away-1"},
+                        "competition": {
+                            "name": "World Cup Qualification",
+                            "country": "Africa",
+                        },
+                        "odds": {
+                            "home_win": "4.60",
+                            "draw": None,
+                            "away_win": "1.17",
+                            "home_win_opening": "2.80",
+                        },
+                    }
+                ],
+            }
+        }
+    }
+
+    rows = list(heartbeat._normalize_events(payload, sport="basketball", source="Parse · Flashscore"))
+
+    assert rows[0]["event"] == "Cape Verde vs Guinea"
+    assert rows[0]["event_id"] == "AuWkvAkC"
+    assert rows[0]["competition"] == "World Cup Qualification"
+    assert rows[0]["country"] == "Africa"
+    assert {item["decimal_odds"] for item in rows[0]["odds"]} == {4.6, 1.17}
+
+
 def test_event_local_date_handles_iso_epoch_and_rejects_unknown():
     assert heartbeat._event_local_date("2026-08-28T00:30:00+00:00", "Africa/Lagos") == "2026-08-28"
     assert heartbeat._event_local_date("1787913000000", "Africa/Lagos") == "2026-08-28"
@@ -192,6 +229,52 @@ def test_collect_fixtures_falls_back_per_sport_after_parse_failure(monkeypatch, 
     assert ("basketball", ("Parse · SportyBet",)) in calls
     assert ("basketball", ()) in calls
     assert any("basketball via Parse · SportyBet" in item for item in failures)
+
+
+def test_collect_fixtures_prefers_price_bearing_flashscore_feed(monkeypatch, tmp_path):
+    config = settings(
+        tmp_path,
+        research_sports=("basketball",),
+        parse_api_key="parse-key",
+        parse_flashscore_scraper_id="flashscore",
+    )
+    calls = []
+
+    class Response:
+        source_name = "Parse · Flashscore"
+        payload = {
+            "raw": {
+                "data": {
+                    "matches": [
+                        {
+                            "match_id": "flash-1",
+                            "start_time": "2026-08-28T15:00:00+00:00",
+                            "home_team": {"name": "Price Home"},
+                            "away_team": {"name": "Price Away"},
+                            "competition": {"name": "International", "country": "World"},
+                            "odds": {"home_win": "1.80", "away_win": "2.10"},
+                        }
+                    ]
+                }
+            }
+        }
+
+    def execute(_self, request, *_args, **_kwargs):
+        calls.append((request.capability, request.sport, request.source_names, request.metadata))
+        return Response()
+
+    monkeypatch.setattr(heartbeat.SourceService, "execute", execute)
+    day, events, failures = heartbeat.collect_fixtures(
+        config,
+        now=datetime(2026, 8, 28, 8, 0, tzinfo=ZoneInfo("Africa/Lagos")),
+    )
+
+    assert day == "2026-08-28"
+    assert failures == []
+    assert events[0]["event"] == "Price Home vs Price Away"
+    assert events[0]["odds"]
+    assert calls[0][0:3] == ("fixtures_with_odds", "basketball", ("Parse · Flashscore",))
+    assert calls[0][3]["day_offset"] == 0
 
 
 def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_path):

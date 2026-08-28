@@ -316,6 +316,10 @@ def test_all_configured_remote_sources_are_registered(tmp_path: Path):
     assert "Parse · 1xBet" not in names
     assert "Stake" not in names
 
+    by_name = {source.name: source for source in bundle.registry.all()}
+    assert "fixtures_with_odds" in by_name["Parse · Flashscore"].capabilities
+    assert "fixtures_with_odds" in by_name["Parse · ESPN"].capabilities
+
 
 def test_sports_betting_analyzer_uses_fixed_suggestion_endpoint():
     calls = []

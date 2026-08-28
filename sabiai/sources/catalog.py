@@ -54,6 +54,7 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
                     endpoints={
                         "search": "search",
                         "fixtures": "get_daily_fixtures",
+                        "fixtures_with_odds": "get_fixtures_with_odds",
                         "live_scores": "get_live_scores",
                         "event_search": "get_match_detail",
                         "event_events": "get_match_events",
@@ -119,6 +120,7 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
                     scraper_id=settings.parse_espn_scraper_id,
                     endpoints={
                         "fixtures": "get_scoreboard",
+                        "fixtures_with_odds": "get_scoreboard",
                         "league_table": "get_standings",
                         "team_search": "get_teams",
                         "team_profile": "get_team_roster",
