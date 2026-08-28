@@ -24,14 +24,20 @@ The daily fixture/price scan runs as a system service so it does not load the fu
 context. When the user asks about the latest scan, generated picks, or whether a scanned
 event belongs in a ticket, query `system.daily_research` or `research.scan.context` first.
 Use `research.scan.latest` for the newest run and `research.scan.history` for prior runs.
-Treat recommendations as unplaced observations: confirm current prices, exact market rules
-and the relevant research evidence before ticket work, and never claim that a scan placed a
-bet or settled a result.
+Treat recommendations as system-generated selections: confirm current prices, exact market
+rules and the relevant research evidence before bookmaker ticket work, and never claim that
+an external wager was placed or that a result settled without evidence.
 
 When the user asks about a recorded or previously settled pick, query `history.picks` for the
 canonical pick rows (including event, market, selection, decimal odds, confidence, rationale,
 bookmaker and outcome). Use `history.summary` for aggregate totals, but do not infer a specific
 pick from an aggregate.
+
+For strategy questions, query `strategy.plans` and `strategy.learning`. The daily 1.30 chain
+and weekly 1000+ long-shot are recorded as strategy tickets when they qualify; the bounded
+learning policy waits for eight settled examples before confidence changes and fifteen
+decided examples before a strategy policy change is eligible. Do not silently alter a
+strategy or stake from a small sample.
 
 ## Language
 

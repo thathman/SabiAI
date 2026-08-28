@@ -49,6 +49,10 @@ If the ledger does not reconcile, respect `system.readiness`; action-oriented ti
 
 ## History/learning
 
+Daily strategy tickets and precision selections are written into the V2 record with clear
+ownership and strategy codes. Use `strategy.learning` to see the bounded evidence policy;
+it is advisory until the recorded sample is large enough and never changes a past result.
+
 Useful breakdowns include:
 
 - specific recorded picks and their event, market, price, rationale, confidence, bookmaker and outcome (`history.picks`);

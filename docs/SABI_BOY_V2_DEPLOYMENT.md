@@ -71,7 +71,7 @@ Direct daily research and picks:
 - schedule: 08:00 `Africa/Lagos`, persistent across downtime
 - scope: compact direct source collection plus a direct Alibaba-compatible model call; no OpenClaw agent, workspace, memory or tool schemas are loaded
 - output: `data/reports/daily-picks-latest.json` and a Web Push notification; recommendations are never written as placed wagers
-- context: successful scans are persisted in `daily_research_runs`; Sabi Boy can read them through `system.daily_research`, `research.scan.latest`, `research.scan.history` and `research.scan.context`. `ticket.research.plan` includes the recent scan context, while `history.picks` reads canonical recorded picks for pick-specific questions. Scan recommendations remain observations and must be rechecked before ticket work.
+- context: successful scans are persisted in `daily_research_runs`; Sabi Boy can read them through `system.daily_research`, `research.scan.latest`, `research.scan.history` and `research.scan.context`. `ticket.research.plan` includes the recent scan context, while `history.picks` reads canonical recorded picks for pick-specific questions. System-generated selections and qualifying strategy tickets are internal records; fresh prices and exact settlement rules must still be rechecked before any bookmaker ticket work.
 
 Notification history:
 

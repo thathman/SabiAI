@@ -494,6 +494,15 @@
 - Local dashboard/PWA acceptance: **11 passed, 1 warning**. The full local suite at this commit: **257 passed, 1 warning** (the existing Starlette/httpx deprecation warning). Dell dashboard/PWA acceptance also passed **11 tests, 1 warning**.
 - Branding follow-up commit `171074a1c14adb47a21fdb590a33b1ddbeabcbe6` replaces the font-rendered S with the exact V1 pixel-block S across the sidebar, favicon, legacy icon URL and all PWA/maskable icon responses. It also replaces the Notifications navigation emoji with the existing monochrome SVG bell and advances the PWA cache to `2.1.0.8`. The full local suite remains **257 passed, 1 warning**; Dell `https://picks.hendrix.com.ng/health` identifies Sabi Boy V2 and the routed `icon-192.png?v=2.1.0.8` returns the expected 192×192 RGB PNG.
 
+### Phase 16 follow-up evidence — 2026-08-28 (strategy records and ownership)
+
+- The V2-native strategy layer now builds three inspectable plans from each direct scan: Precision Picks, a daily 1.30 chain and a weekly 1000+ long shot. The long shot uses the recent multi-sport scan window, deduplicates events and never pads a slip with weak legs. Every plan carries its target, combined decimal odds, confidence, bounded stake suggestion, rationale and candidate legs.
+- A ready daily chain or weekly long shot is materialized as a Sabi Boy strategy ticket with linked candidate tips and a single ticket stake. The ledger therefore records the strategy exposure once, while the dashboard keeps individual candidate legs distinguishable from the primary Sabi Boy picks. This is an internal record only; no bookmaker endpoint is called and no wager is placed.
+- Pick ownership is explicit: the dashboard overview, performance charts, history and OpenClaw aggregate reads default to Sabi Boy picks; Hendrix records remain separately addressable through the `/hendrix` view and `owner=hendrix` filter. Strategy plans and learning are exposed through `strategy.plans` and `strategy.learning` plus the read-only `/api/v2/strategies/*` routes.
+- V2-native bounded learning is now visible and queryable. The policy waits for eight settled examples before confidence changes and fifteen decided examples before a strategy policy is eligible for review; it can report gathering-sample, hold, review or eligible-to-expand without rewriting history or silently changing stakes.
+- Automatic settlement now prefers a known TheSportsDB event ID and can conservatively resolve a non-TheSportsDB source by exact event-name/date search before fetching the final score. Ambiguous matches remain pending. Linked strategy ticket legs propagate their confirmed outcome to the corresponding candidate record with the same audited, idempotent settlement rules.
+- Product version/cache advanced to `2.2.0.0` for the strategy and ownership surface. Local validation: **272 passed, 1 warning** (the existing Starlette/httpx deprecation warning), JavaScript syntax checks passed for the dashboard app and service worker, and `git diff --check` passed. Dell installation and live acceptance remain unclaimed for this follow-up commit.
+
 ---
 
 ## Current release commands

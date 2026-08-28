@@ -144,13 +144,19 @@ Once event identity and settlement data are canonical, final records can move in
 ### Our records/history
 
 - `record.bankroll` — write a signed V2 bankroll ledger event through the domain service.
+- `record.pick` — write a canonical Sabi Boy or Hendrix pick/tip record with explicit owner and strategy metadata.
 - `history.summary` — read our own W/L/D/void/pending totals, ticket totals and bankroll.
 - `history.by_sport` — read our results grouped by sport.
 - `history.by_market` — read our results grouped by market.
 - `history.by_bookmaker` — read our results grouped by bookmaker.
 - `history.bankroll` — read bankroll balance and ledger history.
 
-These are our records. They are not general sports-site statistics.
+`history.picks` defaults to Sabi Boy picks and accepts explicit owner/type filters. These are our records, not general sports-site statistics.
+
+### Strategies
+
+- `strategy.plans` — read the current Precision Picks, daily 1.30 chain and weekly 1000+ long-shot plans.
+- `strategy.learning` — read bounded V2-native outcome evidence and policy thresholds; it never mutates history or silently changes stakes.
 
 ## Input flow for screenshots and X posts
 
