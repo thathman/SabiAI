@@ -46,9 +46,29 @@ class Settings:
     research_sports: tuple[str, ...] = (
         "football",
         "basketball",
+        "volleyball",
         "tennis",
+        "table_tennis",
         "baseball",
         "ice_hockey",
+        "cricket",
+        "golf",
+        "handball",
+        "rugby",
+        "darts",
+        "snooker",
+        "badminton",
+        "mma",
+        "boxing",
+        "motorsport",
+        "cycling",
+        "futsal",
+        "water_polo",
+        "beach_volleyball",
+        "padel",
+        "floorball",
+        "aussie_rules",
+        "esports",
     )
     research_max_events: int = 60
     research_max_events_per_sport: int = 20
@@ -169,7 +189,7 @@ class Settings:
                 item.strip()
                 for item in os.getenv(
                     "SABIAI_RESEARCH_SPORTS",
-                    "football,basketball,tennis,baseball,ice_hockey",
+                    "football,basketball,volleyball,tennis,table_tennis,baseball,ice_hockey,cricket,golf,handball,rugby,darts,snooker,badminton,mma,boxing,motorsport,cycling,futsal,water_polo,beach_volleyball,padel,floorball,aussie_rules,esports",
                 ).split(",")
                 if item.strip()
             )

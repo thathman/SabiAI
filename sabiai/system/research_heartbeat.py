@@ -72,7 +72,11 @@ def collect_fixtures(
     seen: set[tuple[str, str]] = set()
 
     configured_sports = [str(raw).strip().casefold() for raw in settings.research_sports if str(raw).strip()]
-    per_sport_limit = max(1, min(int(getattr(settings, "research_max_events_per_sport", 20)), max_events))
+    # Divide the daily event budget before collection starts. This gives every
+    # configured sport a turn and prevents the first football response from
+    # exhausting the global budget.
+    sport_budget = max(1, max_events // max(1, len(configured_sports)))
+    per_sport_limit = max(1, min(int(getattr(settings, "research_max_events_per_sport", 20)), sport_budget))
     sport_counts: dict[str, int] = {}
     for raw_sport in configured_sports:
         sport = str(raw_sport).strip().casefold()
