@@ -198,9 +198,18 @@ class SettlementService:
         # The daily chain is a first-class V2 strategy. A fully won chain ticket
         # returns its calculated payout to the single bankroll ledger and advances
         # the next day's stake; a loss resets the chain to its base stake. Both
-        # operations are idempotent because refresh_ticket only acts on a status
-        # transition and record_ticket_payout de-duplicates the ledger entry.
-        if changed and ticket["strategy_code"] == StrategyChainStore.CODE:
+        # operations are idempotent: payout ledger entries are de-duplicated and
+        # the chain state only advances when its active ticket still matches.
+        if ticket["strategy_code"] == StrategyChainStore.CODE and new_status in {
+            TicketStatus.WON.value,
+            TicketStatus.LOST.value,
+            TicketStatus.PARTIAL.value,
+            TicketStatus.VOID.value,
+        }:
+            # Run these idempotent side effects even when `changed` is false. If a
+            # SQLite lock interrupted the previous attempt after the ticket status
+            # committed, the next heartbeat can repair payout/chain state instead
+            # of treating the already-settled ticket as finished work.
             if new_status == TicketStatus.WON.value:
                 try:
                     stake = Decimal(str(ticket["stake"] or "0"))

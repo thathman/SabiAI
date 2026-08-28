@@ -73,6 +73,7 @@ def collect_fixtures(
             if "Parse · SportyBet" in bundle.fetchers and sport in {"football", "soccer", "basketball", "ice_hockey"}
             else (None,)
         )
+        sport_events_added = False
         for source_name in source_order:
             request = SourceRequest(
                 request_key=_request_key(sport, day, source_name),
@@ -95,11 +96,12 @@ def collect_fixtures(
                         continue
                     seen.add(key)
                     events.append(event)
+                    sport_events_added = True
                     if len(events) >= max_events:
                         break
             except Exception as exc:
                 failures.append(f"{sport}{f' via {source_name}' if source_name else ''}: {_safe_error(exc)}")
-            if events and source_name == "Parse · SportyBet":
+            if sport_events_added and source_name == "Parse · SportyBet":
                 break
             if len(events) >= max_events:
                 break
@@ -323,6 +325,7 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
         # the weekly long-shot strategy. The daily chain itself only sees `current`.
         recent_scans = DailyResearchLog(database).list(limit=6)
         chain_store = StrategyChainStore(database)
+        legacy_chain_reconciliation = chain_store.reconcile_legacy_pending()
         chain_state = chain_store.ensure()
         strategy_plans = StrategyPlanner().build(
             recommendations,
@@ -331,12 +334,14 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             generated_at=generated_at,
             recent_scans=recent_scans,
             chain_state=chain_state,
+            scan_date=day,
         )
         recorded_picks = _record_strategy_picks(database, strategy_plans, model=model, source_run_id=run_id)
         recorded_tickets = StrategyTicketService(database).materialize(
             strategy_plans,
             model=model,
             source_run_id=run_id,
+            chain_date=day,
         )
         strategy_learning = StrategyLearningService(database).summaries(owner="sabi_boy")
         report: dict[str, Any] = {
@@ -351,6 +356,7 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "recorded_picks": recorded_picks,
             "recorded_tickets": recorded_tickets,
             "strategy_learning": strategy_learning,
+            "chain_legacy_reconciliation": legacy_chain_reconciliation,
             "notes": _notes(result),
             "usage": usage,
         }

@@ -81,6 +81,42 @@ def test_planner_holds_the_next_chain_day_until_settlement():
     assert plan["candidate_count"] == 0
 
 
+def test_daily_chain_allows_only_one_ticket_per_calendar_date(tmp_path: Path):
+    db = SabiDatabase(tmp_path / "chain-date.db")
+    db.initialize()
+    chain = StrategyChainStore(db)
+    chain.ensure()
+    chain.attach_ticket("day-1", local_date="2026-08-28")
+    chain.settle_ticket("day-1", "won", "1.30")
+    same_day = chain.attach_ticket("day-2", local_date="2026-08-28")
+    assert same_day["active_ticket_id"] is None
+    assert same_day["last_ticket_date"] == "2026-08-28"
+    next_day = chain.attach_ticket("day-2", local_date="2026-08-29")
+    assert next_day["active_ticket_id"] == "day-2"
+
+
+def test_pre_chain_pending_ticket_is_voided_and_refunded_once(tmp_path: Path):
+    db = SabiDatabase(tmp_path / "chain-reconcile.db")
+    db.initialize()
+    with db.transaction() as conn:
+        conn.execute(
+            """INSERT INTO tickets(id,source_type,status,stake,owner,strategy_code)
+               VALUES('legacy-chain','strategy','pending','300.00','sabi_boy','daily_chain_1_30')"""
+        )
+    chain = StrategyChainStore(db)
+    chain.ensure()
+    result = chain.reconcile_legacy_pending()
+    assert result["ticket_ids"] == ["legacy-chain"]
+    with db.connect() as conn:
+        ticket = conn.execute("SELECT status FROM tickets WHERE id='legacy-chain'").fetchone()
+        refund = conn.execute(
+            "SELECT amount FROM bankroll_ledger WHERE kind='refund' AND ticket_id='legacy-chain'"
+        ).fetchone()
+    assert ticket["status"] == "void"
+    assert refund["amount"] == "300.00"
+    assert chain.reconcile_legacy_pending()["count"] == 0
+
+
 def test_weekly_long_shot_does_not_pad_weak_legs():
     plans = StrategyPlanner().build(_recommendations(), bankroll="30000", source_run_id="run-2")
     long_shot = next(row for row in plans if row["strategy_code"] == "weekly_long_shot_1000")
@@ -188,8 +224,24 @@ def test_strategy_ticket_settlement_updates_its_linked_tip_for_learning(tmp_path
     plan = StrategyPlanner().build(_recommendations(), bankroll="1000", source_run_id="run-settle")
     StrategyTicketService(db).materialize(plan, model="test-model", source_run_id="run-settle")
     with db.connect() as conn:
-        leg = conn.execute("SELECT id,pick_id FROM ticket_legs ORDER BY leg_no LIMIT 1").fetchone()
-        leg_id, pick_id = leg["id"], leg["pick_id"]
-    SettlementService(db).settle_ticket_leg(leg_id, "won", source="test")
+        legs = conn.execute("SELECT id,pick_id FROM ticket_legs ORDER BY leg_no").fetchall()
+        pick_id = legs[0]["pick_id"]
+    for leg in legs:
+        SettlementService(db).settle_ticket_leg(leg["id"], "won", source="test")
     with db.connect() as conn:
         assert conn.execute("SELECT outcome FROM picks_v2 WHERE id=?", (pick_id,)).fetchone()[0] == "won"
+        ticket = conn.execute("SELECT id,payout,stake,combined_odds FROM tickets LIMIT 1").fetchone()
+        assert Decimal(ticket["payout"]) == (Decimal(ticket["stake"]) * Decimal(ticket["combined_odds"])).quantize(Decimal("0.01"))
+        assert conn.execute("SELECT COUNT(*) FROM bankroll_ledger WHERE kind='payout'").fetchone()[0] == 1
+    chain = StrategyChainStore(db).get()
+    assert chain["completed_days"] == 1
+    assert Decimal(chain["current_stake"]) == Decimal(ticket["payout"])
+
+    # If a lock/error interrupted the post-status side effects, a later heartbeat
+    # must be able to repair the payout even though the ticket is already won.
+    with db.transaction() as conn:
+        conn.execute("DELETE FROM bankroll_ledger WHERE kind='payout' AND ticket_id=?", (ticket["id"],))
+        conn.execute("UPDATE tickets SET payout=NULL WHERE id=?", (ticket["id"],))
+    SettlementService(db).refresh_ticket(ticket["id"], source="retry-test")
+    with db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM bankroll_ledger WHERE kind='payout' AND ticket_id=?", (ticket["id"],)).fetchone()[0] == 1

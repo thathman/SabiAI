@@ -22,7 +22,14 @@ class StrategyTicketService:
     def __init__(self, database: SabiDatabase | str | Path):
         self.db = database if isinstance(database, SabiDatabase) else SabiDatabase(database)
 
-    def materialize(self, plans: list[dict], *, model: str | None = None, source_run_id: str | None = None) -> list[dict]:
+    def materialize(
+        self,
+        plans: list[dict],
+        *,
+        model: str | None = None,
+        source_run_id: str | None = None,
+        chain_date: str | None = None,
+    ) -> list[dict]:
         results: list[dict] = []
         for plan in plans:
             if plan.get("strategy_code") not in self.MATERIALIZED_CODES:
@@ -30,12 +37,26 @@ class StrategyTicketService:
             if plan.get("status") != "ready" or not plan.get("candidates"):
                 continue
             try:
-                results.append(self._materialize_one(plan, model=model, source_run_id=source_run_id))
+                results.append(
+                    self._materialize_one(
+                        plan,
+                        model=model,
+                        source_run_id=source_run_id,
+                        chain_date=chain_date,
+                    )
+                )
             except (KeyError, TypeError, ValueError, InvalidOperation) as exc:
                 results.append({"strategy_code": plan.get("strategy_code"), "skipped": True, "reason": str(exc)[:300]})
         return results
 
-    def _materialize_one(self, plan: dict, *, model: str | None, source_run_id: str | None) -> dict:
+    def _materialize_one(
+        self,
+        plan: dict,
+        *,
+        model: str | None,
+        source_run_id: str | None,
+        chain_date: str | None,
+    ) -> dict:
         code = str(plan["strategy_code"])
         run_key = str(source_run_id or plan.get("source_run_id") or plan.get("generated_at") or "").strip()
         if not run_key:
@@ -47,6 +68,16 @@ class StrategyTicketService:
             if code == StrategyChainStore.CODE and existing["status"] == "pending":
                 StrategyChainStore(self.db).attach_ticket(ticket_id)
             return {"id": ticket_id, "strategy_code": code, "existing": True, "status": existing["status"], "stake": existing["stake"]}
+
+        if code == StrategyChainStore.CODE and chain_date:
+            chain_state = StrategyChainStore(self.db).ensure()
+            if chain_state.get("active_ticket_id") or chain_state.get("last_ticket_date") == chain_date:
+                return {
+                    "id": ticket_id,
+                    "strategy_code": code,
+                    "skipped": True,
+                    "reason": "The daily chain already has a position for this calendar date.",
+                }
 
         stake = _money(plan.get("suggested_stake"))
         candidate_pick_ids: list[str] = []
@@ -117,7 +148,7 @@ class StrategyTicketService:
         if stake > 0:
             BankrollLedger(self.db).record("stake", stake, ticket_id=ticket_id, note=f"Stake for {plan.get('name') or code}")
         if code == StrategyChainStore.CODE:
-            StrategyChainStore(self.db).attach_ticket(ticket_id)
+            StrategyChainStore(self.db).attach_ticket(ticket_id, local_date=chain_date)
         return {
             "id": ticket_id,
             "strategy_code": code,

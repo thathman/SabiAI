@@ -66,13 +66,96 @@ class StrategyChainStore:
             return self.ensure()
         return self._row(row)
 
-    def attach_ticket(self, ticket_id: str) -> dict:
+    def reconcile_legacy_pending(self) -> dict:
+        """Void and refund pre-state pending chain tickets without deleting history.
+
+        Before the durable chain state existed, a daily plan could leave a pending
+        ticket pointing at a future fixture. Such tickets must not block today's
+        chain or remain as unbounded bankroll exposure. The ticket, legs and audit
+        rows are retained; the original stake is returned exactly once.
+        """
+
+        reconciled: list[str] = []
+        with self.db.transaction() as conn:
+            state = conn.execute(
+                "SELECT active_ticket_id FROM strategy_chain_state WHERE id=?", (self.CHAIN_ID,)
+            ).fetchone()
+            active_id = state["active_ticket_id"] if state else None
+            rows = conn.execute(
+                """SELECT id,stake,status FROM tickets
+                   WHERE owner='sabi_boy' AND strategy_code=? AND status='pending'
+                     AND (? IS NULL OR id != ?)
+                   ORDER BY created_at""",
+                (self.CODE, active_id, active_id),
+            ).fetchall()
+            for ticket in rows:
+                ticket_id = str(ticket["id"])
+                conn.execute(
+                    "UPDATE tickets SET status='void', settled_at=? WHERE id=?",
+                    (datetime.now(timezone.utc).isoformat(), ticket_id),
+                )
+                conn.execute(
+                    "INSERT INTO settlement_audit(entity_type,entity_id,previous_outcome,new_outcome,source,reason) VALUES(?,?,?,?,?,?)",
+                    (
+                        "ticket",
+                        ticket_id,
+                        "pending",
+                        "void",
+                        "daily-chain-reconciliation",
+                        "Pre-chain pending ticket was not adopted because its fixture/date could not be trusted.",
+                    ),
+                )
+                legs = conn.execute(
+                    "SELECT id,outcome FROM ticket_legs WHERE ticket_id=? AND outcome='pending'", (ticket_id,)
+                ).fetchall()
+                for leg in legs:
+                    conn.execute(
+                        "UPDATE ticket_legs SET outcome='void', note=? WHERE id=?",
+                        ("Voided during pre-chain reconciliation.", leg["id"]),
+                    )
+                    conn.execute(
+                        "INSERT INTO settlement_audit(entity_type,entity_id,previous_outcome,new_outcome,source,reason) VALUES(?,?,?,?,?,?)",
+                        (
+                            "ticket_leg",
+                            leg["id"],
+                            "pending",
+                            "void",
+                            "daily-chain-reconciliation",
+                            "Parent ticket was voided during pre-chain reconciliation.",
+                        ),
+                    )
+                stake = _money(ticket["stake"] or "0")
+                if stake > 0:
+                    existing = conn.execute(
+                        "SELECT 1 FROM bankroll_ledger WHERE kind='refund' AND ticket_id=? LIMIT 1",
+                        (ticket_id,),
+                    ).fetchone()
+                    if existing is None:
+                        previous = conn.execute(
+                            "SELECT balance_after FROM bankroll_ledger WHERE balance_after IS NOT NULL ORDER BY id DESC LIMIT 1"
+                        ).fetchone()
+                        balance = _money(previous[0] if previous else "0") + stake
+                        conn.execute(
+                            """INSERT INTO bankroll_ledger(kind,amount,balance_after,ticket_id,note)
+                               VALUES('refund',?,?,?,?)""",
+                            (str(stake), str(balance.quantize(Decimal("0.01"))), ticket_id, "Refund for pre-chain pending ticket reconciliation."),
+                        )
+                reconciled.append(ticket_id)
+        return {"count": len(reconciled), "ticket_ids": reconciled}
+
+    def attach_ticket(self, ticket_id: str, *, local_date: str | None = None) -> dict:
         self.ensure()
         with self.db.transaction() as conn:
             state = conn.execute(
-                "SELECT status,completed_days,last_outcome,starting_stake FROM strategy_chain_state WHERE id=?",
+                "SELECT * FROM strategy_chain_state WHERE id=?",
                 (self.CHAIN_ID,),
             ).fetchone()
+            if state is None:
+                return self.ensure()
+            if local_date and state["last_ticket_date"] == local_date:
+                return self._row(state)
+            if state["status"] not in {"ready", "voided"}:
+                return self._row(state)
             ticket = conn.execute("SELECT stake FROM tickets WHERE id=?", (str(ticket_id),)).fetchone()
             # Direct callers that materialize an older plan may not have passed a
             # chain context to the planner. Adopt that first ticket's stake so the
@@ -89,11 +172,12 @@ class StrategyChainStore:
                 adopt_stake = str(_money(ticket["stake"]))
             conn.execute(
                 """UPDATE strategy_chain_state
-                   SET starting_stake=COALESCE(?, starting_stake),
+                       SET starting_stake=COALESCE(?, starting_stake),
                        current_stake=COALESCE(?, current_stake),
-                       status='pending', active_ticket_id=?, updated_at=CURRENT_TIMESTAMP
+                       status='pending', active_ticket_id=?, last_ticket_date=COALESCE(?, last_ticket_date),
+                       updated_at=CURRENT_TIMESTAMP
                    WHERE id=? AND status IN ('ready','voided')""",
-                (adopt_stake, adopt_stake, str(ticket_id), self.CHAIN_ID),
+                (adopt_stake, adopt_stake, str(ticket_id), local_date, self.CHAIN_ID),
             )
         return self.get()
 
@@ -171,6 +255,7 @@ class StrategyChainStore:
             "current_day": min(int(row["completed_days"] or 0) + 1, int(row["target_days"] or cls.TARGET_DAYS)),
             "status": row["status"],
             "active_ticket_id": row["active_ticket_id"],
+            "last_ticket_date": row["last_ticket_date"],
             "last_outcome": row["last_outcome"],
             "last_settled_at": row["last_settled_at"],
             "cycle_count": int(row["cycle_count"] or 0),

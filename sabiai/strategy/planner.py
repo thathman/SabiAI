@@ -28,6 +28,7 @@ class StrategyPlanner:
         generated_at: datetime | None = None,
         recent_scans: Iterable[dict] = (),
         chain_state: dict | None = None,
+        scan_date: str | None = None,
     ) -> list[dict]:
         stamp = generated_at or datetime.now(timezone.utc)
         stamp_text = stamp.isoformat()
@@ -41,7 +42,7 @@ class StrategyPlanner:
 
         plans = [
             self._precision_plan(current, bankroll_amount, source_run_id, stamp_text),
-            self._daily_chain_plan(current, bankroll_amount, source_run_id, stamp_text, chain_state),
+            self._daily_chain_plan(current, bankroll_amount, source_run_id, stamp_text, chain_state, scan_date),
             self._weekly_long_shot_plan(all_candidates, bankroll_amount, source_run_id, stamp_text),
         ]
         return plans
@@ -77,7 +78,7 @@ class StrategyPlanner:
             generated_at=stamp,
         )
 
-    def _daily_chain_plan(self, candidates, bankroll, source_run_id, stamp, chain_state=None):
+    def _daily_chain_plan(self, candidates, bankroll, source_run_id, stamp, chain_state=None, scan_date=None):
         chain = _chain_context(chain_state, bankroll)
         if chain and chain["status"] == "pending":
             return _plan(
@@ -92,6 +93,21 @@ class StrategyPlanner:
                     f"Day {chain['current_day']}/{chain['target_days']} is awaiting settlement; "
                     "the chain will not open another position."
                 ),
+                candidates=[],
+                source_run_id=source_run_id,
+                generated_at=stamp,
+                chain=chain,
+            )
+        if chain and scan_date and chain.get("last_ticket_date") == scan_date:
+            return _plan(
+                self.DAILY_CHAIN_CODE,
+                "Daily 1.30 Chain",
+                status="held",
+                target_odds=chain["target_odds"],
+                combined_odds=None,
+                stake=_decimal(chain["current_stake"]),
+                confidence=None,
+                rationale="Today's chain position has already been recorded; the next chain day opens on the next calendar date.",
                 candidates=[],
                 source_run_id=source_run_id,
                 generated_at=stamp,
@@ -329,6 +345,7 @@ def _chain_context(state: dict | None, bankroll: Decimal) -> dict | None:
         "starting_stake": _decimal_text(state.get("starting_stake") or "1000"),
         "current_stake": _decimal_text(state.get("current_stake") or "0"),
         "active_ticket_id": state.get("active_ticket_id"),
+        "last_ticket_date": state.get("last_ticket_date"),
         "last_outcome": state.get("last_outcome"),
         "cycle_count": int(state.get("cycle_count") or 0),
     }

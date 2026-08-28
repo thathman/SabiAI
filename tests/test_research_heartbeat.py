@@ -153,6 +153,47 @@ def test_collect_fixtures_enforces_requested_local_day(monkeypatch, tmp_path):
     assert failures == []
 
 
+def test_collect_fixtures_falls_back_per_sport_after_parse_failure(monkeypatch, tmp_path):
+    config = settings(
+        tmp_path,
+        research_sports=("football", "basketball"),
+        parse_api_key="parse-key",
+        parse_sportybet_scraper_id="sportybet",
+    )
+    calls = []
+
+    class Response:
+        def __init__(self, source_name, event_id, home, away):
+            self.source_name = source_name
+            self.payload = {
+                "events": [{
+                    "eventId": event_id,
+                    "homeTeamName": home,
+                    "awayTeamName": away,
+                    "kickoffTime": 1787913000000,
+                    "homeOdds": "1.40",
+                }]
+            }
+
+    def execute(_self, request, *_args, **_kwargs):
+        calls.append((request.sport, request.source_names))
+        if request.sport == "basketball" and request.source_names:
+            raise RuntimeError("Parse unavailable")
+        if request.sport == "football":
+            return Response("Parse · SportyBet", "football", "Football FC", "Football Town")
+        return Response("ESPN Public Data", "basketball", "Basketball FC", "Basketball Town")
+
+    monkeypatch.setattr(heartbeat.SourceService, "execute", execute)
+    _day, events, failures = heartbeat.collect_fixtures(
+        config,
+        now=datetime(2026, 8, 28, 8, 0, tzinfo=ZoneInfo("Africa/Lagos")),
+    )
+    assert {item["sport"] for item in events} == {"football", "basketball"}
+    assert ("basketball", ("Parse · SportyBet",)) in calls
+    assert ("basketball", ()) in calls
+    assert any("basketball via Parse · SportyBet" in item for item in failures)
+
+
 def test_direct_model_result_and_usage_are_read_without_agent(monkeypatch, tmp_path):
     captured = {}
 
