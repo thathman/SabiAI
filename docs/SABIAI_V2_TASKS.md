@@ -513,6 +513,15 @@
 - Follow-up commit `618965d25e7e8e36abc07bbd4247e228572cf2aa` records a failure notification and installs bounded systemd retry (`Restart=on-failure`, two-minute delay, two starts per 30 minutes). The installed Dell unit was refreshed through the runtime preparation script and the research timer remains active.
 - A manual recovery run at 09:44 UTC completed at 09:46 UTC with the primary model: 53 events, three validated recommendations, one Sabi Boy Precision pick, one Daily 1.30 Chain ticket, three delivered push notifications and no external wager. The public overview and strategy routes now expose the new records.
 
+### Phase 16 follow-up evidence — 2026-08-28 (same-day fixtures and chained stake progression)
+
+- Fix commit `eca09c990d3a99ca3e4b2aacd430a9600b4fd856` is the current tested `v2` candidate and is pushed to both Forgejo `v2` and GitHub `main` by a non-forced fast-forward from GitHub `f90b46a85c5d95385178cb845ac7140e9296e24b`.
+- Daily fixture collection now rejects any event whose parsed start date is not the requested `Africa/Lagos` calendar date (including provider responses that ignore their date parameter). Events with an unknown start date are excluded rather than sent to the model, preventing future fixtures from repeating across daily runs.
+- The Daily 1.30 Chain now has V2-native durable state: one eligible chain ticket per daily wake, Day N stake equals the previous fully won ticket's payout, a loss resets to the configured base stake and Day 1, void/partial results do not advance the chain, and a 30-win cycle is recorded before the next daily wake starts a new cycle.
+- Chain state is visible through `GET /api/v2/strategies/chain`, the `strategy.chain` OpenClaw read, and the dashboard Strategies page. Existing pre-chain pending tickets are retained as history and are not adopted as today's chain position.
+- Local regression evidence at this commit: **279 passed, 1 warning** (the existing Starlette/httpx deprecation warning). Coverage includes date parsing/filtering, chain compounding, loss reset, 30-day completion/restart, pending-day blocking, settlement payout and API persistence.
+- This code push does not itself claim a fresh Dell deployment or a green final-release gate; the Dell must pull this exact SHA through the controlled runtime workflow before its timers use the date/chain fixes.
+
 ---
 
 ## Current release commands
