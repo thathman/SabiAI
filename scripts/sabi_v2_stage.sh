@@ -8,6 +8,7 @@ SERVICE="sabi-boy-dashboard.service"
 BACKUP_TIMER="sabi-boy-backup.timer"
 SETTLEMENT_TIMER="sabi-boy-settlement.timer"
 HEALTH_TIMER="sabi-boy-health.timer"
+COVERAGE_TIMER="sabi-boy-coverage.timer"
 RESEARCH_TIMER="sabi-boy-research.timer"
 RELEASE_DIR="${ROOT}/data/release"
 BACKUP_DIR="${ROOT}/data/backups/sabi-boy"
@@ -15,8 +16,8 @@ STATE_FILE="${RELEASE_DIR}/staging-latest.json"
 
 cd "$ROOT"
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-if [[ "$branch" != "v2" ]]; then
-  echo "Refusing staging from branch '$branch'. Expected v2." >&2
+if [[ "$branch" != "v2" && "$branch" != "main" ]]; then
+  echo "Refusing staging from branch '$branch'. Expected v2 or the promoted V2 main branch." >&2
   exit 3
 fi
 if [[ ! -x "$VENV/bin/python" ]]; then
@@ -46,15 +47,16 @@ backup_timer_was_enabled=false
 if systemctl --user is-enabled --quiet "$BACKUP_TIMER" 2>/dev/null; then
   backup_timer_was_enabled=true
 fi
+coverage_timer_was_enabled=false
+if systemctl --user is-enabled --quiet "$COVERAGE_TIMER" 2>/dev/null; then
+  coverage_timer_was_enabled=true
+fi
 
-# 1) Snapshot both databases before migration. V2 may already exist from preparation.
 backup_json="$($VENV/bin/python "$ROOT/scripts/sabi_v2_backup.py" create --destination "$BACKUP_DIR")"
 manifest="$(printf '%s' "$backup_json" | "$VENV/bin/python" -c 'import json,sys; print(json.load(sys.stdin)["manifest_path"])')"
 
-# 2) Run deterministic migration and require reconciliation.
 "$VENV/bin/python" "$ROOT/scripts/sabi_v2_migrate.py" --require-ready > "$RELEASE_DIR/migration-latest.json"
 
-# 3) Run every release acceptance gate, including an idempotent migration recheck.
 if ! "$VENV/bin/python" "$ROOT/scripts/sabi_v2_acceptance.py" \
   --migrate-v1 \
   --report "$RELEASE_DIR/acceptance-latest.json"; then
@@ -62,11 +64,9 @@ if ! "$VENV/bin/python" "$ROOT/scripts/sabi_v2_acceptance.py" \
   exit 20
 fi
 
-# 4) Start V2 in parallel with V1.
 systemctl --user daemon-reload
 systemctl --user restart "$SERVICE"
 
-# 5) Verify the real process over HTTP. Do not trust systemctl active alone.
 if ! "$VENV/bin/python" - <<'PY'
 import json, os, time, urllib.request
 url=os.environ['SABIAI_DASHBOARD_BASE_URL'] + '/health'
@@ -76,14 +76,12 @@ for _ in range(30):
         with urllib.request.urlopen(url, timeout=2) as r:
             data=json.loads(r.read().decode())
         if r.status == 200 and data.get('ok') and data.get('product') == 'Sabi Boy' and data.get('read_only') is True:
-            print(json.dumps(data))
-            raise SystemExit(0)
+            print(json.dumps(data)); raise SystemExit(0)
         last=f'unexpected response: {data}'
     except Exception as exc:
         last=str(exc)
     time.sleep(1)
-print(last or 'health check failed')
-raise SystemExit(1)
+print(last or 'health check failed'); raise SystemExit(1)
 PY
 then
   systemctl --user stop "$SERVICE" || true
@@ -91,13 +89,11 @@ then
   exit 21
 fi
 
-# Verify the main read model too.
 if ! "$VENV/bin/python" - <<'PY'
 import json, os, urllib.request
 with urllib.request.urlopen(os.environ['SABIAI_DASHBOARD_BASE_URL'] + '/api/v2/overview', timeout=5) as r:
     data=json.loads(r.read().decode())
-if r.status != 200 or data.get('product') != 'Sabi Boy':
-    raise SystemExit(1)
+if r.status != 200 or data.get('product') != 'Sabi Boy': raise SystemExit(1)
 print(json.dumps({'overview_ok': True, 'readiness': (data.get('readiness') or {}).get('state')}))
 PY
 then
@@ -106,7 +102,6 @@ then
   exit 22
 fi
 
-# 6) Now that migration/application acceptance passed, enable deterministic verified backups.
 if ! systemctl --user enable --now "$BACKUP_TIMER"; then
   systemctl --user stop "$SERVICE" || true
   echo "Could not enable Sabi Boy backup timer. V2 stopped; V1 left unchanged." >&2
@@ -126,16 +121,31 @@ if ! systemctl --user enable --now "$HEALTH_TIMER"; then
   exit 25
 fi
 
+# Start the cheap radar before enabling AI research. If discovery has a configuration
+# problem, the expensive decision layer should not be promoted on top of a blind universe.
+if ! systemctl --user enable --now "$COVERAGE_TIMER"; then
+  systemctl --user stop "$SERVICE" || true
+  echo "Could not enable the Sabi Boy discovery radar. V2 stopped." >&2
+  exit 26
+fi
+if ! systemctl --user start sabi-boy-coverage.service; then
+  systemctl --user stop "$SERVICE" || true
+  systemctl --user disable --now "$COVERAGE_TIMER" || true
+  echo "Initial Sabi Boy discovery radar run failed. V2 stopped." >&2
+  exit 27
+fi
+
 if ! systemctl --user enable --now "$RESEARCH_TIMER"; then
   systemctl --user stop "$SERVICE" || true
   echo "Could not enable the Sabi Boy direct research timer. V2 stopped." >&2
-  exit 26
+  exit 28
 fi
 
-"$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$DASHBOARD_HOST" "$DASHBOARD_PORT" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" <<'PY'
+"$VENV/bin/python" - "$STATE_FILE" "$manifest" "$commit" "$DASHBOARD_HOST" "$DASHBOARD_PORT" "$v1_was_active" "$backup_timer_was_enabled" "$backup_timer_enabled" "$coverage_timer_was_enabled" <<'PY'
 from datetime import datetime, timezone
 import json, pathlib, sys
-path, manifest, commit, dashboard_host, dashboard_port, v1_active, backup_was_enabled, backup_enabled = sys.argv[1:]
+(path, manifest, commit, dashboard_host, dashboard_port, v1_active,
+ backup_was_enabled, backup_enabled, coverage_was_enabled) = sys.argv[1:]
 data = {
     'product': 'Sabi Boy',
     'branch': 'v2',
@@ -150,6 +160,8 @@ data = {
     'v1_service_was_active': v1_active.lower() == 'true',
     'backup_timer_was_enabled': backup_was_enabled.lower() == 'true',
     'backup_timer_enabled': backup_enabled.lower() == 'true',
+    'coverage_timer_was_enabled': coverage_was_enabled.lower() == 'true',
+    'coverage_timer_enabled': True,
     'settlement_timer_enabled': True,
     'health_timer_enabled': True,
     'research_timer_enabled': True,
@@ -163,16 +175,9 @@ PY
 cat <<EOF
 
 Sabi Boy V2 is staged and running on ${DASHBOARD_HOST}:${DASHBOARD_PORT}.
-V1 has not been stopped or modified.
-Verified daily backups are enabled through $BACKUP_TIMER.
-Automatic result settlement is enabled through $SETTLEMENT_TIMER.
-Local source/readiness health checks are enabled through $HEALTH_TIMER (no model wake/token use).
-Daily research is enabled through $RESEARCH_TIMER (direct compact model call; no OpenClaw agent wake).
+Verified backups, settlement, local health, the no-model coverage radar, and bounded research are enabled.
+The coverage radar refreshes independently from AI research and does not place wagers.
 Backup manifest: $manifest
 Acceptance:     $RELEASE_DIR/acceptance-latest.json
 Staging state:  $STATE_FILE
-
-External/Cloudflare cutover is intentionally NOT guessed by this script.
-Inspect the live routing on the Dell, point it to ${DASHBOARD_PORT} only after verification,
-then record that cutover in the deployment report.
 EOF

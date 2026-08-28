@@ -9,22 +9,19 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Sabi Boy">
   <meta name="description" content="Sabi Boy — sports intelligence, history, performance and journal.">
-  <link rel="manifest" href="/manifest.json?v=2.3.0.0">
-  <link rel="icon" href="/favicon.ico?v=2.3.0.0" type="image/png">
-  <link rel="apple-touch-icon" href="/assets/icon-192.png?v=2.3.0.0">
-  <link rel="stylesheet" href="/assets/app.css?v=2.3.0.0">
+  <link rel="manifest" href="/manifest.json?v=2.4.0.0">
+  <link rel="icon" href="/favicon.ico?v=2.4.0.0" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png?v=2.4.0.0">
+  <link rel="stylesheet" href="/assets/app.css?v=2.4.0.0">
   <title>Sabi Boy knows ball</title>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <img class="brand-mark" src="/assets/icon-192.png?v=2.3.0.0" alt="">
-        <div>
-          <strong>Sabi Boy</strong>
-        </div>
+        <img class="brand-mark" src="/assets/icon-192.png?v=2.4.0.0" alt="">
+        <div><strong>Sabi Boy</strong></div>
       </div>
-
       <nav class="nav" aria-label="Main navigation">
         <a href="/" data-route="overview"><span class="nav-icon">⌂</span><span>Overview</span></a>
         <a href="/picks" data-route="picks"><span class="nav-icon">✓</span><span>Picks</span></a>
@@ -37,27 +34,21 @@
         <a href="/blog" data-route="blog"><span class="nav-icon">✎</span><span>Sabi's Blog</span></a>
         <a href="/system" data-route="system"><span class="nav-icon">◉</span><span>System</span></a>
       </nav>
-
       <div class="sidebar-account">
         <a href="/hendrix" data-route="hendrix" aria-label="Open Hendrix's record">
           <span class="account-mark">H</span><span><b>Hendrix</b><small>My record</small></span>
         </a>
       </div>
-
       <div class="sidebar-foot">
         <div id="readiness-chip" class="status-chip sidebar-readiness loading"><span></span><b>Checking</b></div>
         <small>Research and ticket work happen with Sabi Boy in OpenClaw.</small>
       </div>
     </aside>
-
     <button id="nav-backdrop" class="nav-backdrop" type="button" aria-label="Close navigation" tabindex="-1"></button>
-
     <div class="workspace">
       <header class="topbar">
         <button id="menu-button" class="icon-button menu-button" aria-label="Open navigation">☰</button>
-        <div class="page-heading">
-          <h1 id="page-title">Overview</h1>
-        </div>
+        <div class="page-heading"><h1 id="page-title">Overview</h1></div>
         <div class="topbar-actions">
           <span id="network-status" class="network-status" aria-live="polite"></span>
           <button id="notification-button" class="icon-button notification-button" title="Enable result notifications" aria-label="Enable result notifications" aria-pressed="false" data-notification-state="off"><svg class="notification-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-9.33-5M6.26 6.26A5.9 5.9 0 0 0 6 8c0 7-3 7-3 9h14M13.73 21a2 2 0 0 1-3.46 0M3 3l18 18"/></svg></button>
@@ -65,18 +56,14 @@
           <button id="refresh-button" class="icon-button" title="Refresh data" aria-label="Refresh data">↻</button>
         </div>
       </header>
-
       <main id="view" class="view" aria-live="polite">
-        <div class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading…</p>
-        </div>
+        <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
       </main>
     </div>
   </div>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/assets/app.js?v=2.3.0.0" defer></script>
-  <script src="/assets/history_insights.js?v=2.3.0.0" defer></script>
+  <script src="/assets/app.js?v=2.4.0.0" defer></script>
+  <script src="/assets/history_insights.js?v=2.4.0.0" defer></script>
+  <script src="/assets/coverage_funnel.js?v=2.4.0.0" defer></script>
 </body>
 </html>
