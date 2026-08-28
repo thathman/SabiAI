@@ -46,6 +46,10 @@ def test_v2_dashboard_router_has_no_mutating_http_methods(tmp_path):
     assert "/api/v2/strategies/learning" in paths
     assert "/api/v2/research/coverage" in paths
     assert "/api/v2/research/cache" in paths
+    assert "/api/v2/research/runs" in paths
+    assert "/api/v2/research/latest" in paths
+    assert "/api/v2/performance/windows" in paths
+    assert "/api/v2/performance/models" in paths
 
 
 def test_dashboard_router_exposes_detailed_ticket_and_performance_reads(tmp_path):
@@ -62,11 +66,36 @@ def test_dashboard_router_exposes_detailed_ticket_and_performance_reads(tmp_path
         "/api/v2/performance/odds-bands",
         "/api/v2/performance/ticket-sizes",
         "/api/v2/performance/combined-odds",
+        "/api/v2/performance/windows",
+        "/api/v2/performance/models",
         "/api/v2/tickets/killers",
         "/api/v2/series/outcomes",
         "/api/v2/series/bankroll",
     }
     assert expected.issubset(paths)
+
+
+def test_dashboard_returns_comparable_rolling_windows_and_research_history(tmp_path):
+    settings = _settings(tmp_path)
+    SabiDatabase(settings.v2_db).initialize()
+    app = FastAPI()
+    app.include_router(create_v2_dashboard_router(settings))
+    client = TestClient(app)
+
+    windows = client.get("/api/v2/performance/windows?days=7")
+    assert windows.status_code == 200
+    payload = windows.json()
+    assert payload["window_days"] == 7
+    assert set(payload["windows"]) == {"last", "previous"}
+    assert payload["windows"]["last"]["win_percentage"] is None
+
+    latest = client.get("/api/v2/research/latest")
+    assert latest.status_code == 200
+    assert latest.json() == {"run": None}
+
+    runs = client.get("/api/v2/research/runs?limit=5")
+    assert runs.status_code == 200
+    assert runs.json() == {"rows": []}
 
 
 def test_notification_history_is_readable_from_dashboard(tmp_path):

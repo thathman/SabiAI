@@ -3,4 +3,4 @@
 The package keeps V2 logic separate from legacy scripts while the migration is in progress.
 """
 
-__version__ = "2.3.0.0"
+__version__ = "2.4.0.0"

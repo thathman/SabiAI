@@ -52,6 +52,64 @@
 
   const pct = (value) => value == null ? '—' : `${num(value, 1)}%`;
   const odds = (value) => value == null ? '—' : num(value, 2);
+
+  function confidenceTier(value) {
+    const score = Number(value);
+    if (!Number.isFinite(score)) return {label: 'Unrated', cls: 'unrated'};
+    if (score >= 78) return {label: 'Elite', cls: 'elite'};
+    if (score >= 68) return {label: 'Strong', cls: 'strong'};
+    if (score >= 60) return {label: 'Solid', cls: 'solid'};
+    if (score >= 53) return {label: 'Lean', cls: 'lean'};
+    if (score >= 50) return {label: 'Speculative', cls: 'speculative'};
+    return {label: 'Pass', cls: 'pass'};
+  }
+
+  function confidenceCell(value) {
+    const tier = confidenceTier(value);
+    if (value == null) return `<span class="confidence-cell"><span class="confidence-tier ${tier.cls}">${tier.label}</span></span>`;
+    const score = Math.max(0, Math.min(100, Number(value)));
+    return `<span class="confidence-cell"><span class="confidence-tier ${tier.cls}">${tier.label}</span><b>${pct(value)}</b><span class="confidence-track"><i style="width:${score}%"></i></span></span>`;
+  }
+
+  function outcomeLetter(value) {
+    const key = String(value || 'pending').toLowerCase();
+    return key === 'won' ? 'W' : key === 'lost' ? 'L' : key === 'draw' ? 'D' : key === 'void' ? 'V' : '·';
+  }
+
+  function formStrip(rows) {
+    if (!rows.length) return '<span class="muted-inline">No settled form yet</span>';
+    return `<div class="form-strip" aria-label="Recent form">${rows.slice(0, 10).map(row => {
+      const outcome = String(row.outcome || 'pending').toLowerCase();
+      return `<span class="form-dot ${esc(outcome)}" title="${esc(row.event || '')} · ${esc(outcome)}">${outcomeLetter(outcome)}</span>`;
+    }).join('')}</div>`;
+  }
+
+  function windowPulse(window) {
+    if (!window) return '<div class="window-empty">No window data</div>';
+    const net = Number(window.net || 0);
+    const roi = window.roi_percentage == null ? '—' : `${num(window.roi_percentage, 1)}%`;
+    return `<div class="window-card"><div class="window-card-top"><span>${esc(window.label || '')}</span><b class="${net >= 0 ? 'positive' : 'negative'}">${money(window.net)}</b></div><div class="window-main"><strong>${window.win_percentage == null ? '—' : pct(window.win_percentage)}</strong><span>win rate</span></div><div class="window-meta"><span>${num(window.won)}W · ${num(window.lost)}L</span><span>${roi} ROI</span><span>${num(window.pending)} open</span></div></div>`;
+  }
+
+  function openPositionList(rows) {
+    if (!rows.length) return empty('No open positions', 'The next qualifying pick will appear here.');
+    return `<div class="position-list">${rows.slice(0, 6).map(row => `<article class="position-row"><div class="position-main"><div><span class="primary-cell">${esc(row.event)}</span><span class="sub-cell">${esc(row.sport || '')}${row.competition ? ` · ${esc(row.competition)}` : ''}</span></div><strong>${esc(row.selection)} @ ${odds(row.decimal_odds)}</strong></div><div class="position-bottom"><span>${confidenceCell(row.confidence_pct)}</span><span>${money(row.stake)} stake</span><span>${esc(row.strategy || 'Pick')}</span></div></article>`).join('')}</div>`;
+  }
+
+  function scanSnapshot(run) {
+    if (!run) return empty('No scan recorded yet', 'The next scheduled run will publish its coverage here.');
+    const coverage = run.coverage || {};
+    const gaps = Array.isArray(coverage.gaps) ? coverage.gaps.length : 0;
+    const recommendations = Array.isArray(run.all_recommendations) ? run.all_recommendations.length : (run.recommendations || []).length;
+    const selected = (run.recommendations || []).length;
+    const note = (run.notes || [])[0] || (selected ? 'Fresh selections were recorded.' : 'No selection cleared the current decision gates.');
+    return `<div class="scan-snapshot"><div class="scan-status"><span class="pulse-dot ${selected ? 'good' : 'quiet'}"></span><strong>${selected ? 'Selections recorded' : 'Scan complete'}</strong><span>${dateTime(run.generated_at)}</span></div><div class="scan-metrics"><div><b>${num(run.events_considered)}</b><span>events</span></div><div><b>${num(coverage.slice_count || 0)}</b><span>slices</span></div><div><b>${num(recommendations)}</b><span>candidates</span></div><div><b>${num(gaps)}</b><span>coverage gaps</span></div></div><p class="scan-note">${esc(note)}</p><span class="sub-cell">${esc(run.model || 'Model not attributed')} · ${esc(run.date || '')}</span></div>`;
+  }
+
+  function insightList(posts) {
+    if (!posts.length) return empty('No recent insights', 'Reflections will appear after the next blog trigger.');
+    return `<div class="insight-list">${posts.slice(0, 3).map(post => `<article class="insight-row" data-blog-slug="${esc(post.slug)}"><div><span class="eyebrow">${esc(post.category || 'Insight')}</span><h3>${esc(post.title)}</h3><p>${esc(post.excerpt || String(post.body || '').slice(0, 220))}</p></div><time>${date(post.published_at || post.created_at)}</time></article>`).join('')}</div>`;
+  }
   const date = (value) => {
     if (!value) return '—';
     const d = new Date(value);
@@ -228,7 +286,7 @@
     setNotificationButton(true);
     await pushServiceWorker.showNotification('Sabi Boy notifications are on', {
       body: 'Automatic settlement updates can now reach this device.',
-      icon: '/assets/icon-192.png?v=2.3.0.0',
+      icon: '/assets/icon-192.png?v=2.4.0.0',
       tag: 'sabi-boy-push-enabled',
     });
   }
@@ -240,7 +298,7 @@
       return;
     }
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js?v=2.3.0.0', {scope:'/'});
+      const registration = await navigator.serviceWorker.register('/sw.js?v=2.4.0.0', {scope:'/'});
       registration.addEventListener('updatefound', () => {
         if (navigator.serviceWorker.controller) showToast('A Sabi Boy update is downloading.');
       });
@@ -327,8 +385,11 @@
   }
 
   async function renderOverview() {
-    const [o, outcomes, bankroll, sports] = await Promise.all([
-      api('/overview'), api('/series/outcomes?days=60'), api('/series/bankroll?limit=365'), api('/performance/sports')
+    const [o, outcomes, bankroll, sports, windows, models, openPositions, latest, blog] = await Promise.all([
+      api('/overview'), api('/series/outcomes?days=60'), api('/series/bankroll?limit=365'), api('/performance/sports'),
+      api('/performance/windows?days=7'), api('/performance/models'),
+      api('/picks?limit=50&owner=sabi_boy&record_kind=pick&outcome=pending'),
+      api('/research/latest'), api('/blog?limit=3')
     ]);
     const p = o.summary.picks || {};
     const pl = o.profit_loss.betting || {};
@@ -336,14 +397,34 @@
     const streakText = current.count ? `${current.count} ${current.type === 'won' ? 'W' : 'L'}` : '—';
     const pnlN = Number(pl.profit_loss || 0);
     const bankrollRows = bankroll.rows || [];
+    const latestRun = latest.run || null;
+    const windowRows = windows.windows || {};
+    const recentForm = (o.recent_picks || []).filter(row => ['won', 'lost', 'draw', 'void'].includes(String(row.outcome || '').toLowerCase()));
 
     view.innerHTML = `
       <section class="section"><div class="hero-grid">
         ${metric('Bankroll', money(o.summary.bankroll), 'Current recorded balance', 'accent')}
         ${metric('Profit / Loss', money(pl.profit_loss), 'Net result from picks and tickets', pnlN >= 0 ? 'positive' : 'negative')}
-        ${metric('Open positions', num(p.pending), `${p.total || 0} picks in record`)}
-        ${metric('Current streak', streakText, `Best: ${o.streaks.best_win_streak || 0}W · Worst: ${o.streaks.worst_losing_streak || 0}L`)}
+        ${metric('Open positions', num((openPositions.rows || []).length), `${p.total || 0} picks in record`)}
+        ${metric('Last scan', latestRun ? date(latestRun.date || latestRun.generated_at) : '—', latestRun ? `${esc(latestRun.model || 'Model unattributed')}` : 'No scan yet')}
       </div></section>
+
+      <section class="section grid-2">
+        <div class="panel"><div class="panel-head"><h3>Latest scan</h3><span>${latestRun ? esc(latestRun.date || '') : 'Waiting'}</span></div><div class="panel-body">${scanSnapshot(latestRun)}</div></div>
+        <div class="panel"><div class="panel-head"><h3>Current form</h3><span>Latest settled picks</span></div><div class="panel-body form-panel"><div class="form-heading"><strong>${streakText}</strong><span>${num(o.streaks.best_win_streak || 0)} best run</span></div>${formStrip(recentForm)}<div class="form-caption">${recentForm.length ? `${num(recentForm.length)} recent decisions in the record` : 'Form will appear as results settle.'}</div></div></div>
+      </section>
+
+      <section class="section"><div class="panel"><div class="panel-head"><h3>Performance pulse</h3><span>Settled windows · as of ${dateTime(windows.as_of)}</span></div><div class="panel-body window-grid">${windowPulse(windowRows.last)}${windowPulse(windowRows.previous)}</div></div></section>
+
+      <section class="section grid-2">
+        <div class="panel"><div class="panel-head"><h3>Open positions</h3><span>${num((openPositions.rows || []).length)} active</span></div><div class="panel-body">${openPositionList(openPositions.rows || [])}</div></div>
+        <div class="panel"><div class="panel-head"><h3>Model record</h3><span>Attributed picks</span></div><div class="panel-body">${table([
+          {label:'Model', render:r=>`<span class="primary-cell">${esc(r.model)}</span><span class="sub-cell">${num(r.settled)} settled · ${num(r.pending)} open</span>`},
+          {label:'Record', num:true, render:r=>`${num(r.won)}–${num(r.lost)}`},
+          {label:'Win rate', num:true, render:r=>pct(r.win_percentage)},
+          {label:'Net', num:true, render:r=>`<span class="${Number(r.net || 0) >= 0 ? 'positive':'negative'}">${money(r.net)}</span>`},
+        ], models.rows || [])}</div></div>
+      </section>
 
       <section class="section grid-2">
         <div class="panel"><div class="panel-head"><h3>Bankroll over time</h3><span>${bankrollRows.length} ledger points</span></div><div class="panel-body">${lineChart(bankrollRows, 'occurred_at', 'balance')}</div></div>
@@ -351,6 +432,8 @@
       </section>
 
       <section class="section"><div class="panel strategy-board"><div class="panel-head"><h3>Strategy board</h3><span>Latest scan</span></div><div class="panel-body">${strategyPlanCards(o.strategy_plans || [])}</div></div></section>
+
+      <section class="section"><div class="panel"><div class="panel-head"><h3>Recent insights</h3><span><a href="/blog" data-route="blog">View all</a></span></div><div class="panel-body">${insightList(blog.posts || [])}</div></div></section>
 
       <section class="section grid-equal">
         <div class="panel"><div class="panel-head"><h3>Win rate trend</h3><span>Settled picks</span></div><div class="panel-body">${outcomeTrend(outcomes.rows || [])}</div></div>
@@ -377,7 +460,7 @@
       {label:'Game', render:r => `<span class="primary-cell">${esc(r.event)}</span><span class="sub-cell">${esc(r.sport || '')}${r.competition ? ` · ${esc(r.competition)}` : ''}</span>`},
       {label:'Pick', render:r => `<span class="primary-cell">${esc(r.selection)}</span><span class="sub-cell">${esc(r.market || '')}</span>`},
       {label:'Odds', num:true, render:r => odds(r.decimal_odds)},
-      {label:'Confidence', num:true, render:r => pct(r.confidence_pct)},
+      {label:'Confidence', render:r => confidenceCell(r.confidence_pct)},
       {label:'Stake', num:true, render:r => money(r.stake)},
       {label:'Type', render:r => esc(String(r.record_kind || 'pick').toLowerCase() === 'tip' ? 'Tip' : 'Pick')},
       {label:'Strategy', render:r => esc(r.strategy || '—')},
@@ -443,8 +526,9 @@
   }
 
   async function renderPerformance() {
-    const [sports, markets, books, oddsBands, competitions] = await Promise.all([
-      api('/performance/sports'), api('/performance/markets'), api('/performance/bookmakers'), api('/performance/odds-bands'), api('/performance/competitions')
+    const [sports, markets, books, oddsBands, competitions, windows, models] = await Promise.all([
+      api('/performance/sports'), api('/performance/markets'), api('/performance/bookmakers'), api('/performance/odds-bands'), api('/performance/competitions'),
+      api('/performance/windows?days=7'), api('/performance/models')
     ]);
     const performanceTable = rows => table([
       {label:'Group', render:r => `<span class="primary-cell">${esc(r.sport || r.market || r.bookmaker || r.odds_band || r.competition || '—')}</span>`},
@@ -465,6 +549,16 @@
         <div class="panel flush"><div class="panel-head"><h3>Bookmakers</h3><span>Recorded picks</span></div><div class="panel-body">${performanceTable(books.rows||[])}</div></div>
         <div class="panel flush"><div class="panel-head"><h3>Competitions</h3><span>Recorded picks</span></div><div class="panel-body">${performanceTable(competitions.rows||[])}</div></div>
       </section>`;
+
+    view.insertAdjacentHTML('afterbegin', `<section class="section"><div class="panel"><div class="panel-head"><h3>Recent pulse</h3><span>Last 7 days vs previous 7 days</span></div><div class="panel-body window-grid">${windowPulse((windows.windows || {}).last)}${windowPulse((windows.windows || {}).previous)}</div></div></section>`);
+    view.insertAdjacentHTML('beforeend', `<section class="section"><div class="panel flush"><div class="panel-head"><h3>Model comparison</h3><span>Clean attribution</span></div><div class="panel-body">${table([
+      {label:'Model', render:r=>`<span class="primary-cell">${esc(r.model)}</span>`},
+      {label:'Settled', num:true, render:r=>num(r.settled)},
+      {label:'Record', num:true, render:r=>`${num(r.won)}–${num(r.lost)}`},
+      {label:'Win rate', num:true, render:r=>pct(r.win_percentage)},
+      {label:'Average odds', num:true, render:r=>odds(r.average_odds)},
+      {label:'Net', num:true, render:r=>`<span class="${Number(r.net || 0) >= 0 ? 'positive':'negative'}">${money(r.net)}</span>`},
+    ], models.rows || [])}</div></div></section>`);
   }
 
   async function renderFinance() {
@@ -615,7 +709,7 @@
   }
 
   async function renderSystem() {
-    const [ready, sources, economy, coverage] = await Promise.all([api('/system/readiness'), api('/system/sources'), api('/system/api-economy'), api('/research/coverage')]);
+    const [ready, sources, economy, coverage, runs] = await Promise.all([api('/system/readiness'), api('/system/sources'), api('/system/api-economy'), api('/research/coverage'), api('/research/runs?limit=12')]);
     const sourceRows = sources.sources || [];
     view.innerHTML = `
       <section class="section"><div class="system-grid">
@@ -641,6 +735,15 @@
           {label:'Cache reuse', num:true, render:r=>num(r.cache_hits)},
           {label:'Issues', num:true, render:r=>num(r.failures)},
         ], coverage.by_sport || []) || '<div class="empty-state">No daily coverage recorded yet.</div>'}</div></div>
+      </section>
+      <section class="section">${sectionHead('Scan history', 'A transparent record of when the engine ran, what it saw and what it selected')}
+        <div class="panel flush"><div class="panel-body">${table([
+          {label:'Run', render:r=>`<span class="primary-cell">${dateTime(r.generated_at)}</span><span class="sub-cell">${esc(r.model || 'Model unattributed')} · ${esc(r.date || '')}</span>`},
+          {label:'Events', num:true, render:r=>num(r.events_considered)},
+          {label:'Candidates', num:true, render:r=>num((r.all_recommendations || r.recommendations || []).length)},
+          {label:'Selected', num:true, render:r=>num((r.recommendations || []).length)},
+          {label:'Push', render:r=>r.push ? `${num(r.push.delivered || 0)} delivered` : '—'},
+        ], runs.rows || [])}</div></div>
       </section>
       <section class="section">${sectionHead('Sources', 'What Sabi Boy has actually been using and how those sources are behaving')}
         <div class="panel flush"><div class="panel-body">${table([

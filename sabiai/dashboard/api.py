@@ -11,6 +11,7 @@ from sabiai.sources import SourceHealthService, default_source_bundle
 from sabiai.storage import (
     AdvancedAnalytics,
     DashboardReadService,
+    DailyResearchLog,
     HistoryService,
     PerformanceAnalytics,
     SabiDatabase,
@@ -150,6 +151,14 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
     def performance_strategies():
         return {"rows": analytics().by_strategy(owner="sabi_boy", record_kind="pick")}
 
+    @router.get("/performance/models")
+    def performance_models():
+        return {"rows": analytics().by_model(owner="sabi_boy", record_kind="pick")}
+
+    @router.get("/performance/windows")
+    def performance_windows(days: int = Query(7, ge=1, le=90)):
+        return analytics().rolling_windows(days, owner="sabi_boy", record_kind="pick")
+
     @router.get("/strategies/plans")
     def strategy_plans(
         limit: int = Query(30, ge=1, le=200),
@@ -187,6 +196,18 @@ def create_v2_dashboard_router(settings: Settings | None = None) -> APIRouter:
         database = db()
         database.initialize()
         return ResearchSliceStore(database).coverage(run_id)
+
+    @router.get("/research/runs")
+    def research_runs(limit: int = Query(20, ge=1, le=100)):
+        database = db()
+        database.initialize()
+        return {"rows": DailyResearchLog(database).list(limit)}
+
+    @router.get("/research/latest")
+    def research_latest():
+        database = db()
+        database.initialize()
+        return {"run": DailyResearchLog(database).latest()}
 
     @router.get("/research/cache")
     def research_cache(event: str = Query(..., min_length=1), scan_date: str | None = None,

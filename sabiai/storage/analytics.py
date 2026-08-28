@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -128,6 +129,145 @@ class PerformanceAnalytics:
             },
             "bankroll": str(_money(balance[0]) if balance and balance[0] is not None else _DECIMAL_ZERO),
         }
+
+    def rolling_windows(
+        self,
+        window_days: int = 7,
+        *,
+        owner: str | None = None,
+        record_kind: str | None = None,
+        now: datetime | None = None,
+    ) -> dict:
+        """Return comparable recent and preceding performance windows.
+
+        The dashboard needs a time-aware view rather than only all-time totals.  Windows
+        are based on settlement time when present and creation time otherwise, matching
+        the ordering used by the history views.  This is intentionally a read model: it
+        never changes bankroll or pick state.
+        """
+
+        days = max(1, min(int(window_days), 90))
+        anchor = now or datetime.now(timezone.utc)
+        if anchor.tzinfo is None:
+            anchor = anchor.replace(tzinfo=timezone.utc)
+        current_start = anchor - timedelta(days=days)
+        previous_start = anchor - timedelta(days=days * 2)
+        where, owner_params = _pick_where(owner=owner, record_kind=record_kind)
+
+        def window(label: str, start: datetime, end: datetime) -> dict:
+            clauses = [
+                "datetime(COALESCE(p.settled_at, p.created_at)) >= datetime(?)",
+                "datetime(COALESCE(p.settled_at, p.created_at)) < datetime(?)",
+            ]
+            params: list[object] = [start.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), end.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")]
+            if where:
+                clauses.append(where.removeprefix("WHERE "))
+                params.extend(owner_params)
+            query = """SELECT COUNT(*) AS total,
+                              SUM(CASE WHEN p.outcome='won' THEN 1 ELSE 0 END) AS won,
+                              SUM(CASE WHEN p.outcome='lost' THEN 1 ELSE 0 END) AS lost,
+                              SUM(CASE WHEN p.outcome='draw' THEN 1 ELSE 0 END) AS draw,
+                              SUM(CASE WHEN p.outcome='void' THEN 1 ELSE 0 END) AS void,
+                              SUM(CASE WHEN p.outcome='pending' THEN 1 ELSE 0 END) AS pending,
+                              COALESCE(SUM(CAST(COALESCE(p.stake,'0') AS REAL)),0) AS stakes,
+                              COALESCE(SUM(CAST(COALESCE(p.payout,'0') AS REAL)),0) AS payouts
+                       FROM picks_v2 p
+                       WHERE """ + " AND ".join(clauses)
+            with self.db.connect() as conn:
+                row = conn.execute(query, tuple(params)).fetchone()
+            total = int(row["total"] or 0)
+            won = int(row["won"] or 0)
+            lost = int(row["lost"] or 0)
+            draw = int(row["draw"] or 0)
+            void = int(row["void"] or 0)
+            pending = int(row["pending"] or 0)
+            stakes = _money(row["stakes"])
+            payouts = _money(row["payouts"])
+            net = (payouts - stakes).quantize(Decimal("0.01"))
+            decided = won + lost
+            return {
+                "label": label,
+                "start": start.astimezone(timezone.utc).isoformat(),
+                "end": end.astimezone(timezone.utc).isoformat(),
+                "days": days,
+                "total": total,
+                "settled": decided + draw + void,
+                "won": won,
+                "lost": lost,
+                "draw": draw,
+                "void": void,
+                "pending": pending,
+                "win_percentage": _pct(won, lost),
+                "stakes": str(stakes),
+                "payouts": str(payouts),
+                "net": str(net),
+                "roi_percentage": round(float(net / stakes * 100), 1) if stakes else None,
+            }
+
+        return {
+            "as_of": anchor.astimezone(timezone.utc).isoformat(),
+            "window_days": days,
+            "windows": {
+                "last": window("Last %d Days" % days, current_start, anchor),
+                "previous": window("Previous %d Days" % days, previous_start, current_start),
+            },
+        }
+
+    def by_model(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
+        """Summarise the performance of each model generation in the record."""
+
+        where, params = _pick_where(owner=owner, record_kind=record_kind)
+        with self.db.connect() as conn:
+            rows = conn.execute(
+                """SELECT COALESCE(NULLIF(p.model_generation,''), 'Unattributed') AS model,
+                          p.outcome,
+                          COUNT(*) AS n,
+                          COALESCE(SUM(CAST(COALESCE(p.stake,'0') AS REAL)),0) AS stakes,
+                          COALESCE(SUM(CAST(COALESCE(p.payout,'0') AS REAL)),0) AS payouts,
+                          AVG(CAST(p.decimal_odds AS REAL)) AS average_odds
+                   FROM picks_v2 p
+                   """ + where + """
+                   GROUP BY model, p.outcome
+                   ORDER BY model COLLATE NOCASE, p.outcome""",
+                params,
+            ).fetchall()
+        grouped: dict[str, dict] = {}
+        for row in rows:
+            model = str(row["model"] or "Unattributed")
+            item = grouped.setdefault(model, {"model": model, "total": 0, "won": 0, "lost": 0, "draw": 0, "void": 0, "pending": 0, "stakes": Decimal("0"), "payouts": Decimal("0"), "average_odds": []})
+            outcome = str(row["outcome"] or "pending")
+            count = int(row["n"] or 0)
+            item["total"] += count
+            if outcome in {"won", "lost", "draw", "void", "pending"}:
+                item[outcome] += count
+            item["stakes"] += Decimal(str(row["stakes"] or 0))
+            item["payouts"] += Decimal(str(row["payouts"] or 0))
+            if row["average_odds"] is not None:
+                item["average_odds"].append((float(row["average_odds"]), count))
+        result = []
+        for item in grouped.values():
+            won, lost = item["won"], item["lost"]
+            stakes = _money(item["stakes"])
+            payouts = _money(item["payouts"])
+            net = (payouts - stakes).quantize(Decimal("0.01"))
+            odds_count = sum(count for _, count in item["average_odds"])
+            average_odds = sum(value * count for value, count in item["average_odds"]) / odds_count if odds_count else None
+            result.append({
+                "model": item["model"],
+                "total": item["total"],
+                "won": won,
+                "lost": lost,
+                "draw": item["draw"],
+                "void": item["void"],
+                "pending": item["pending"],
+                "settled": won + lost + item["draw"] + item["void"],
+                "win_percentage": _pct(won, lost),
+                "stakes": str(stakes),
+                "payouts": str(payouts),
+                "net": str(net),
+                "average_odds": round(average_odds, 2) if average_odds is not None else None,
+            })
+        return result
 
     def by_strategy(self, *, owner: str | None = None, record_kind: str | None = None) -> list[dict]:
         return self._pick_breakdown("COALESCE(NULLIF(strategy,''), 'Unspecified')", "strategy", owner=owner, record_kind=record_kind)
