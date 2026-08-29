@@ -175,18 +175,22 @@ class CoveragePrefilter:
             if key in seen:
                 continue
             seen.add(key)
-            result.append({
+            result_row = {
                 "label": offer.get("selection_label"),
                 "decimal_odds": float(offer["decimal_odds"]),
                 "market": offer.get("family"),
-                "metric": offer.get("metric"),
-                "side": offer.get("side"),
                 "line": offer.get("line"),
                 "period": offer.get("period"),
                 "participant": offer.get("participant"),
                 "bookmaker": canonical_action_book(offer.get("bookmaker") or offer.get("source_name")),
                 "observed_at": offer.get("observed_at"),
-            })
+            }
+            # Preserve the legacy compact shape when these optional dimensions are absent,
+            # while retaining them whenever a market sensor supplied them for V2.5 pricing.
+            for optional in ("metric", "side"):
+                if offer.get(optional) is not None:
+                    result_row[optional] = offer.get(optional)
+            result.append(result_row)
             if len(result) >= 18:
                 break
         return result

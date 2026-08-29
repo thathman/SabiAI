@@ -116,7 +116,9 @@ class CrossSportDecisionPass:
             and ev >= self.minimum_expected_value_pct
         ):
             return "BET"
-        if confidence >= self.minimum_confidence and edge >= self.minimum_edge:
+        # A high-confidence candidate whose current price is below its break-even
+        # threshold is still useful context, but must wait for a better quote.
+        if confidence >= self.minimum_confidence and (edge >= self.minimum_edge or ev < self.minimum_expected_value_pct):
             return "BET IF PRICE"
         if confidence >= max(0.0, self.minimum_confidence - 5.0) and ev >= -3.0:
             return "WATCH"

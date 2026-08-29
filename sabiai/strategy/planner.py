@@ -233,6 +233,22 @@ def _candidates(rows: object) -> list[dict]:
                 "source": str(item.get("source") or "").strip(),
                 "starts_at": item.get("starts_at"),
                 "source_event_id": item.get("source_event_id") or item.get("event_id"),
+                # Preserve V2.5's exact-price and evidence context through strategy
+                # planning so a promoted record can be calibrated against the same
+                # offer and research packet that produced it.
+                "offer_ref": item.get("offer_ref"),
+                "bookmaker": item.get("bookmaker"),
+                "observed_at": item.get("observed_at"),
+                "estimated_probability_pct": item.get("estimated_probability_pct"),
+                "consensus_probability_pct": item.get("consensus_probability_pct"),
+                "consensus_fair_odds": item.get("consensus_fair_odds"),
+                "action_book_fair_odds": item.get("action_book_fair_odds"),
+                "expected_value_pct": item.get("expected_value_pct"),
+                "decision_state": item.get("decision_state"),
+                "evidence_quality": item.get("evidence_quality"),
+                "evidence_ready_for_decision": item.get("evidence_ready_for_decision"),
+                "evidence_sources": list(item.get("evidence_sources") or []),
+                "missing_evidence_topics": list(item.get("missing_evidence_topics") or []),
             }
         )
     return result

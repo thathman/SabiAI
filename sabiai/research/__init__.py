@@ -2,6 +2,7 @@ from .case import EvidenceConflict, ResearchAssessment, ResearchCaseService
 from .action_price import ActionPriceEnricher, ActionPriceRefreshResult
 from .context import CandidateEvidenceBuilder, EvidenceBuildResult
 from .decision import CrossSportDecisionPass
+from .engine_control import EngineCompletenessService, EngineDecisionStore, EngineGapPlanner
 from .discovery_runtime import CoverageDiscoveryEngine, DiscoveryResult
 from .evidence import Evidence, EvidenceStore
 from .intake import EvidencePacketItem, EvidencePacketResult, EvidencePacketService
@@ -29,6 +30,9 @@ __all__ = [
     "CoverageDiscoveryEngine",
     "CoveragePrefilter",
     "CrossSportDecisionPass",
+    "EngineCompletenessService",
+    "EngineDecisionStore",
+    "EngineGapPlanner",
     "DiscoveryResult",
     "Evidence",
     "EvidenceBuildResult",

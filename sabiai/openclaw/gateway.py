@@ -22,6 +22,7 @@ from .bookmaker_compare_tools import BookmakerCompareTools
 from .bookmaker_health_tools import BookmakerHealthTools
 from .bookmaker_tools import BookmakerTools
 from .coverage_tools import CoverageTools
+from .engine_tools import EngineTools
 from .market_tools import MarketTools
 from .record_tools import RecordTools
 from .research_tools import ResearchTools
@@ -68,6 +69,7 @@ class SabiToolGateway:
             SportsInsightTools(self),
             ResearchTools(self),
             CoverageTools(self),
+            EngineTools(self),
             MarketTools(self),
             BookmakerTools(self),
             BookmakerCompareTools(self),

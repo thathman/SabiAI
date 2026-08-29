@@ -15,7 +15,7 @@ from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport, WebPushService
 from sabiai.sources import SourceRequest, SourceService, default_source_bundle
 from sabiai.storage import BankrollLedger, DailyResearchLog, PickRecordService, SabiDatabase, StrategyPlanStore
-from sabiai.research import ActionPriceEnricher, ShardedDailyResearch
+from sabiai.research import ActionPriceEnricher, EngineDecisionStore, ShardedDailyResearch
 from sabiai.strategy import StrategyChainStore, StrategyLearningService, StrategyPlanner, StrategyTicketService
 
 from .jobs import JobService
@@ -616,9 +616,8 @@ def _record_strategy_picks(
         return []
     candidate = precision["candidates"][0]
     try:
-        return [
-            PickRecordService(database).record(
-                {
+        recorded = PickRecordService(database).record(
+            {
                     "sport": candidate.get("sport"),
                     "competition": candidate.get("competition"),
                     "event": candidate.get("event"),
@@ -639,9 +638,33 @@ def _record_strategy_picks(
                     "owner": "sabi_boy",
                     "record_kind": "pick",
                     "selected": True,
-                }
+            }
+        )
+        # Keep the exact V2.5 decision context beside the canonical pick. This is
+        # what lets settlement produce calibration views without asking the model
+        # to reconstruct the price or evidence it saw at selection time. The
+        # legacy V2.4 heartbeat can still be invoked directly by older callers;
+        # those rows predate offer references and are returned without context.
+        if candidate.get("offer_ref"):
+            EngineDecisionStore(database).save(
+                recorded["id"],
+                {
+                    "offer_ref": candidate.get("offer_ref"),
+                    "bookmaker": candidate.get("bookmaker") or _bookmaker_for_source(candidate.get("source")),
+                    "observed_at": candidate.get("observed_at"),
+                    "estimated_probability_pct": candidate.get("estimated_probability_pct") or candidate.get("confidence_pct"),
+                    "consensus_probability_pct": candidate.get("consensus_probability_pct"),
+                    "fair_odds": candidate.get("consensus_fair_odds") or candidate.get("action_book_fair_odds"),
+                    "expected_value_pct": candidate.get("expected_value_pct"),
+                    "decision_state": candidate.get("decision_state") or "BET",
+                    "evidence_quality": candidate.get("evidence_quality"),
+                    "evidence_ready": candidate.get("evidence_ready_for_decision") is True,
+                    "evidence_sources": candidate.get("evidence_sources"),
+                    "missing_evidence": candidate.get("missing_evidence_topics"),
+                },
             )
-        ]
+            recorded["engine_context_saved"] = True
+        return [recorded]
     except (KeyError, TypeError, ValueError, InvalidOperation) as exc:
         # A malformed model row must never make the entire daily scan disappear. The
         # report still carries the strategy plan and the reason for the skipped record.
