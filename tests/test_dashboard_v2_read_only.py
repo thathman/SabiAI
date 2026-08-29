@@ -205,6 +205,12 @@ def test_source_screen_syncs_every_configured_runtime_source(tmp_path):
         "Parse · ESPN",
         "Sports Betting AI Analyzer",
     } <= rows.keys()
-    assert all(row["state"] == "not_used_yet" for row in rows.values())
+    # V2.5 keeps optional expansion providers visible with an explicit disabled state when
+    # no private credential/local dataset is configured; configured public sources remain
+    # not_used_yet until their first request.
+    assert all(row["state"] in {"not_used_yet", "disabled"} for row in rows.values())
+    assert rows["API-Sports"]["state"] == "disabled"
+    assert rows["SportsGameOdds"]["state"] == "disabled"
+    assert rows["PandaScore"]["state"] == "disabled"
     assert "Parse · 1xBet" not in rows
     assert "Stake" not in rows
