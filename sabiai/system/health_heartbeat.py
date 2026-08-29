@@ -124,8 +124,10 @@ def run_health_heartbeat(settings: Settings) -> dict[str, Any]:
     """Run one local health pass and optionally deliver a Web Push alert."""
 
     database = SabiDatabase(settings.v2_db)
-    if not settings.v2_db.exists():
-        database.initialize()
+    # A pre-created empty file (for example from mktemp or a freshly provisioned
+    # volume) is not an initialized SQLite database. Initialization is idempotent,
+    # so always bring the schema up before reading jobs/source state.
+    database.initialize()
 
     jobs = JobService(database)
     jobs.register(
