@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from sabiai.config import Settings
 from sabiai.sources import (
     ApiSportsAdapter,
@@ -177,6 +179,17 @@ def test_nba_livedata_uses_public_scoreboard():
     result = NbaLiveDataAdapter(http_get=fake_get).fetch(_request("fixtures", "basketball"))
     assert calls == ["https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json"]
     assert result["raw"]["events"][0]["event_id"] == "001"
+
+
+def test_provider_path_segments_reject_traversal():
+    with pytest.raises(ValueError, match="path characters"):
+        PandaScoreAdapter(token="ps-test", http_get=lambda **_kwargs: {}).fetch(
+            _request("fixtures", "esports", {"game": "../matches"})
+        )
+    with pytest.raises(ValueError, match="path characters"):
+        OpenLigaDBAdapter(http_get=lambda **_kwargs: {}).fetch(
+            _request("fixtures", "football", {"league": "../../secret", "season": 2026})
+        )
 
 
 def test_catalog_exposes_optional_sources_as_not_configured(tmp_path: Path):
