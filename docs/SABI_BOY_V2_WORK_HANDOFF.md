@@ -1,13 +1,14 @@
 # Sabi Boy V2 — ChatGPT Work Installation & Testing Handoff
 
-Use this document as the execution brief when switching to ChatGPT Work.
+Use this document as the execution brief for a future controlled upgrade or reacceptance. The V2.4 release described here completed production cutover on 2026-08-29.
 
 **Repository:** `thathman/SabiAI`  
 **Branch:** `v2`  
 **Product:** Sabi Boy  
 **OpenClaw agent ID:** `prediction`
-**Phase:** Installation + controlled runtime acceptance  
-**Do not merge `v2` to `main` during this phase unless every applicable Phase 16 gate is green and the release step is explicitly included.**
+**Phase:** Completed installation, controlled runtime acceptance and production release
+**Production SHA:** `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd`
+Future changes require a new branch and reacceptance; do not modify the frozen release in place.
 
 ## Mission
 

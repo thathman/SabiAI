@@ -1,8 +1,8 @@
 # Sabi Boy V2 — Deployment / Upgrade Runbook
 
-This runbook is for the eventual Dell/OpenClaw upgrade from SabiAI V1 to Sabi Boy V2.
+This runbook records the Dell/OpenClaw upgrade from SabiAI V1 to the Sabi Boy V2.4 production release and remains the rollback/maintenance reference for future upgrades.
 
-**Do not use it to promote V2 before the release task board is complete.**
+**Current production baseline:** `v2.4.0` at `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd`; public route verified on 2026-08-29. Do not change the frozen release during maintenance.
 
 ## Principles
 

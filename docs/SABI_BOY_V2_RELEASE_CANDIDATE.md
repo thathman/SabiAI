@@ -3,10 +3,10 @@
 **Branch:** `v2`
 **Human-facing product:** Sabi Boy
 **OpenClaw agent ID:** `prediction`
-**Candidate status:** V2.4 has passed controlled Dell installation and acceptance at the exact Forgejo `v2` candidate recorded in Phase 16.
-**Promotion status:** **Do not merge to `main` yet; public cutover remains separately authorised.**
+**Release status:** V2.4.0 passed controlled Dell installation and acceptance at the exact Forgejo `v2` commit recorded in Phase 16, was promoted to Forgejo `main`, publicly verified and synchronized to GitHub `main`.
+**Release SHA:** `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd`
 
-This document describes the installed V2 candidate and its release boundary. It is operational as Sabi Boy, but it is not a claim that every final-release gate has passed.
+This document describes the installed V2.4 production release and its documented boundary. It is operational as Sabi Boy; the remaining limitations are recorded below and in the security review.
 
 ## Product boundary
 
@@ -189,9 +189,9 @@ A broad regression suite is committed for the V2 code, including migration, sour
 
 The authoritative evidence and pass/partial/blocker state is Phase 16 in `docs/SABIAI_V2_TASKS.md`. The installed candidate has passed migration/reconciliation, OpenClaw tool/skill visibility, persistent research, representative multi-sport research, Bet9ja restore/build/reload, a real SportyBet-to-Bet9ja conversion, fresh multi-book comparison, dashboard, Blog/job/settlement drills, backup/restore and security acceptance.
 
-The installation and controlled acceptance gates pass. Remaining limitations are the intentionally public read-only API, provider rate limiting/optional source availability, and the fact that `v2` has not been merged to `main` or externally cut over. Those are documented decisions, not hidden failures; see `docs/SABI_BOY_V24_SECURITY_REVIEW.md` and Phase 16.
+The installation, controlled acceptance, Forgejo promotion, public cutover and GitHub synchronization gates pass. Remaining limitations are the intentionally public read-only API and provider rate limiting/optional source availability. Those are documented decisions, not hidden failures; see `docs/SABI_BOY_V24_SECURITY_REVIEW.md` and Phase 16.
 
-The current release status is **READY WITH DOCUMENTED LIMITATIONS**.
+The current release status is **PRODUCTION — Sabi Boy v2.4.0**.
 
 ## Failure policy
 

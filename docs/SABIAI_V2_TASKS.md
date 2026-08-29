@@ -398,7 +398,7 @@
 
 ## Phase 16 — Installation / Test / Release Gate
 
-**The requested V2.1 repository changes are now frozen for controlled Dell acceptance. Do not promote `v2` to `main` until the applicable runtime gates below pass.**
+**The V2.4 repository changes are frozen at the accepted release baseline. The applicable runtime gates below passed, and the release was promoted through the Forgejo-first workflow on 2026-08-29.**
 
 - [x] Full current V2.1 pytest suite — 234 pass locally and on the Dell/runtime
 - [x] V1 database snapshot taken and verified
@@ -437,8 +437,8 @@
 - [x] Release-candidate notes exist
 - [x] ChatGPT Work installation/testing handoff exists
 - [x] Final V2 acceptance review — installed replacement is operational and all required original-plan acceptance gates have passing evidence
-- [ ] Promote/merge `v2` to `main` according to Forgejo-first release workflow
-- [x] Final production state recorded — V2 is already the active replacement and no additional cutover action is required; `main` remains unmerged
+- [x] Promote/merge `v2` to `main` according to Forgejo-first release workflow
+- [x] Final production state recorded — V2 is the active replacement, the public route is verified, and `main` carries the accepted production baseline
 
 ### Phase 16 Dell evidence — 2026-08-27
 
@@ -560,8 +560,9 @@
 - Safe bookmaker acceptance passed on a clean temporary V2 database: SportyBet and Bet9ja resolve with verified restore/search capability; a two-leg booking-code restore matched its combined odds; fresh Bet9ja observations converted a SportyBet draft; and `bookmaker.build.verify` returned `verified=true`, `ready_to_return_code=true`, `prices_changed=false`. Stake and 1xBet resolve as absent. Focused Dell bookmaker/settlement regression: **27 passed**. No wager or account action was performed.
 - Live HTTPS/PWA acceptance passed at desktop and 390×844 mobile sizes: the shell title is `Sabi Boy knows ball`, the V1 pixel-block `S` is used for favicon/sidebar/PWA icons, the iOS safe-area header is visible, the manifest and service worker are served, there is no horizontal overflow, and the notification control is present. The current public source list reports no `unknown` state: ESPN, football-data.org, Parse ESPN/Flashscore/LiveScore/SportyBet are healthy; OpenClaw Browser/Search are explicitly `not_used_yet`; Sports Betting AI Analyzer is down/optional; TheSportsDB is currently down after provider HTTP 429 responses.
 - Security review is documented in `docs/SABI_BOY_V24_SECURITY_REVIEW.md`. No critical/high application finding was found. The carried limitations are public read-only data without app authentication, the low-risk inline-style CSP allowance, blocked optional edge analytics, and unrelated host tunnel process-argument hygiene. No Cloudflare route was modified.
-- GitHub push remains intentionally disabled (`remote.github.pushurl=DISABLED`); the validated release is Forgejo/local-first. `v2` has not been merged to `main` and no GitHub Actions were used.
-- **Release status: READY WITH DOCUMENTED LIMITATIONS.** Installation, migration, timers, OpenClaw, PWA, source, bookmaker, settlement, backup and security gates pass. Final public cutover/`main` promotion remains a separately authorised release action, and the documented source/authentication limitations remain visible.
+- GitHub synchronization completed after public verification: GitHub `main` and tag `v2.4.0` resolve to the accepted release tree at `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd`. The persistent `remote.github.pushurl=DISABLED` setting remains unchanged; a one-off authenticated push was used and no GitHub Actions were used.
+- Forgejo `main`, Forgejo `v2`, Forgejo release/tag `v2.4.0`, GitHub `main`, GitHub release/tag `v2.4.0` and the running Dell checkout all resolve to the accepted application baseline. The public route was verified at 2026-08-29T12:34:14Z; final backup manifest: `data/backups/sabi-boy/20260829T123320Z/manifest.json`.
+- **Release status: PRODUCTION — Sabi Boy v2.4.** Installation, migration, timers, OpenClaw, PWA, source, bookmaker, settlement, backup, security, Forgejo promotion, public cutover and GitHub synchronization gates pass. The documented source/authentication limitations remain visible.
 
 ---
 

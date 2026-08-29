@@ -4,10 +4,10 @@
 
 He researches sports, understands bookmaker markets in plain language, compares prices, checks form/injuries/context, reads and edits tickets, restores booking codes, plans bookmaker conversions, keeps our history, reviews his own work and writes a first-person blog about what he is seeing and learning.
 
-The repository is still named **SabiAI** and technical identifiers such as `sabiai`, `sabi-ai`, existing DB names and environment-variable prefixes remain for compatibility while V2 is built.
+The repository is still named **SabiAI** and technical identifiers such as `sabiai`, `sabi-ai`, existing DB names and environment-variable prefixes remain for compatibility while V2 is maintained.
 
-> **Development branch:** `v2`  
-> `main` remains the stable V1 line until V2 release acceptance is complete.
+> **Production release:** `v2.4.0` (`2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd`) is released on Forgejo and GitHub `main`.
+> `v2` remains the matching controlled development line.
 
 ---
 
@@ -334,7 +334,7 @@ The staging flow:
 7. checks V2 health/overview;
 8. leaves V1 unchanged.
 
-The repository intentionally does not guess Cloudflare/reverse-proxy routing. Final external cutover is performed only after the real Dell route is inspected and pointed at V2.
+The repository does not guess Cloudflare/reverse-proxy routing. The production route has been inspected and verified against the accepted V2 runtime at `127.0.0.1:8090`.
 
 Full runbook:
 
@@ -378,13 +378,13 @@ Release acceptance:
 .venv/bin/python scripts/sabi_v2_acceptance.py --migrate-v1
 ```
 
-The current branch contains a substantially expanded test suite, but **V2 is not release-ready until the full current suite and Dell/OpenClaw acceptance gates in `docs/SABIAI_V2_TASKS.md` pass**.
+The current branch contains a substantially expanded test suite. Any future candidate must pass the full current suite and Dell/OpenClaw acceptance gates in `docs/SABIAI_V2_TASKS.md`; the v2.4.0 baseline has already passed them.
 
 ---
 
 ## V1 compatibility
 
-`main` remains the stable V1 line while V2 is built.
+`main` is the Sabi Boy V2.4 production line. V1 recovery data and compatibility tooling remain retained for rollback and historical reference.
 
 On `v2`:
 
@@ -404,9 +404,9 @@ Authoritative living board:
 
 `docs/SABIAI_V2_TASKS.md`
 
-Do not promote `v2` to `main` until Phase 16 passes.
+Phase 16 records the completed v2.4.0 promotion and remains the authority for any future release.
 
-The final one-shot OpenClaw upgrade/setup prompt will be produced only after those release gates are complete, so it can execute real repo tooling instead of improvising the migration.
+Future upgrade prompts should be issued only after the applicable release gates are complete, so they can execute real repo tooling instead of improvising migration.
 
 ## License
 
