@@ -29,9 +29,15 @@ def run_systemctl(*args: str) -> tuple[bool, str]:
     return proc.returncode == 0, proc.stdout.strip()
 
 
+def _restore_timer(name: str, was_enabled: bool) -> tuple[bool, str]:
+    if was_enabled:
+        return run_systemctl("enable", "--now", name)
+    return run_systemctl("disable", "--now", name)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Stop Sabi Boy V2 and restore the previous service posture. External routing must also be reverted by the operator/OpenClaw."
+        description="Stop Sabi Boy V2 and restore the previous service/timer posture. External routing must also be reverted by the operator/OpenClaw."
     )
     parser.add_argument("--state", default=str(DEFAULT_STATE))
     parser.add_argument(
@@ -52,18 +58,25 @@ def main() -> int:
     if not stopped:
         print(f"Warning: could not cleanly stop V2 service: {stop_output}", file=sys.stderr)
 
-    backup_timer_restored = False
-    if state.get("backup_timer_was_enabled"):
-        enabled, output = run_systemctl("enable", "--now", "sabi-boy-backup.timer")
-        if not enabled:
-            print(f"Warning: could not restore previous backup timer state: {output}", file=sys.stderr)
-        else:
-            backup_timer_restored = True
-    else:
-        disabled, output = run_systemctl("disable", "--now", "sabi-boy-backup.timer")
-        if not disabled and "not loaded" not in output.casefold() and "does not exist" not in output.casefold():
-            print(f"Warning: could not disable V2 backup timer: {output}", file=sys.stderr)
-        backup_timer_restored = disabled
+    # V2-only operational timers should not keep running after rollback. Preserve timers that
+    # existed before staging, otherwise disable them. Coverage is included because it performs
+    # deterministic network discovery even though it never wakes an LLM.
+    timer_results: dict[str, dict] = {}
+    timer_postures = {
+        "sabi-boy-backup.timer": bool(state.get("backup_timer_was_enabled")),
+        "sabi-boy-coverage.timer": bool(state.get("coverage_timer_was_enabled")),
+    }
+    for timer, was_enabled in timer_postures.items():
+        ok, output = _restore_timer(timer, was_enabled)
+        if not ok and "not loaded" not in output.casefold() and "does not exist" not in output.casefold():
+            print(f"Warning: could not restore {timer} posture: {output}", file=sys.stderr)
+        timer_results[timer] = {"restored": ok, "was_enabled": was_enabled}
+
+    for timer in ("sabi-boy-settlement.timer", "sabi-boy-health.timer", "sabi-boy-research.timer"):
+        ok, output = run_systemctl("disable", "--now", timer)
+        if not ok and "not loaded" not in output.casefold() and "does not exist" not in output.casefold():
+            print(f"Warning: could not disable {timer}: {output}", file=sys.stderr)
+        timer_results[timer] = {"restored": ok, "was_enabled": False}
 
     v1_restarted = False
     if state.get("v1_service_was_active"):
@@ -90,8 +103,7 @@ def main() -> int:
         "product": "Sabi Boy",
         "rolled_back_at": datetime.now(timezone.utc).isoformat(),
         "v2_service_stopped": stopped,
-        "backup_timer_posture_restored": backup_timer_restored,
-        "backup_timer_was_enabled_before_staging": bool(state.get("backup_timer_was_enabled")),
+        "timer_posture": timer_results,
         "v1_restarted": v1_restarted,
         "v2_database_restored": restored,
         "external_routing_requires_revert": bool(state.get("external_cutover_performed")),

@@ -1,6 +1,7 @@
 from .advanced_analytics import AdvancedAnalytics
 from .analytics import PerformanceAnalytics
 from .bankroll import BankrollLedger, LedgerEntry
+from .coverage_runtime import CoverageStore
 from .dashboard_reads import DashboardReadService
 from .drafts import TicketDraft, TicketDraftStore
 from .history import HistoryService
@@ -14,6 +15,7 @@ from .strategy import StrategyPlanStore
 __all__ = [
     "AdvancedAnalytics",
     "BankrollLedger",
+    "CoverageStore",
     "DashboardReadService",
     "HistoryService",
     "LedgerEntry",

@@ -15,7 +15,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from sabiai import __version__
-from sabiai.dashboard import create_push_router, create_v2_dashboard_router
+from sabiai.dashboard import (
+    create_coverage_dashboard_router,
+    create_push_router,
+    create_v2_dashboard_router,
+)
 from sabiai.dashboard.branding import make_v1_icon_png, v1_icon_svg
 
 ASSET_DIR = Path(__file__).with_name("v2")
@@ -37,6 +41,7 @@ allowed_hosts = [
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.include_router(create_v2_dashboard_router())
+app.include_router(create_coverage_dashboard_router())
 app.include_router(create_push_router())
 
 
@@ -144,13 +149,11 @@ def manifest():
 
 @app.get("/icon.svg")
 def icon():
-    # Keep the legacy SVG URL, but render the same pixel-block S as every PNG.
     return Response(v1_icon_svg(), media_type="image/svg+xml")
 
 
 @app.get("/favicon.ico")
 def favicon():
-    # The favicon must use the same V1 artwork as the sidebar and PWA icons.
     return Response(make_v1_icon_png(32), media_type="image/png")
 
 
@@ -192,7 +195,6 @@ def asset(name: str):
 @app.get("/")
 @app.get("/{page:path}")
 def shell(page: str = ""):
-    # API/static/health routes match before this catch-all. All UI routes share one shell.
     if page in {"docs", "redoc", "openapi.json"}:
         return Response(status_code=404)
     index = ASSET_DIR / "index.html"

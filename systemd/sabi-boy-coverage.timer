@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh Sabi Boy discovery radar every 30 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=30min
+Persistent=true
+AccuracySec=2m
+RandomizedDelaySec=2m
+Unit=sabi-boy-coverage.service
+
+[Install]
+WantedBy=timers.target

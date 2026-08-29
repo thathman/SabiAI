@@ -5,11 +5,13 @@ from typing import Mapping
 
 from sabiai.config import Settings
 
+from .betfair import BetfairExchangeAdapter
 from .espn import EspnPublicAdapter
 from .football_data import FootballDataAdapter
 from .parse_bot import ParseBotAdapter, SportsBettingAnalyzerAdapter
 from .registry import Source, SourceCost, SourceKind, SourceRegistry
 from .service import Fetcher
+from .the_odds import TheOddsApiDiscoveryAdapter, TheOddsApiMarketsAdapter
 from .thesportsdb import TheSportsDBAdapter
 
 
@@ -20,11 +22,11 @@ class SourceBundle:
 
 
 def default_source_bundle(settings: Settings) -> SourceBundle:
-    """Build the default source set without requiring a paid provider.
+    """Build Sabi Boy's full source catalogue.
 
-    OpenClaw Browser/Search are registered as later free fallbacks, but their actual fetchers
-    are supplied by OpenClaw when it orchestrates those actions. Built-in Python adapters are
-    only for sources that are reasonable to call directly from the Sabi Boy runtime.
+    Discovery and market pricing are separate concerns. Where a provider has free discovery
+    but metered odds, it is registered as two sources so a broad fixture scan cannot spend
+    market credits by accident.
     """
 
     registry = SourceRegistry()
@@ -134,10 +136,27 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
             registry.register(adapter.source)
             fetchers[adapter.name] = adapter.fetch
 
-    if settings.sports_betting_analyzer_api_key:
-        analyzer = SportsBettingAnalyzerAdapter(
-            api_key=settings.sports_betting_analyzer_api_key
+    if settings.the_odds_api_key:
+        odds_discovery = TheOddsApiDiscoveryAdapter(api_key=settings.the_odds_api_key)
+        registry.register(odds_discovery.source)
+        fetchers[odds_discovery.name] = odds_discovery.fetch
+        odds_markets = TheOddsApiMarketsAdapter(
+            api_key=settings.the_odds_api_key,
+            regions=settings.the_odds_regions,
         )
+        registry.register(odds_markets.source)
+        fetchers[odds_markets.name] = odds_markets.fetch
+
+    if settings.betfair_app_key and settings.betfair_session_token:
+        betfair = BetfairExchangeAdapter(
+            app_key=settings.betfair_app_key,
+            session_token=settings.betfair_session_token,
+        )
+        registry.register(betfair.source)
+        fetchers[betfair.name] = betfair.fetch
+
+    if settings.sports_betting_analyzer_api_key:
+        analyzer = SportsBettingAnalyzerAdapter(api_key=settings.sports_betting_analyzer_api_key)
         registry.register(analyzer.source)
         fetchers[analyzer.name] = analyzer.fetch
 
@@ -163,3 +182,25 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
     )
 
     return SourceBundle(registry=registry, fetchers=fetchers)
+
+
+def coverage_source_bundle(settings: Settings) -> SourceBundle:
+    """Source bundle for the frequent no-model discovery radar.
+
+    Parse-backed sources consume limited account credits even when the account is called
+    "free-tier". They are therefore omitted from the 30-minute union unless the operator
+    explicitly enables SABIAI_DISCOVERY_PARSE_UNION. This does not remove Parse from normal
+    Sabi Boy/OpenClaw research or target-book verification.
+    """
+
+    bundle = default_source_bundle(settings)
+    if settings.discovery_parse_union_enabled:
+        return bundle
+    return SourceBundle(
+        registry=bundle.registry,
+        fetchers={
+            name: fetcher
+            for name, fetcher in bundle.fetchers.items()
+            if not name.startswith("Parse ·")
+        },
+    )

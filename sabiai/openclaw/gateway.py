@@ -21,6 +21,7 @@ from .bookmaker_browser_build_tools import BookmakerBrowserBuildTools
 from .bookmaker_compare_tools import BookmakerCompareTools
 from .bookmaker_health_tools import BookmakerHealthTools
 from .bookmaker_tools import BookmakerTools
+from .coverage_tools import CoverageTools
 from .market_tools import MarketTools
 from .record_tools import RecordTools
 from .research_tools import ResearchTools
@@ -36,11 +37,7 @@ from .ticket_tools import TicketTools
 
 
 class SabiToolGateway:
-    """Stable OpenClaw boundary for Sabi Boy V2.
-
-    Domain rules live in dedicated packages. This class owns shared services and tool
-    registration only, keeping the OpenClaw surface small enough to audit as V2 grows.
-    """
+    """Stable OpenClaw boundary for Sabi Boy V2."""
 
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or Settings.from_env()
@@ -78,6 +75,7 @@ class SabiToolGateway:
             StrategyTools(self),
             SportsInsightTools(self),
             ResearchTools(self),
+            CoverageTools(self),
             MarketTools(self),
             BookmakerTools(self),
             BookmakerCompareTools(self),

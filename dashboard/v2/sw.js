@@ -9,6 +9,7 @@ const APP_SHELL = [
   '/assets/app.css?v=2.4.0.0',
   '/assets/app.js?v=2.4.0.0',
   '/assets/history_insights.js?v=2.4.0.0',
+  '/assets/coverage_funnel.js?v=2.4.0.0',
   '/assets/icon-192.png?v=2.4.0.0',
   '/assets/icon-512.png?v=2.4.0.0',
   '/assets/icon-maskable-192.png?v=2.4.0.0',
@@ -33,14 +34,10 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/')),
-    );
+    event.respondWith(fetch(request).catch(() => caches.match('/')));
     return;
   }
-
   event.respondWith(
     caches.match(request).then(cached => cached || fetch(request).then(response => {
       if (response.ok) {

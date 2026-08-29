@@ -1,4 +1,5 @@
-from .catalog import SourceBundle, default_source_bundle
+from .betfair import BetfairExchangeAdapter
+from .catalog import SourceBundle, coverage_source_bundle, default_source_bundle
 from .espn import EspnPublicAdapter
 from .football_data import FootballDataAdapter
 from .health import SourceHealth, SourceHealthService
@@ -12,10 +13,12 @@ from .registry import (
     SourceRegistry,
 )
 from .service import SourceRequest, SourceResponse, SourceService
+from .the_odds import TheOddsApiDiscoveryAdapter, TheOddsApiMarketsAdapter, canonical_sport
 from .thesportsdb import TheSportsDBAdapter
 
 __all__ = [
     "AccessDecision",
+    "BetfairExchangeAdapter",
     "EspnPublicAdapter",
     "FootballDataAdapter",
     "LearnedSource",
@@ -32,6 +35,10 @@ __all__ = [
     "SourceResponse",
     "SourceService",
     "SportsBettingAnalyzerAdapter",
+    "TheOddsApiDiscoveryAdapter",
+    "TheOddsApiMarketsAdapter",
     "TheSportsDBAdapter",
+    "canonical_sport",
+    "coverage_source_bundle",
     "default_source_bundle",
 ]
