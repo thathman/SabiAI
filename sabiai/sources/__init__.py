@@ -1,6 +1,19 @@
 from .betfair import BetfairExchangeAdapter
 from .catalog import SourceBundle, coverage_source_bundle, default_source_bundle
 from .espn import EspnPublicAdapter
+from .expansion import (
+    ApiSportsAdapter,
+    CricsheetAdapter,
+    FastF1Adapter,
+    JolpicaF1Adapter,
+    NbaLiveDataAdapter,
+    OpenLigaDBAdapter,
+    PandaScoreAdapter,
+    SportMonksAdapter,
+    SportsDataIOAdapter,
+    SportsGameOddsAdapter,
+    StatsBombOpenDataAdapter,
+)
 from .football_data import FootballDataAdapter
 from .health import SourceHealth, SourceHealthService
 from .learning import LearnedSource, SourceLearningService
@@ -18,10 +31,17 @@ from .thesportsdb import TheSportsDBAdapter
 
 __all__ = [
     "AccessDecision",
+    "ApiSportsAdapter",
     "BetfairExchangeAdapter",
+    "CricsheetAdapter",
     "EspnPublicAdapter",
+    "FastF1Adapter",
     "FootballDataAdapter",
+    "JolpicaF1Adapter",
     "LearnedSource",
+    "NbaLiveDataAdapter",
+    "OpenLigaDBAdapter",
+    "PandaScoreAdapter",
     "ParseBotAdapter",
     "Source",
     "SourceBundle",
@@ -34,7 +54,11 @@ __all__ = [
     "SourceRequest",
     "SourceResponse",
     "SourceService",
+    "SportMonksAdapter",
+    "SportsDataIOAdapter",
+    "SportsGameOddsAdapter",
     "SportsBettingAnalyzerAdapter",
+    "StatsBombOpenDataAdapter",
     "TheOddsApiDiscoveryAdapter",
     "TheOddsApiMarketsAdapter",
     "TheSportsDBAdapter",

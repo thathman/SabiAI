@@ -7,6 +7,19 @@ from sabiai.config import Settings
 
 from .betfair import BetfairExchangeAdapter
 from .espn import EspnPublicAdapter
+from .expansion import (
+    ApiSportsAdapter,
+    CricsheetAdapter,
+    FastF1Adapter,
+    JolpicaF1Adapter,
+    NbaLiveDataAdapter,
+    OpenLigaDBAdapter,
+    PandaScoreAdapter,
+    SportMonksAdapter,
+    SportsDataIOAdapter,
+    SportsGameOddsAdapter,
+    StatsBombOpenDataAdapter,
+)
 from .football_data import FootballDataAdapter
 from .parse_bot import ParseBotAdapter, SportsBettingAnalyzerAdapter
 from .registry import Source, SourceCost, SourceKind, SourceRegistry
@@ -160,6 +173,75 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
         registry.register(analyzer.source)
         fetchers[analyzer.name] = analyzer.fetch
 
+    # V2.5 approved source expansion. Optional authenticated providers are still registered
+    # when absent, with an explicit not_configured/disabled state in the source catalogue.
+    _register_optional_keyed(
+        registry,
+        fetchers,
+        key=settings.api_sports_key,
+        adapter_cls=ApiSportsAdapter,
+        name="API-Sports",
+        sports={"football", "basketball", "baseball", "ice_hockey", "hockey", "volleyball", "handball", "rugby", "mma", "motorsport"},
+        capabilities={"fixtures", "event_lookup", "teams", "players", "standings", "form", "stats", "injuries", "availability", "odds", "results"},
+        notes="Metered/free-allowance API-Sports family; targeted enrichment only.",
+        priority_bias=20,
+    )
+    _register_optional_keyed(
+        registry,
+        fetchers,
+        key=settings.sportsgameodds_key,
+        adapter_cls=SportsGameOddsAdapter,
+        name="SportsGameOdds",
+        sports={"football", "basketball", "baseball", "ice_hockey", "hockey", "tennis", "golf", "mma", "american_football"},
+        capabilities={"fixtures", "event_lookup", "sport_catalog", "league_catalog", "market_catalog", "teams", "players", "usage", "odds", "results"},
+        notes="SportsGameOdds v2 market sensor; never an action bookmaker.",
+        priority_bias=30,
+    )
+    _register_optional_keyed(
+        registry,
+        fetchers,
+        key=settings.pandascore_token,
+        adapter_cls=PandaScoreAdapter,
+        name="PandaScore",
+        sports={"esports"},
+        capabilities={"fixtures", "results", "event_lookup", "teams", "players", "tournaments", "leagues", "series", "standings", "rosters", "stats"},
+        notes="Authenticated esports evidence specialist; no automatic action-book capability.",
+        priority_bias=20,
+        credential_arg="token",
+    )
+    _register_optional_keyed(
+        registry,
+        fetchers,
+        key=settings.sportsdataio_key,
+        adapter_cls=SportsDataIOAdapter,
+        name="SportsDataIO",
+        sports={"american_football", "basketball", "baseball", "ice_hockey", "football", "soccer"},
+        capabilities={"fixtures", "results", "standings", "stats", "injuries", "availability", "players", "teams", "odds"},
+        notes="Commercial targeted evidence source; disabled unless a credential and paid access are explicitly enabled.",
+        priority_bias=35,
+    )
+    _register_optional_keyed(
+        registry,
+        fetchers,
+        key=settings.sportmonks_token,
+        adapter_cls=SportMonksAdapter,
+        name="SportMonks",
+        sports={"cricket", "motorsport", "football"},
+        capabilities={"fixtures", "results", "standings", "teams", "players", "drivers", "venues", "seasons", "schedules", "live_scores"},
+        notes="Authenticated cricket and Motorsport API v3 specialist; deprecated Formula One v1 is not used.",
+        priority_bias=40,
+        credential_arg="token",
+    )
+
+    # Public/open sources are always visible in the catalogue. Local datasets/dependencies
+    # become enabled only when their runtime location/dependency is present.
+    _register_local(registry, fetchers, FastF1Adapter(cache_dir=settings.fastf1_cache_dir))
+    _register_local(registry, fetchers, CricsheetAdapter(data_dir=settings.cricsheet_dir))
+    _register_local(registry, fetchers, StatsBombOpenDataAdapter(data_dir=settings.statsbomb_dir))
+    for adapter in (JolpicaF1Adapter(), OpenLigaDBAdapter(), NbaLiveDataAdapter()):
+        registry.register(adapter.source)
+        fetchers[adapter.name] = adapter.fetch
+
     registry.register(
         Source(
             name="OpenClaw Browser",
@@ -182,6 +264,44 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
     )
 
     return SourceBundle(registry=registry, fetchers=fetchers)
+
+
+def _register_optional_keyed(
+    registry: SourceRegistry,
+    fetchers: dict[str, Fetcher],
+    *,
+    key: str | None,
+    adapter_cls,
+    name: str,
+    sports: set[str],
+    capabilities: set[str],
+    notes: str,
+    priority_bias: int,
+    credential_arg: str = "api_key",
+) -> None:
+    if key and key.strip():
+        adapter = adapter_cls(**{credential_arg: key})
+        registry.register(adapter.source)
+        fetchers[adapter.name] = adapter.fetch
+        return
+    registry.register(
+        Source(
+            name=name,
+            kind=SourceKind.PAID_API,
+            cost=SourceCost.PAID,
+            sports=sports,
+            capabilities=capabilities,
+            enabled=False,
+            health="not_configured",
+            notes=notes,
+            priority_bias=priority_bias,
+        )
+    )
+
+
+def _register_local(registry: SourceRegistry, fetchers: dict[str, Fetcher], adapter) -> None:
+    registry.register(adapter.source)
+    fetchers[adapter.name] = adapter.fetch
 
 
 def coverage_source_bundle(settings: Settings) -> SourceBundle:

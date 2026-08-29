@@ -50,6 +50,15 @@ class Settings:
     the_odds_regions: str = "uk,eu"
     betfair_app_key: str | None = None
     betfair_session_token: str | None = None
+    # V2.5 source expansion credentials. These are optional and are never stored in Git.
+    api_sports_key: str | None = None
+    sportsgameodds_key: str | None = None
+    pandascore_token: str | None = None
+    sportsdataio_key: str | None = None
+    sportmonks_token: str | None = None
+    cricsheet_dir: Path | None = None
+    statsbomb_dir: Path | None = None
+    fastf1_cache_dir: Path | None = None
     research_api_key: str | None = None
     research_api_base_url: str = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
     research_model: str = "qwen3.8-max-preview"
@@ -130,6 +139,14 @@ class Settings:
             the_odds_regions=os.getenv("SABIAI_THE_ODDS_REGIONS", "uk,eu").strip() or "uk,eu",
             betfair_app_key=(os.getenv("SABIAI_BETFAIR_APP_KEY") or "").strip() or None,
             betfair_session_token=(os.getenv("SABIAI_BETFAIR_SESSION_TOKEN") or "").strip() or None,
+            api_sports_key=(os.getenv("SABIAI_API_SPORTS_KEY") or "").strip() or None,
+            sportsgameodds_key=(os.getenv("SABIAI_SPORTSGAMEODDS_KEY") or "").strip() or None,
+            pandascore_token=(os.getenv("SABIAI_PANDASCORE_TOKEN") or "").strip() or None,
+            sportsdataio_key=(os.getenv("SABIAI_SPORTSDATAIO_KEY") or "").strip() or None,
+            sportmonks_token=(os.getenv("SABIAI_SPORTMONKS_TOKEN") or "").strip() or None,
+            cricsheet_dir=Path(os.getenv("SABIAI_CRICSHEET_DIR", "")).expanduser() if os.getenv("SABIAI_CRICSHEET_DIR", "").strip() else None,
+            statsbomb_dir=Path(os.getenv("SABIAI_STATSBOMB_DIR", "")).expanduser() if os.getenv("SABIAI_STATSBOMB_DIR", "").strip() else None,
+            fastf1_cache_dir=Path(os.getenv("SABIAI_FASTF1_CACHE_DIR", "")).expanduser() if os.getenv("SABIAI_FASTF1_CACHE_DIR", "").strip() else None,
             research_api_key=(os.getenv("SABIAI_RESEARCH_API_KEY") or os.getenv("ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY") or "").strip() or None,
             research_api_base_url=(os.getenv("SABIAI_RESEARCH_API_BASE_URL", "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1").strip().rstrip("/") or "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"),
             research_model=os.getenv("SABIAI_RESEARCH_MODEL", "qwen3.8-max-preview").strip() or "qwen3.8-max-preview",
