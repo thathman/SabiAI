@@ -41,8 +41,8 @@ responses and do not spend provider credits.
 
 ## Dell probe snapshot — 2026-08-29
 
-The isolated Forgejo worktree at `e4f3a17a0efaa4f9870ef97d57fee19c884bc4af` passed the complete
-361-test suite and deterministic engine acceptance. No-cost live probes returned one Jolpica F1
+The isolated Forgejo worktree at `9750ffefcc87d7bc5bd6a27b563694cb275b9b64` passed the complete
+362-test suite and deterministic engine acceptance. No-cost live probes returned one Jolpica F1
 current-season record and an OpenLigaDB BL1 fixture response. The NBA LiveData CDN returned HTTP
 403 from Dell, so that source is retained as a degraded secondary corroborator. The five keyed
 providers are implemented and tested but remain `not_configured` until their credentials are

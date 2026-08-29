@@ -601,6 +601,7 @@
 - Dell isolated recheck at the Forgejo tip `e4f3a17a0efaa4f9870ef97d57fee19c884bc4af`: **361 passed, 1 warning**; deterministic V2.5 engine acceptance passed. No provider credentials were copied into the production V2.4 environment.
 - No-cost live probes from the isolated Dell worktree succeeded for Jolpica F1 (one current-season race record) and OpenLigaDB (BL1 fixture response). NBA LiveData returned HTTP 403 from the public CDN and is recorded as degraded/secondary rather than treated as a failure of the engine. API-Sports, SportsGameOdds, PandaScore, SportsDataIO and SportMonks remain explicit not_configured until their private environment variables are deliberately added to the isolated V2.5 runtime.
 - Product commit `86b2f14` adds fail-closed daily request guardrails for paid/metered sources; `SABIAI_API_SPORTS_DAILY_REQUEST_BUDGET` defaults to 100 and `SABIAI_SPORTSGAMEODDS_DAILY_REQUEST_BUDGET` defaults to 10. Cache hits do not consume the guardrail, and a denied paid request is not counted as a provider call. Regression commit `f79fd8e` covers the budget boundary. Full local suite: **362 passed, 1 warning**.
+- Final Dell isolated verification at Forgejo tip `9750ffefcc87d7bc5bd6a27b563694cb275b9b64`: **362 passed, 1 warning**; deterministic engine acceptance passed with schema 18 and 31 first-class sport profiles. The application tree remains isolated from V2.4 production.
 
 ---
 
