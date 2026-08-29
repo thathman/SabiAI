@@ -7,6 +7,7 @@ from sabiai.openclaw import SabiToolGateway
 from sabiai.research.engine_control import EngineCompletenessService, EngineDecisionStore, EngineGapPlanner
 from sabiai.storage import PickRecordService, SabiDatabase
 from sabiai.system.research_heartbeat import _record_strategy_picks
+from sabiai.system.health_heartbeat import run_health_heartbeat
 
 
 def _settings(tmp_path: Path):
@@ -143,3 +144,12 @@ def test_precision_promotion_persists_exact_engine_context(tmp_path: Path):
     rows = _record_strategy_picks(database, plans, model="qwen3.8-max-preview", source_run_id="run-1")
     assert rows[0]["engine_context_saved"] is True
     assert EngineDecisionStore(database).get(rows[0]["id"])["offer_ref"] == "offer:exact-test"
+
+
+def test_health_heartbeat_initializes_a_precreated_empty_database(tmp_path: Path):
+    settings = _settings(tmp_path)
+    settings.data_dir = tmp_path
+    settings.v2_db.touch()
+    report = run_health_heartbeat(settings)
+    assert report["ok"] is True
+    assert report["job_count"] == 1
