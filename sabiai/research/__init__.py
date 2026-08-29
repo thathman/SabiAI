@@ -5,12 +5,8 @@ from .decision import CrossSportDecisionPass
 from .discovery_runtime import CoverageDiscoveryEngine, DiscoveryResult
 from .evidence import Evidence, EvidenceStore
 from .intake import EvidencePacketItem, EvidencePacketResult, EvidencePacketService
-from .market_inventory import (
-    MarketInventoryNormalizer,
-    classify_market,
-    expected_market_families,
-    market_family_gap,
-)
+from .market_contract import expected_market_families, market_family_gap
+from .market_inventory import MarketInventoryNormalizer, classify_market
 from .model_contract import (
     call_engine_research_model,
     prepare_events_for_model,

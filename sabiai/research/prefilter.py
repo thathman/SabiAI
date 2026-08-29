@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from sabiai.storage import CoverageStore
 
-from .market_inventory import expected_market_families, market_family_gap
+from .market_contract import expected_market_families, market_family_gap
 
 
 ACTION_BOOKS = ("SportyBet", "Bet9ja")
@@ -83,45 +83,23 @@ def market_consensus(offers: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
             "best_bookmaker": str(best.get("bookmaker") or best.get("source_name") or "unknown"),
             "price_disagreement_pct": round(max(0.0, disagreement), 2),
         })
-    output.sort(
-        key=lambda row: (
-            -float(row["price_disagreement_pct"]),
-            -int(row["bookmakers"]),
-            str(row["family"]),
-            str(row["selection"]),
-        )
-    )
+    output.sort(key=lambda row: (-float(row["price_disagreement_pct"]), -int(row["bookmakers"]), str(row["family"]), str(row["selection"])))
     return output
 
 
 @dataclass
 class CoveragePrefilter:
-    """Turn a broad sensor universe into a bounded action-book research universe.
-
-    All fresh bookmaker/sensor prices can influence consensus and priority. Only SportyBet or
-    Bet9ja offers are exposed in `odds`, which is the field consumed by automatic research and
-    recording. This prevents a sensor-only price from silently becoming a playable pick.
-    """
+    """Turn a broad sensor universe into a bounded action-book research universe."""
 
     settings: Any
     store: CoverageStore
 
-    def select(
-        self,
-        day: str,
-        *,
-        limit: int | None = None,
-        actionable_only: bool = True,
-    ) -> list[dict[str, Any]]:
+    def select(self, day: str, *, limit: int | None = None, actionable_only: bool = True) -> list[dict[str, Any]]:
         limit = max(1, int(limit or getattr(self.settings, "prefilter_max_events", 300)))
         zone = self._zone()
         local_day = date.fromisoformat(day)
         start_local = datetime.combine(local_day, datetime.min.time(), zone)
-        rows = self.store.radar(
-            now=start_local.astimezone(timezone.utc),
-            horizon_hours=26,
-            limit=max(5000, limit * 5),
-        )
+        rows = self.store.radar(now=start_local.astimezone(timezone.utc), horizon_hours=26, limit=max(5000, limit * 5))
         candidates: list[dict[str, Any]] = []
         max_age = max(900, int(getattr(self.settings, "market_refresh_seconds", 1800)) * 4)
         for row in rows:
@@ -133,18 +111,12 @@ class CoveragePrefilter:
             if not offers:
                 continue
             consensus = market_consensus(offers)
-            action_offers = [
-                offer for offer in offers
-                if canonical_action_book(offer.get("bookmaker") or offer.get("source_name"))
-            ]
+            action_offers = [offer for offer in offers if canonical_action_book(offer.get("bookmaker") or offer.get("source_name"))]
             if actionable_only and not action_offers:
                 continue
             sport = str(row.get("sport") or "unknown")
             chosen_book = self._choose_action_book(action_offers, consensus, sport=sport)
-            chosen = [
-                offer for offer in action_offers
-                if canonical_action_book(offer.get("bookmaker") or offer.get("source_name")) == chosen_book
-            ] if chosen_book else []
+            chosen = [offer for offer in action_offers if canonical_action_book(offer.get("bookmaker") or offer.get("source_name")) == chosen_book] if chosen_book else []
             families = sorted({str(item.get("family") or "other") for item in offers})
             missing = market_family_gap(sport, families)
             event = dict(row)
@@ -158,22 +130,12 @@ class CoveragePrefilter:
             event["missing_minimum_markets"] = missing
             event["action_book"] = chosen_book
             event["action_price_available"] = bool(chosen)
-            event["market_disagreement_pct"] = max(
-                (float(item.get("price_disagreement_pct") or 0) for item in consensus),
-                default=0.0,
-            )
+            event["market_disagreement_pct"] = max((float(item.get("price_disagreement_pct") or 0) for item in consensus), default=0.0)
             event["_coverage_score"] = self._score(event, inventory, consensus)
             candidates.append(event)
-
         return self._balanced(candidates, limit)
 
-    def _choose_action_book(
-        self,
-        offers: list[dict[str, Any]],
-        consensus: list[dict[str, Any]],
-        *,
-        sport: str,
-    ) -> str | None:
+    def _choose_action_book(self, offers: list[dict[str, Any]], consensus: list[dict[str, Any]], *, sport: str) -> str | None:
         if not offers:
             return None
         expected = set(expected_market_families(sport))
@@ -184,15 +146,10 @@ class CoveragePrefilter:
                 rows[book].append(offer)
         consensus_lookup = {
             _offer_identity({
-                "family": row.get("family"),
-                "metric": row.get("metric"),
-                "period": row.get("period"),
-                "participant": row.get("participant"),
-                "side": row.get("side"),
-                "line": row.get("line"),
+                "family": row.get("family"), "metric": row.get("metric"), "period": row.get("period"),
+                "participant": row.get("participant"), "side": row.get("side"), "line": row.get("line"),
                 "selection_label": row.get("selection"),
-            }): row
-            for row in consensus
+            }): row for row in consensus
         }
         ranked = []
         for book, book_offers in rows.items():
@@ -202,26 +159,15 @@ class CoveragePrefilter:
             for offer in book_offers:
                 reference = consensus_lookup.get(_offer_identity(offer))
                 if reference and float(reference.get("median_odds") or 0) > 1:
-                    price_bonus += max(
-                        0.0,
-                        (float(offer["decimal_odds"]) / float(reference["median_odds"]) - 1.0) * 100.0,
-                    )
+                    price_bonus += max(0.0, (float(offer["decimal_odds"]) / float(reference["median_odds"]) - 1.0) * 100.0)
             ranked.append((minimum_hits, len(families), len(book_offers), price_bonus, book))
         ranked.sort(reverse=True)
         return ranked[0][-1] if ranked else None
 
     @staticmethod
     def _compact_action_odds(offers: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        priority = {"winner": 0, "handicap": 1, "total": 2, "draw_no_bet": 3, "team_total": 4}
-        rows = sorted(
-            offers,
-            key=lambda row: (
-                priority.get(str(row.get("family") or "other"), 20),
-                str(row.get("family") or ""),
-                str(row.get("selection_label") or ""),
-                -float(row.get("decimal_odds") or 0),
-            ),
-        )
+        priority = {"winner": 0, "outright": 0, "handicap": 1, "total": 2, "placement": 3, "matchup": 4, "draw_no_bet": 5, "team_total": 6}
+        rows = sorted(offers, key=lambda row: (priority.get(str(row.get("family") or "other"), 20), str(row.get("family") or ""), str(row.get("selection_label") or ""), -float(row.get("decimal_odds") or 0)))
         result = []
         seen = set()
         for offer in rows:
@@ -233,6 +179,8 @@ class CoveragePrefilter:
                 "label": offer.get("selection_label"),
                 "decimal_odds": float(offer["decimal_odds"]),
                 "market": offer.get("family"),
+                "metric": offer.get("metric"),
+                "side": offer.get("side"),
                 "line": offer.get("line"),
                 "period": offer.get("period"),
                 "participant": offer.get("participant"),
@@ -243,24 +191,12 @@ class CoveragePrefilter:
                 break
         return result
 
-    def _score(
-        self,
-        event: dict[str, Any],
-        inventory: dict[str, Any],
-        consensus: list[dict[str, Any]],
-    ) -> float:
+    def _score(self, event: dict[str, Any], inventory: dict[str, Any], consensus: list[dict[str, Any]]) -> float:
         families = set(event.get("market_families") or [])
         expected = set(expected_market_families(str(event.get("sport") or "")))
-        books = {
-            str(row.get("bookmaker") or row.get("source_name") or "")
-            for row in (inventory.get("offers") or [])
-            if str(row.get("bookmaker") or row.get("source_name") or "")
-        }
+        books = {str(row.get("bookmaker") or row.get("source_name") or "") for row in (inventory.get("offers") or []) if str(row.get("bookmaker") or row.get("source_name") or "")}
         coverage_ratio = (len(families & expected) / len(expected)) if expected else 0.0
-        disagreement = max(
-            (float(row.get("price_disagreement_pct") or 0) for row in consensus),
-            default=0.0,
-        )
+        disagreement = max((float(row.get("price_disagreement_pct") or 0) for row in consensus), default=0.0)
         score = 20.0
         score += min(len(families) * 4.0, 28.0)
         score += min(len(books) * 2.0, 14.0)
@@ -272,25 +208,15 @@ class CoveragePrefilter:
         return score
 
     def _balanced(self, candidates: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
-        candidates.sort(
-            key=lambda row: (
-                -float(row.get("_coverage_score") or 0),
-                str(row.get("starts_at") or ""),
-                str(row.get("event") or ""),
-            )
-        )
+        candidates.sort(key=lambda row: (-float(row.get("_coverage_score") or 0), str(row.get("starts_at") or ""), str(row.get("event") or "")))
         min_per_sport = max(1, int(getattr(self.settings, "research_min_events_per_active_sport", 2)))
-        max_per_sport = max(
-            min_per_sport,
-            int(getattr(self.settings, "research_max_events_per_sport", 40)),
-        )
+        max_per_sport = max(min_per_sport, int(getattr(self.settings, "research_max_events_per_sport", 40)))
         by_sport: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in candidates:
             by_sport[str(row.get("sport") or "unknown")].append(row)
         selected: list[dict[str, Any]] = []
         selected_ids: set[str] = set()
         counts: dict[str, int] = defaultdict(int)
-
         for round_index in range(min_per_sport):
             for sport in sorted(by_sport):
                 if len(selected) >= limit:
@@ -302,7 +228,6 @@ class CoveragePrefilter:
                 selected.append(row)
                 selected_ids.add(str(row.get("id") or row.get("event_id") or id(row)))
                 counts[sport] += 1
-
         for row in candidates:
             if len(selected) >= limit:
                 break
@@ -313,7 +238,6 @@ class CoveragePrefilter:
             selected.append(row)
             selected_ids.add(identifier)
             counts[sport] += 1
-
         for row in selected:
             row.pop("_coverage_score", None)
         return selected

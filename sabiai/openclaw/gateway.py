@@ -12,7 +12,7 @@ from sabiai.config import Settings
 from sabiai.markets import MarketInterpreter
 from sabiai.odds import ArbitrageEngine
 from sabiai.sources import default_source_bundle
-from sabiai.sports import ResearchPlanner, default_sports
+from sabiai.sports import ResearchPlanner, complete_sports
 from sabiai.storage import SabiDatabase, TicketDraftStore
 from sabiai.tickets import TicketNormalizer, TicketTextImporter, TicketWorkshop
 
@@ -46,24 +46,16 @@ class SabiToolGateway:
         self.market_interpreter = MarketInterpreter()
         self.bookmakers = default_bookmakers()
         self.bookmaker_adapters = legacy_command_adapters()
-        self.bookmaker_execution = BookmakerExecutionPlanner(
-            bookmakers=self.bookmakers,
-            adapters=self.bookmaker_adapters,
-        )
+        self.bookmaker_execution = BookmakerExecutionPlanner(bookmakers=self.bookmakers, adapters=self.bookmaker_adapters)
         self.bookmaker_runner = BookmakerCommandRunner()
         self.bookmaker_discovery = BookmakerDiscoveryPlanner(self.bookmakers)
-        self.ticket_converter = TicketConversionService(
-            bookmakers=self.bookmakers,
-            interpreter=self.market_interpreter,
-        )
+        self.ticket_converter = TicketConversionService(bookmakers=self.bookmakers, interpreter=self.market_interpreter)
 
-        self.sports = default_sports()
+        # V2.5 makes every proactive discovery sport a first-class knowledge profile.
+        self.sports = complete_sports()
         self.research_planner = ResearchPlanner(self.sports)
 
-        self.ticket_normalizer = TicketNormalizer(
-            self.bookmakers,
-            self.market_interpreter,
-        )
+        self.ticket_normalizer = TicketNormalizer(self.bookmakers, self.market_interpreter)
         self.ticket_text_importer = TicketTextImporter()
         self.ticket_workshop = TicketWorkshop()
         self.arbitrage = ArbitrageEngine()
@@ -99,34 +91,18 @@ class SabiToolGateway:
     def dispatch(self, tool: str, args: dict | None = None) -> dict:
         handler = self._handlers.get(tool)
         if handler is None:
-            return {
-                "ok": False,
-                "tool": tool,
-                "error": f"Unknown Sabi Boy V2 tool: {tool}",
-            }
+            return {"ok": False, "tool": tool, "error": f"Unknown Sabi Boy V2 tool: {tool}"}
         try:
-            return {
-                "ok": True,
-                "tool": tool,
-                "data": handler(args or {}),
-            }
+            return {"ok": True, "tool": tool, "data": handler(args or {})}
         except Exception as exc:
-            return {
-                "ok": False,
-                "tool": tool,
-                "error": str(exc),
-            }
+            return {"ok": False, "tool": tool, "error": str(exc)}
 
     def list_tools(self, args: dict | None = None) -> dict:
         namespaces: dict[str, list[str]] = {}
         for name in sorted(self._handlers):
             namespace = name.split(".", 1)[0]
             namespaces.setdefault(namespace, []).append(name)
-        return {
-            "count": len(self._handlers),
-            "tools": sorted(self._handlers),
-            "namespaces": namespaces,
-        }
+        return {"count": len(self._handlers), "tools": sorted(self._handlers), "namespaces": namespaces}
 
     def _db(self, *, initialize: bool = False) -> SabiDatabase:
         db = SabiDatabase(self.settings.v2_db)

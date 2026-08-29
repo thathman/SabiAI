@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sabiai.markets import MarketInterpreter
-from .registry import SportProfile, SportRegistry, default_sports
+from .engine_registry import complete_sports
+from .registry import SportProfile, SportRegistry
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,7 +20,7 @@ class ResearchPlanner:
     """Build a plain-language research checklist before sources are queried."""
 
     def __init__(self, registry: SportRegistry | None = None):
-        self.registry = registry or default_sports()
+        self.registry = registry or complete_sports()
         self.interpreter = MarketInterpreter()
 
     def plan(
