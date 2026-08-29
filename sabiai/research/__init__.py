@@ -1,5 +1,6 @@
 from .case import EvidenceConflict, ResearchAssessment, ResearchCaseService
 from .action_price import ActionPriceEnricher, ActionPriceRefreshResult
+from .context import CandidateEvidenceBuilder, EvidenceBuildResult
 from .decision import CrossSportDecisionPass
 from .discovery_runtime import CoverageDiscoveryEngine, DiscoveryResult
 from .evidence import Evidence, EvidenceStore
@@ -28,11 +29,13 @@ __all__ = [
     "ACTION_BOOKS",
     "ActionPriceEnricher",
     "ActionPriceRefreshResult",
+    "CandidateEvidenceBuilder",
     "CoverageDiscoveryEngine",
     "CoveragePrefilter",
     "CrossSportDecisionPass",
     "DiscoveryResult",
     "Evidence",
+    "EvidenceBuildResult",
     "EvidenceConflict",
     "EvidencePacketItem",
     "EvidencePacketResult",
