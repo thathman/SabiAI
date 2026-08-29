@@ -22,6 +22,7 @@ REQUIRED_TOOLS = {
     "research.market_inventory",
     "research.event.sources",
     "research.coverage.funnel",
+    "research.action_price.gaps",
 }
 REQUIRED_FILES = (
     "scripts/sabi_v2_discovery_radar.py",
@@ -30,6 +31,7 @@ REQUIRED_FILES = (
     "dashboard/v2/coverage_funnel.js",
     "sabiai/storage/migrations/0017_coverage_engine.sql",
     "sabiai/research/prefilter.py",
+    "sabiai/research/action_price.py",
     "skills/sabi-boy-coverage-engine/SKILL.md",
 )
 

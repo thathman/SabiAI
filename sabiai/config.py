@@ -81,6 +81,8 @@ class Settings:
     market_inventory_max_offers: int = 5000
     market_refresh_seconds: int = 1800
     market_history_keep_days: int = 21
+    action_price_enrichment_enabled: bool = True
+    action_price_max_events_per_sport: int = 1000
     coverage_metered_markets_enabled: bool = False
     coverage_metered_sport_limit: int = 12
     coverage_deep_markets_enabled: bool = False
@@ -158,6 +160,8 @@ class Settings:
             market_inventory_max_offers=max(100, int(os.getenv("SABIAI_MARKET_INVENTORY_MAX_OFFERS", "5000"))),
             market_refresh_seconds=max(120, int(os.getenv("SABIAI_MARKET_REFRESH_SECONDS", "1800"))),
             market_history_keep_days=max(7, int(os.getenv("SABIAI_MARKET_HISTORY_KEEP_DAYS", "21"))),
+            action_price_enrichment_enabled=_env_bool("SABIAI_ACTION_PRICE_ENRICHMENT", True),
+            action_price_max_events_per_sport=max(1, int(os.getenv("SABIAI_ACTION_PRICE_MAX_EVENTS_PER_SPORT", "1000"))),
             coverage_metered_markets_enabled=_env_bool("SABIAI_COVERAGE_METERED_MARKETS", False),
             coverage_metered_sport_limit=max(1, int(os.getenv("SABIAI_COVERAGE_METERED_SPORT_LIMIT", "12"))),
             coverage_deep_markets_enabled=_env_bool("SABIAI_COVERAGE_DEEP_MARKETS", False),

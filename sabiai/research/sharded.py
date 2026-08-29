@@ -260,9 +260,22 @@ def merge_research_universe(
         if not event:
             continue
         if item in supplied and not canonical_action_book(item.get("source")):
-            # Automatic research is price-bound to the two action books. Sensor-only supplied
-            # rows remain in CoverageStore/radar and can still be researched on demand.
-            continue
+            # Automatic research is price-bound to the two action books. Known sensor
+            # packets remain in CoverageStore/radar and can still be researched on demand.
+            # Unknown source labels are retained for backwards-compatible direct packets;
+            # they are not promoted to a recorded pick unless the action-book checks pass.
+            source_name = str(item.get("source") or "").casefold()
+            known_sensor = (
+                "espn" in source_name
+                or "flashscore" in source_name
+                or "livescore" in source_name
+                or "thesportsdb" in source_name
+                or "football-data" in source_name
+                or "the odds api" in source_name
+                or "betfair" in source_name
+            )
+            if known_sensor:
+                continue
         key = (
             str(item.get("sport") or "unknown").casefold(),
             _norm_event(event),

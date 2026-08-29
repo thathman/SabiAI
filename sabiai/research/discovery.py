@@ -369,17 +369,14 @@ class CoverageDiscoveryEngine:
 
         self.store.prune_offers(keep_days=max(7, int(getattr(self.settings, "market_history_keep_days", 21))))
         current = self.store.current_counts(now=now, horizon_hours=horizon)
-        try:
-            local_day = now.astimezone(zone).date().isoformat()
-            prefiltered = len(
-                self.store.research_candidates(
-                    local_day,
-                    timezone_name=getattr(self.settings, "timezone", "Africa/Lagos"),
-                    limit=max(1, int(getattr(self.settings, "prefilter_max_events", 300))),
-                )
-            )
-        except Exception:
-            prefiltered = 0
+        # The discovery funnel is a horizon-wide deterministic measurement. Today's
+        # action/model board applies the local-day filter later; counting only today's
+        # events here would make a 72h radar look empty even when it found and priced
+        # future fixtures successfully.
+        prefiltered = min(
+            int(current.get("priced_events") or 0),
+            max(1, int(getattr(self.settings, "prefilter_max_events", 300))),
+        )
         details = self._coverage_details(now=now, horizon_hours=horizon, sports=sports)
         details["source_failures"] = failures[-100:]
         self.store.finish_run(

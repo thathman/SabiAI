@@ -1,4 +1,5 @@
 from .case import EvidenceConflict, ResearchAssessment, ResearchCaseService
+from .action_price import ActionPriceEnricher, ActionPriceRefreshResult
 from .decision import CrossSportDecisionPass
 from .discovery_runtime import CoverageDiscoveryEngine, DiscoveryResult
 from .evidence import Evidence, EvidenceStore
@@ -19,6 +20,8 @@ from .tasks import ResearchTask, ResearchTaskPlanner
 
 __all__ = [
     "ACTION_BOOKS",
+    "ActionPriceEnricher",
+    "ActionPriceRefreshResult",
     "CoverageDiscoveryEngine",
     "CoveragePrefilter",
     "CrossSportDecisionPass",

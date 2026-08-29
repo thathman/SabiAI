@@ -15,7 +15,7 @@ from sabiai.config import Settings
 from sabiai.notifications import PushDeliveryReport, WebPushService
 from sabiai.sources import SourceRequest, SourceService, default_source_bundle
 from sabiai.storage import BankrollLedger, DailyResearchLog, PickRecordService, SabiDatabase, StrategyPlanStore
-from sabiai.research import ShardedDailyResearch
+from sabiai.research import ActionPriceEnricher, ShardedDailyResearch
 from sabiai.strategy import StrategyChainStore, StrategyLearningService, StrategyPlanner, StrategyTicketService
 
 from .jobs import JobService
@@ -499,6 +499,15 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
     jobs.start("daily-picks")
     try:
         day, events, failures = collect_fixtures(settings, now=now)
+        # The daily collector intentionally keeps the model packet bounded. Enrich the
+        # persistent coverage inventory from the same cached SportyBet responses so the
+        # complete returned action-book slate is retained without waking another model
+        # or spending a second Parse request.
+        action_price = ActionPriceEnricher(settings, database).refresh(
+            now=now,
+            scan_date=day,
+        )
+        failures.extend(action_price.source_failures)
         sharded = ShardedDailyResearch(settings, database).run(day=day, events=events, source_failures=failures)
         recommendations = sharded["recommendations"]
         all_recommendations = sharded["all_recommendations"]
@@ -550,6 +559,7 @@ def run_research_heartbeat(settings: Settings, *, now: datetime | None = None) -
             "chain_legacy_reconciliation": legacy_chain_reconciliation,
             "notes": _notes(sharded.get("notes") or []),
             "usage": usage,
+            "action_price": action_price.as_dict(),
         }
         push = WebPushService(database, settings).send(_push_payload(day, recommendations, failures))
         report["push"] = {
