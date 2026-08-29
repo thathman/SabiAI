@@ -594,6 +594,11 @@
 - Regression commit `c4fecde` adds provider contract, normalization, provider-ID, local-cache, disabled-source and dashboard-source-state tests. Full local suite at this source-expansion point: **360 passed, 1 warning** (existing Starlette/httpx deprecation warning). No external provider credits were consumed and no Dell production service or database was changed.
 - Remaining gates are controlled Dell staging/live probes for each configured provider, credential wiring into the isolated V2.5 runtime, and the complete source-funnel acceptance. V2.4 remains production; this evidence does not claim V2.5 production release.
 
+### Phase 16 follow-up evidence — 2026-08-29 (source route hardening)
+
+- Product commit `6d31dfb` rejects unsafe provider path segments before any HTTP request. PandaScore, Jolpica, SportsDataIO, SportMonks, OpenLigaDB and NBA LiveData identifiers are constrained to provider-safe segments; credentials remain header-only.
+- Regression commit `1014e11` adds traversal rejection coverage. Full local suite at this follow-up: **361 passed, 1 warning** (existing Starlette/httpx deprecation warning).
+
 ---
 
 ## Current release commands
