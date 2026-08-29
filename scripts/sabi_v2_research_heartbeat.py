@@ -10,12 +10,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from sabiai.config import Settings
-from sabiai.system.research_heartbeat import run_research_heartbeat
+from sabiai.research.model_contract import run_engine_research_heartbeat
 
 
 def main() -> int:
     try:
-        payload = run_research_heartbeat(Settings.from_env())
+        payload = run_engine_research_heartbeat(Settings.from_env())
     except Exception as exc:
         print(json.dumps({"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:500]}"}))
         return 1

@@ -10,6 +10,12 @@ from .market_inventory import (
     expected_market_families,
     market_family_gap,
 )
+from .model_contract import (
+    call_engine_research_model,
+    prepare_events_for_model,
+    run_engine_research_heartbeat,
+    validate_engine_recommendations,
+)
 from .orchestrator import ResearchFinding, ResearchOrchestrator, ResearchRun, ResearchRunItem
 from .persistence import PersistentResearchCase, ResearchCaseStore
 from .prefilter import ACTION_BOOKS, CoveragePrefilter, canonical_action_book, market_consensus
@@ -51,9 +57,13 @@ __all__ = [
     "SkepticReviewPlan",
     "SkepticReviewPlanner",
     "build_slices",
+    "call_engine_research_model",
     "canonical_action_book",
     "classify_market",
     "expected_market_families",
     "market_consensus",
     "market_family_gap",
+    "prepare_events_for_model",
+    "run_engine_research_heartbeat",
+    "validate_engine_recommendations",
 ]
