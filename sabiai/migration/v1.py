@@ -458,11 +458,27 @@ class V1Migrator:
             v1_balance_row = source.execute(
                 "SELECT balance FROM bankroll WHERE balance IS NOT NULL ORDER BY id DESC LIMIT 1"
             ).fetchone() if self._has_table(source, "bankroll") else None
+            # V2 may already contain legitimate post-migration money events (for example,
+            # a daily strategy stake).  Reconciliation must compare the V1 closing balance
+            # with the balance represented by the migrated V1 ledger rows, rather than
+            # treating those later V2 events as a migration error.
             v2_balance_row = target.execute(
                 "SELECT balance_after FROM bankroll_ledger WHERE balance_after IS NOT NULL ORDER BY id DESC LIMIT 1"
             ).fetchone()
+            v2_migration_balance_row = target.execute(
+                """SELECT balance_after
+                   FROM bankroll_ledger
+                   WHERE legacy_bet_id LIKE 'v1-ledger:%'
+                     AND balance_after IS NOT NULL
+                   ORDER BY id DESC LIMIT 1"""
+            ).fetchone()
             v1_balance = self._decimal(v1_balance_row[0]) if v1_balance_row else Decimal("0.00")
             v2_balance = self._decimal(v2_balance_row[0]) if v2_balance_row else Decimal("0.00")
+            v2_migration_balance = (
+                self._decimal(v2_migration_balance_row[0])
+                if v2_migration_balance_row
+                else v2_balance
+            )
 
         self.report.reconciliation = {
             "v1_bets": int(v1_bets),
@@ -477,7 +493,9 @@ class V1Migrator:
             "diary_matches": int(v1_diary) == int(v2_diary),
             "v1_bankroll": str(v1_balance),
             "v2_bankroll": str(v2_balance),
-            "bankroll_matches": v1_balance == v2_balance,
+            "v2_migration_bankroll": str(v2_migration_balance),
+            "post_migration_bankroll_delta": str((v2_balance - v2_migration_balance).quantize(Decimal("0.01"))),
+            "bankroll_matches": v1_balance == v2_migration_balance,
         }
         for key in ("bets_matches", "accumulators_matches", "diary_matches", "bankroll_matches"):
             if not self.report.reconciliation[key]:

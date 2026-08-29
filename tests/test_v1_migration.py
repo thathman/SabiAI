@@ -129,6 +129,28 @@ def test_v1_migration_is_repeatable_without_duplicate_history(tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM blog_posts WHERE category='V1 Diary'").fetchone()[0] == 1
 
 
+def test_v1_reconciliation_allows_post_migration_v2_ledger_activity(tmp_path):
+    source = tmp_path / 'bets.db'
+    target = tmp_path / 'sabi_v2.db'
+    _legacy_db(source)
+
+    first = V1Migrator(source, target).migrate()
+    assert first.ready is True
+
+    db = SabiDatabase(target)
+    from sabiai.storage import BankrollLedger
+
+    BankrollLedger(db).record('stake', '10', note='Post-migration strategy activity')
+
+    second = V1Migrator(source, target).migrate()
+    assert second.ready is True
+    assert second.reconciliation['bankroll_matches'] is True
+    assert second.reconciliation['v1_bankroll'] == '108.00'
+    assert second.reconciliation['v2_migration_bankroll'] == '108.00'
+    assert second.reconciliation['v2_bankroll'] == '98.00'
+    assert second.reconciliation['post_migration_bankroll_delta'] == '-10.00'
+
+
 def test_v1_initial_bankroll_is_opening_funding_not_betting_profit(tmp_path):
     source = tmp_path / 'bets.db'
     target = tmp_path / 'sabi_v2.db'
