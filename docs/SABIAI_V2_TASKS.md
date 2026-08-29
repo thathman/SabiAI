@@ -584,6 +584,16 @@
 - Existing OpenClaw remains healthy and unchanged: technical agent `prediction`, human identity Sabi Boy, production workspace `/home/hendrix/.openclaw/workspace-prediction`, seven required Sabi Boy skills plus the coverage skill visible, and all five V2.4 timers enabled. V2.5 is not activated on that agent yet.
 - V2.5 status after this evidence: **READY FOR DELL STAGING / controlled activation review**. It is not a production release declaration; the next gate is an explicitly authorised in-place V2.5 staging/activation decision after reviewing the source-coverage and model-fallback evidence.
 
+### Phase 16 follow-up evidence — 2026-08-29 (approved source expansion implementation)
+
+- Product commit `cdfad54` adds the approved V2.5 source-expansion boundary without changing the V2.4 production checkout or dashboard UX. The adapters use the existing cache-first `SourceRequest`/`SourceService` contract and retain provider-scoped IDs and raw provenance.
+- Newly registered source families: API-Sports (metered targeted enrichment), SportsGameOdds v2 (market sensor only), PandaScore (esports evidence), Jolpica F1 (public structured F1), FastF1 (optional local analytical dependency), Cricsheet (local historical cricket), SportsDataIO (commercial targeted evidence), SportMonks (cricket and Motorsport API v3 specialist), StatsBomb/Hudl Open Data (local historical football), OpenLigaDB (free football corroboration), and NBA LiveData (public scoreboard corroboration).
+- Keyed providers use private runtime variables only: `SABIAI_API_SPORTS_KEY`, `SABIAI_SPORTSGAMEODDS_KEY`, `SABIAI_PANDASCORE_TOKEN`, `SABIAI_SPORTSDATAIO_KEY`, and `SABIAI_SPORTMONKS_TOKEN`. Missing credentials/local datasets remain visible as explicit `not_configured`/disabled sources rather than `unknown`; no credential values are committed or exposed through source health.
+- SportsGameOdds uses the documented current v2 `/events`, `/sports`, `/leagues`, `/markets`, `/teams`, `/players` and `/account/usage` paths with `x-api-key`; its odds are normalized for market identity/consensus but cannot satisfy the SportyBet/Bet9ja action-book gate. PandaScore uses Bearer authentication. API-Sports and SportsDataIO use their private request headers. SportMonks uses Motorsport API v3, not the deprecated Formula One v1 API.
+- Local/open sources are incremental or cache-capable: FastF1 enables its local cache, Cricsheet and StatsBomb read runtime datasets rather than repository-committed bulk data, and Jolpica/NBA/OpenLigaDB remain public read-only corroboration sources.
+- Regression commit `c4fecde` adds provider contract, normalization, provider-ID, local-cache, disabled-source and dashboard-source-state tests. Full local suite at this source-expansion point: **360 passed, 1 warning** (existing Starlette/httpx deprecation warning). No external provider credits were consumed and no Dell production service or database was changed.
+- Remaining gates are controlled Dell staging/live probes for each configured provider, credential wiring into the isolated V2.5 runtime, and the complete source-funnel acceptance. V2.4 remains production; this evidence does not claim V2.5 production release.
+
 ---
 
 ## Current release commands
