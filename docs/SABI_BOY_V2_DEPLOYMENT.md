@@ -1,8 +1,8 @@
 # Sabi Boy V2 — Deployment / Upgrade Runbook
 
-This runbook is for the eventual Dell/OpenClaw upgrade from SabiAI V1 to Sabi Boy V2.
+This runbook records the Dell/OpenClaw upgrade from SabiAI V1 to Sabi Boy V2 and remains the rollback/reference procedure for the active V2.5.0 release.
 
-**Do not use it to promote V2 before the release task board is complete.**
+**Current production:** Sabi Boy v2.5.0 at `7acac8810bccb8773c20bb32be3f18bd833d6b3b`, served on `127.0.0.1:8090` and verified through the public health route. The release task board is complete; use the documented rollback path for any reversal.
 
 ## Principles
 
@@ -406,8 +406,8 @@ Do not merge/promote `v2` merely because the service is running.
 
 Promotion requires Phase 16 release gates in `docs/SABIAI_V2_TASKS.md`, including real Dell/OpenClaw acceptance, multi-sport checks and at least one real verified bookmaker conversion/rebuild.
 
-Once V2 is accepted in production, `v2` can be promoted/merged to `main` according to the project's Forgejo-first release workflow.
+V2.5.0 was accepted in production at `7acac8810bccb8773c20bb32be3f18bd833d6b3b`. The corresponding `v2.5.0` tag and GitHub `main` synchronization are performed only from this accepted release state, without force-pushing or changing external routing.
 
 For the installation/testing execution brief, use `docs/SABI_BOY_V2_WORK_HANDOFF.md`.
 
-Only after the V2 acceptance/promotion state is genuinely ready should the final production OpenClaw/cutover instruction be issued.
+The final production OpenClaw/cutover instruction has been completed and is recorded in `data/release/staging-latest.json` on the Dell. Keep the V2.4 checkout and verified migration archives private for rollback; do not delete them as part of ordinary operation.

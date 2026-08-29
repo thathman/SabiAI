@@ -3,10 +3,10 @@
 **Branch:** `v2`
 **Human-facing product:** Sabi Boy
 **OpenClaw agent ID:** `prediction`
-**Candidate status:** V2.4 has passed controlled Dell installation and acceptance at the exact Forgejo `v2` candidate recorded in Phase 16.
-**Promotion status:** **Do not merge to `main` yet; public cutover remains separately authorised.**
+**Release status:** V2.5.0 passed controlled Dell installation, production acceptance and same-SHA public health verification at `7acac8810bccb8773c20bb32be3f18bd833d6b3b`.
+**Promotion status:** Production is active; Forgejo is the release source of truth and GitHub `main` is synchronized only after the recorded production gates pass.
 
-This document describes the installed V2 candidate and its release boundary. It is operational as Sabi Boy, but it is not a claim that every final-release gate has passed.
+This document describes the installed V2.5 release and its release boundary. Provider rate limits and optional plan restrictions remain visible as coverage limitations; they do not invalidate the engine-completeness result.
 
 ## Product boundary
 
@@ -183,15 +183,15 @@ The human-facing identity is Sabi Boy. The existing machine identity remains `pr
 
 A broad regression suite is committed for the V2 code, including migration, source service/coalescing, learned sources, persistent research cases, market language, settlement profiles, ticket candidates, bookmaker conversion/build verification, advanced analytics, Blog triggers, job tracking, dashboard read-only behavior and OpenClaw acceptance parsing/tool requirements.
 
-**The current suite is green locally and on the Dell: 321 passed with one known Starlette/httpx deprecation warning.** The post-stage evidence, migration values, timer state, PWA smoke, bookmaker checks and security disposition are recorded in Phase 16 of `docs/SABIAI_V2_TASKS.md`.
+**The current suite is green locally and on the Dell: 364 passed with one known Starlette/httpx deprecation warning.** The final production evidence, migration values, timer state, PWA smoke, bookmaker checks and security disposition are recorded in Phase 16 of `docs/SABIAI_V2_TASKS.md`.
 
 ## Runtime acceptance and remaining promotion gates
 
 The authoritative evidence and pass/partial/blocker state is Phase 16 in `docs/SABIAI_V2_TASKS.md`. The installed candidate has passed migration/reconciliation, OpenClaw tool/skill visibility, persistent research, representative multi-sport research, Bet9ja restore/build/reload, a real SportyBet-to-Bet9ja conversion, fresh multi-book comparison, dashboard, Blog/job/settlement drills, backup/restore and security acceptance.
 
-The installation and controlled acceptance gates pass. Remaining limitations are the intentionally public read-only API, provider rate limiting/optional source availability, and the fact that `v2` has not been merged to `main` or externally cut over. Those are documented decisions, not hidden failures; see `docs/SABI_BOY_V24_SECURITY_REVIEW.md` and Phase 16.
+The installation, controlled acceptance and production cutover gates pass. Remaining limitations are the intentionally public read-only API, provider rate limiting/optional source availability, and the documented CSP/tunnel hygiene items; see `docs/SABI_BOY_V24_SECURITY_REVIEW.md` and Phase 16.
 
-The current release status is **READY WITH DOCUMENTED LIMITATIONS**.
+The current release status is **PRODUCTION — Sabi Boy v2.5.0 / ENGINE COMPLETE**.
 
 ## Failure policy
 

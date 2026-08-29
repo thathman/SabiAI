@@ -6,8 +6,8 @@ He researches sports, understands bookmaker markets in plain language, compares 
 
 The repository is still named **SabiAI** and technical identifiers such as `sabiai`, `sabi-ai`, existing DB names and environment-variable prefixes remain for compatibility while V2 is built.
 
-> **Development branch:** `v2`  
-> `main` remains the stable V1 line until V2 release acceptance is complete.
+> **Production release:** `v2.5.0` — `7acac8810bccb8773c20bb32be3f18bd833d6b3b`
+> Forgejo `v2` is the release source of truth; GitHub `main` is synchronized from this accepted state.
 
 ---
 
@@ -378,13 +378,13 @@ Release acceptance:
 .venv/bin/python scripts/sabi_v2_acceptance.py --migrate-v1
 ```
 
-The current branch contains a substantially expanded test suite, but **V2 is not release-ready until the full current suite and Dell/OpenClaw acceptance gates in `docs/SABIAI_V2_TASKS.md` pass**.
+The V2.5.0 release passed the full current suite (**364 passed, 1 warning**) and the Dell/OpenClaw production acceptance gates recorded in `docs/SABIAI_V2_TASKS.md`.
 
 ---
 
 ## V1 compatibility
 
-`main` remains the stable V1 line while V2 is built.
+V2.5.0 is the active production line. V1 is retained only in verified private recovery archives for rollback.
 
 On `v2`:
 
@@ -404,9 +404,9 @@ Authoritative living board:
 
 `docs/SABIAI_V2_TASKS.md`
 
-Do not promote `v2` to `main` until Phase 16 passes.
+Phase 16 records the accepted production SHA, migration/reconciliation, timer, provider, PWA, OpenClaw, backup/restore and security evidence.
 
-The final one-shot OpenClaw upgrade/setup prompt will be produced only after those release gates are complete, so it can execute real repo tooling instead of improvising the migration.
+New engine coverage work should branch from the tagged V2.5.0 baseline and must not rewrite the accepted production SHA.
 
 ## License
 
