@@ -563,6 +563,15 @@
 - GitHub push remains intentionally disabled (`remote.github.pushurl=DISABLED`); the validated release is Forgejo/local-first. `v2` has not been merged to `main` and no GitHub Actions were used.
 - **Release status: READY WITH DOCUMENTED LIMITATIONS.** Installation, migration, timers, OpenClaw, PWA, source, bookmaker, settlement, backup and security gates pass. Final public cutover/`main` promotion remains a separately authorised release action, and the documented source/authentication limitations remain visible.
 
+### Phase 16 follow-up evidence — 2026-08-29 (V2.5 engine-control branch)
+
+- V2.5 remains isolated on `feature/v2.5-non-football-coverage`; V2.4 production `v2` and `main` were not changed. The branch is synchronized to Forgejo at `9e7df75b94c17e908f7e95ac33e591b1b61c115b`.
+- Product commit `3e4f776` assembles the V2.5 engine-control layer: `EngineGapPlanner`, `EngineCompletenessService`, migration `0018_engine_pick_context`, `EngineDecisionStore` calibration, OpenClaw engine tools, exact decision-context persistence, and preservation of price/evidence context through strategy promotion.
+- OpenClaw now exposes `engine.completeness`, `engine.sport_profile`, `engine.next_actions`, `engine.price.assess`, `engine.evidence.build` and `engine.calibration`. The existing required-tool acceptance list includes all six names.
+- Deterministic acceptance `scripts/sabi_v25_engine_acceptance.py` passed against an isolated database: 31 first-class sport profiles, complete contracts, schema version 18, exact-price value assessment and ordered degradation planner. It reports `ENGINE COMPLETE — source coverage DEGRADED` when no live events are present, keeping architecture completeness separate from daily source availability.
+- Full local suite at the branch tip: **346 passed, 1 warning** (the existing Starlette/httpx deprecation warning). The added regression tests cover planner ordering, completeness labeling, exact context persistence/calibration, gateway exposure and scheduled precision-pick context persistence.
+- No Dell installation, public cutover, live-source acceptance, or production timer change is claimed for V2.5 by this evidence. Those remain controlled follow-up gates; V2.4 remains the active release baseline.
+
 ---
 
 ## Current release commands
