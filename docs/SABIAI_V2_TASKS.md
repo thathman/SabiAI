@@ -538,6 +538,16 @@
 - Local regression evidence at `6c90238f02f178bf3fa1b14830d5e8051afbd8bd`: **291 passed, 1 warning** (the existing Starlette/httpx deprecation warning). Dell source/heartbeat focused tests: **29 passed**.
 - Dell source-collection probe after the pull returned **60 same-day events across football, basketball, tennis and volleyball; 41 had usable prices; zero source failures**. The bounded model-synthesis probe was stopped before report/pick mutation after exceeding its four-minute test budget; the daily research timer remains active and the incomplete probe is recorded as a failed job rather than presented as a completed scan.
 
+### Phase 16 follow-up evidence — 2026-08-29 (V2.4 coverage integration)
+
+- The controlled Dell/Forgejo V2 baseline `5fb7b27fc7913ca4100cad43fd96e84b84f28beb` was preserved and V2.4 feature branch `c36715eab83ab7f425bb19201da764448bb5e20b` was merged semantically on `feature/v2.4-coverage-integration`. The only conflicts were the dashboard app shell/service-worker asset list; the existing Sabi Boy shell was retained and `coverage_funnel.js` was added.
+- The unfinished SportyBet action-price enrichment is now implemented in `sabiai/research/action_price.py`. It targets only the verified Parse SportyBet football, basketball and ice-hockey routes, shares the daily fixture cache key, makes no model call, and persists the complete eligible returned slate subject to the explicit per-sport cap. A regression proves a three-event response persists all three events and nine offers.
+- Local and Dell complete suites at the integrated code: **320 passed, 1 warning** (the existing Starlette/httpx deprecation warning), with no skips or failures. The V2.4 fail-closed acceptance script is green on both environments: schema 17, package `2.4.0.0`, coverage skill, coverage files, scheduler and **149** runtime tools including `research.action_price.gaps`.
+- Verified Dell backup `data/backups/sabi-boy/v24-integration-20260829T085355Z/20260829T085355Z/manifest.json` contains both V1 and V2 snapshots with matching SHA-256 checksums and `integrity=ok`. V1→V2 migration/reconciliation remains ready with zero picks/tickets, one bankroll row and exact ₦30,000 balance.
+- Zero-metered Discovery Radar completed without model or paid calls: **90** canonical events from **182** source attempts (57 successes, 125 source failures, predominantly TheSportsDB HTTP 429 responses); Parse union and both The Odds API metered switches remained `0`. The radar's persisted funnel correctly reports zero current prices for that no-Parse pass.
+- The separate model-free action-price pass completed **3** SportyBet Parse requests (football, basketball, ice hockey), saw 50 rows and persisted **18** same-day events, **54** market-catalogue rows and **54** fresh offers with no source failures. This proves action pricing is decoupled from the frequent radar; the next radar run will fold those fresh observations into its funnel counts.
+- Release is not yet declared: Dell staging/activation, public-branch promotion, live mobile/PWA and OpenClaw post-staging checks remain to be executed against this exact integrated SHA.
+
 ---
 
 ## Current release commands
