@@ -16,9 +16,15 @@ from sabiai.sources import (
     SportsDataIOAdapter,
     SportsGameOddsAdapter,
     StatsBombOpenDataAdapter,
+    Source,
+    SourceCost,
+    SourceKind,
+    SourceRegistry,
     SourceRequest,
+    SourceService,
     default_source_bundle,
 )
+from sabiai.storage import SabiDatabase
 
 
 def _request(capability, sport=None, metadata=None):
@@ -231,3 +237,26 @@ def test_catalog_registers_keyed_expansion_adapters_without_exposing_keys(tmp_pa
     assert {"API-Sports", "SportsGameOdds", "PandaScore", "SportsDataIO", "SportMonks"} <= set(bundle.fetchers)
     for source in bundle.registry.all():
         assert "secret" not in (source.notes or "").casefold()
+
+
+def test_metered_provider_budget_fails_closed_before_second_network_call(tmp_path: Path):
+    db = SabiDatabase(tmp_path / "v2.db")
+    db.initialize()
+    registry = SourceRegistry()
+    source = Source(
+        "Metered",
+        SourceKind.PAID_API,
+        SourceCost.PAID,
+        {"basketball"},
+        {"fixtures"},
+        request_budget_per_day=1,
+    )
+    registry.register(source)
+    calls = []
+    service = SourceService(db, registry)
+    request = _request("fixtures", "basketball", {"date": "2026-08-29"})
+    first = service.execute(request, {"Metered": lambda _request: calls.append(1) or {"events": [{"id": 1}]}}, allow_paid=True, paid_reason="targeted test")
+    assert first.paid is True
+    with pytest.raises(RuntimeError, match="daily request budget exhausted"):
+        service.execute(SourceRequest("budget:second", "fixtures", "basketball", metadata={"date": "2026-08-30"}), {"Metered": lambda _request: calls.append(1) or {"events": [{"id": 2}]}}, allow_paid=True, paid_reason="targeted test")
+    assert calls == [1]
