@@ -598,6 +598,8 @@
 
 - Product commit `6d31dfb` rejects unsafe provider path segments before any HTTP request. PandaScore, Jolpica, SportsDataIO, SportMonks, OpenLigaDB and NBA LiveData identifiers are constrained to provider-safe segments; credentials remain header-only.
 - Regression commit `1014e11` adds traversal rejection coverage. Full local suite at this follow-up: **361 passed, 1 warning** (existing Starlette/httpx deprecation warning).
+- Dell isolated recheck at the Forgejo tip `e4f3a17a0efaa4f9870ef97d57fee19c884bc4af`: **361 passed, 1 warning**; deterministic V2.5 engine acceptance passed. No provider credentials were copied into the production V2.4 environment.
+- No-cost live probes from the isolated Dell worktree succeeded for Jolpica F1 (one current-season race record) and OpenLigaDB (BL1 fixture response). NBA LiveData returned HTTP 403 from the public CDN and is recorded as degraded/secondary rather than treated as a failure of the engine. API-Sports, SportsGameOdds, PandaScore, SportsDataIO and SportMonks remain explicit not_configured until their private environment variables are deliberately added to the isolated V2.5 runtime.
 
 ---
 
