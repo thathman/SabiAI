@@ -17,7 +17,7 @@ done
 
 cd "$ROOT"
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-if [[ "$branch" != "v2" && "$branch" != "main" && "$branch" != feature/v2-* ]]; then
+if [[ "$branch" != "v2" && "$branch" != "main" && "$branch" != feature/v2-* && "$branch" != feature/v2.* ]]; then
   echo "Refusing runtime preparation from unexpected branch '$branch'." >&2
   exit 3
 fi
