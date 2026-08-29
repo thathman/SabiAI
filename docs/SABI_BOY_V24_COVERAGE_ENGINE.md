@@ -1,6 +1,6 @@
 # Sabi Boy V2.4 — Coverage Engine
 
-Status: integrated candidate on `feature/v2.4-coverage-integration` (Forgejo promotion pending final Dell staging)
+Status: released as Sabi Boy v2.4.0 from `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd` (Forgejo and GitHub `main`; public route verified)
 
 ## Goal
 

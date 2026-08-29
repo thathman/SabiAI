@@ -4,7 +4,7 @@
 
 He researches sports, understands bookmaker markets in plain language, compares prices, checks form/injuries/context, reads and edits tickets, restores booking codes, plans bookmaker conversions, keeps our history, reviews his own work and writes a first-person blog about what he is seeing and learning.
 
-The repository is still named **SabiAI** and technical identifiers such as `sabiai`, `sabi-ai`, existing DB names and environment-variable prefixes remain for compatibility while V2 is built.
+The repository is still named **SabiAI** and technical identifiers such as `sabiai`, `sabi-ai`, existing DB names and environment-variable prefixes remain for compatibility while V2 is maintained.
 
 > **Production release:** `v2.5.0` — `7acac8810bccb8773c20bb32be3f18bd833d6b3b`
 > Forgejo `v2` is the release source of truth; GitHub `main` is synchronized from this accepted state.
@@ -334,7 +334,7 @@ The staging flow:
 7. checks V2 health/overview;
 8. leaves V1 unchanged.
 
-The repository intentionally does not guess Cloudflare/reverse-proxy routing. Final external cutover is performed only after the real Dell route is inspected and pointed at V2.
+The repository does not guess Cloudflare/reverse-proxy routing. The production route has been inspected and verified against the accepted V2 runtime at `127.0.0.1:8090`.
 
 Full runbook:
 
