@@ -29,8 +29,6 @@ def main() -> int:
     jobs.start("auto-settlement")
     try:
         report = AutomaticSettlementService(db, settings=settings).run()
-        if report.source_errors:
-            raise RuntimeError("; ".join(report.source_errors))
         delivery = None
         if report.changed:
             delivery = WebPushService(db, settings).send(
@@ -45,6 +43,10 @@ def main() -> int:
                     "renotify": True,
                 }
             )
+        # A result provider is an auxiliary sensor.  Keep the heartbeat healthy when one
+        # lookup is unavailable so a single stale event cannot disable automatic settlement
+        # for every other pending event.  The errors remain in the structured report for the
+        # health monitor and operator review.
         jobs.success("auto-settlement")
     except Exception as exc:
         jobs.failure("auto-settlement", f"{type(exc).__name__}: {str(exc)[:500]}")
@@ -52,6 +54,8 @@ def main() -> int:
         return 1
 
     payload = {"ok": True, "settlement": report.as_dict()}
+    if report.source_errors:
+        payload["warnings"] = list(report.source_errors)
     if delivery is not None:
         payload["push"] = {
             "enabled": delivery.enabled,
