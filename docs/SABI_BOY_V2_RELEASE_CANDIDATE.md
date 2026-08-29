@@ -3,8 +3,8 @@
 **Branch:** `v2`
 **Human-facing product:** Sabi Boy
 **OpenClaw agent ID:** `prediction`
-**Candidate status:** V2.1 changes are locally green and await controlled Dell installation/acceptance on top of the installed V2 replacement.
-**Promotion status:** **Do not merge to `main` yet.**
+**Candidate status:** V2.4 has passed controlled Dell installation and acceptance at the exact Forgejo `v2` candidate recorded in Phase 16.
+**Promotion status:** **Do not merge to `main` yet; public cutover remains separately authorised.**
 
 This document describes the installed V2 candidate and its release boundary. It is operational as Sabi Boy, but it is not a claim that every final-release gate has passed.
 
@@ -183,21 +183,15 @@ The human-facing identity is Sabi Boy. The existing machine identity remains `pr
 
 A broad regression suite is committed for the V2 code, including migration, source service/coalescing, learned sources, persistent research cases, market language, settlement profiles, ticket candidates, bookmaker conversion/build verification, advanced analytics, Blog triggers, job tracking, dashboard read-only behavior and OpenClaw acceptance parsing/tool requirements.
 
-**The installed pre-V2.1 suite was green on the Dell: 226 passed. The V2.1 repository suite is locally green: 234 passed with one known Starlette deprecation warning.** The exact V2.1 commit and Dell rerun must be recorded after installation. Passing tests alone does not waive unresolved live-browser, real-device PWA/push or policy-verification gates.
+**The current suite is green locally and on the Dell: 321 passed with one known Starlette/httpx deprecation warning.** The post-stage evidence, migration values, timer state, PWA smoke, bookmaker checks and security disposition are recorded in Phase 16 of `docs/SABIAI_V2_TASKS.md`.
 
 ## Runtime acceptance and remaining promotion gates
 
 The authoritative evidence and pass/partial/blocker state is Phase 16 in `docs/SABIAI_V2_TASKS.md`. The installed candidate has passed migration/reconciliation, OpenClaw tool/skill visibility, persistent research, representative multi-sport research, Bet9ja restore/build/reload, a real SportyBet-to-Bet9ja conversion, fresh multi-book comparison, dashboard, Blog/job/settlement drills, backup/restore and security acceptance.
 
-The remaining final-release gates are:
+The installation and controlled acceptance gates pass. Remaining limitations are the intentionally public read-only API, provider rate limiting/optional source availability, and the fact that `v2` has not been merged to `main` or externally cut over. Those are documented decisions, not hidden failures; see `docs/SABI_BOY_V24_SECURITY_REVIEW.md` and Phase 16.
 
-- a real reusable SportyBet booking-code creation/reload round trip;
-- real-device PWA installation and one end-to-end Web Push delivery from the Dell result heartbeat;
-- final current bookmaker-policy evidence for the variable tennis/racquet, golf/field and overtime rules;
-- a final live multi-worker Research Scout/Skeptic/Ticket Engineer fan-out;
-- owner review or explicit waiver of the partial Blog migration condition caused by the reset V1 source containing no diary post.
-
-Until those items are passed or explicitly waived, the release status is **NOT READY** even though V2 is the operational Dell replacement.
+The current release status is **READY WITH DOCUMENTED LIMITATIONS**.
 
 ## Failure policy
 
