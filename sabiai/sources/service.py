@@ -204,6 +204,21 @@ class SourceService:
                 if not paid_reason or not paid_reason.strip():
                     failures.append(f"{source.name}: paid access needs a reason")
                     continue
+            budget_error = self._budget_error(source, now=now)
+            if budget_error:
+                failures.append(f"{source.name}: {budget_error}")
+                self.database.log_source_fetch(
+                    source_name=source.name,
+                    sport=request.sport,
+                    capability=request.capability,
+                    request_key=request.request_key,
+                    cache_hit=False,
+                    success=False,
+                    paid=source.cost is SourceCost.PAID,
+                    reason="Provider request budget guard.",
+                    error=budget_error,
+                )
+                continue
             try:
                 payload = fetcher(request)
                 if payload is None:
@@ -272,6 +287,38 @@ class SourceService:
         raise RuntimeError(
             "No source could satisfy the request. " + ("; ".join(failures) if failures else "No matching sources registered.")
         )
+
+    def _budget_error(self, source: Source, *, now: datetime) -> str | None:
+        """Reserve a conservative provider request before the fetcher is called.
+
+        The log deliberately counts only non-cache provider attempts. A metered provider can
+        therefore fail closed at its configured daily guardrail without spending another call.
+        A monthly object budget is treated conservatively as one object per uncached request;
+        callers may set a lower request budget when a provider charges per returned event.
+        """
+        if source.cost is not SourceCost.PAID:
+            return None
+        if source.request_budget_per_day is not None:
+            day = now.astimezone(timezone.utc).date().isoformat()
+            with self.database.connect() as conn:
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM source_fetch_log WHERE source_name=? AND cache_hit=0 AND requested_at >= ? AND requested_at < ?",
+                    (source.name, day, f"{day} 99:99:99"),
+                ).fetchone()
+            used = int(row[0] or 0)
+            if used >= max(1, int(source.request_budget_per_day)):
+                return f"daily request budget exhausted ({used}/{int(source.request_budget_per_day)})"
+        if source.object_budget_per_month is not None:
+            month = now.astimezone(timezone.utc).strftime("%Y-%m")
+            with self.database.connect() as conn:
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM source_fetch_log WHERE source_name=? AND cache_hit=0 AND requested_at LIKE ?",
+                    (source.name, f"{month}-%"),
+                ).fetchone()
+            used = int(row[0] or 0)
+            if used >= max(1, int(source.object_budget_per_month)):
+                return f"monthly object budget exhausted ({used}/{int(source.object_budget_per_month)})"
+        return None
 
     def _inflight_key(self, request: SourceRequest, *, allow_paid: bool, require_complete: bool) -> tuple:
         return (

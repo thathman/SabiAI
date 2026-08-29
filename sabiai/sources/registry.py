@@ -44,6 +44,10 @@ class Source:
     health: str = "unknown"
     notes: str | None = None
     priority_bias: int = 0
+    # Optional provider-call guardrails. These are enforced before a network fetch and are
+    # intentionally kept in the runtime registry rather than persisted as secrets.
+    request_budget_per_day: int | None = None
+    object_budget_per_month: int | None = None
 
     @property
     def priority(self) -> int:

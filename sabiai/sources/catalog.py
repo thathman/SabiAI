@@ -185,6 +185,7 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
         capabilities={"fixtures", "event_lookup", "teams", "players", "standings", "form", "stats", "injuries", "availability", "odds", "results"},
         notes="Metered/free-allowance API-Sports family; targeted enrichment only.",
         priority_bias=20,
+        request_budget_per_day=settings.api_sports_daily_request_budget,
     )
     _register_optional_keyed(
         registry,
@@ -196,6 +197,7 @@ def default_source_bundle(settings: Settings) -> SourceBundle:
         capabilities={"fixtures", "event_lookup", "sport_catalog", "league_catalog", "market_catalog", "teams", "players", "usage", "odds", "results"},
         notes="SportsGameOdds v2 market sensor; never an action bookmaker.",
         priority_bias=30,
+        request_budget_per_day=settings.sportsgameodds_daily_request_budget,
     )
     _register_optional_keyed(
         registry,
@@ -278,10 +280,15 @@ def _register_optional_keyed(
     notes: str,
     priority_bias: int,
     credential_arg: str = "api_key",
+    request_budget_per_day: int | None = None,
+    object_budget_per_month: int | None = None,
 ) -> None:
     if key and key.strip():
         adapter = adapter_cls(**{credential_arg: key})
-        registry.register(adapter.source)
+        source = adapter.source
+        source.request_budget_per_day = request_budget_per_day
+        source.object_budget_per_month = object_budget_per_month
+        registry.register(source)
         fetchers[adapter.name] = adapter.fetch
         return
     registry.register(
@@ -295,6 +302,8 @@ def _register_optional_keyed(
             health="not_configured",
             notes=notes,
             priority_bias=priority_bias,
+            request_budget_per_day=request_budget_per_day,
+            object_budget_per_month=object_budget_per_month,
         )
     )
 

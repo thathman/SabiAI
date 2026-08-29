@@ -59,6 +59,8 @@ class Settings:
     cricsheet_dir: Path | None = None
     statsbomb_dir: Path | None = None
     fastf1_cache_dir: Path | None = None
+    api_sports_daily_request_budget: int = 100
+    sportsgameodds_daily_request_budget: int = 10
     research_api_key: str | None = None
     research_api_base_url: str = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
     research_model: str = "qwen3.8-max-preview"
@@ -147,6 +149,8 @@ class Settings:
             cricsheet_dir=Path(os.getenv("SABIAI_CRICSHEET_DIR", "")).expanduser() if os.getenv("SABIAI_CRICSHEET_DIR", "").strip() else None,
             statsbomb_dir=Path(os.getenv("SABIAI_STATSBOMB_DIR", "")).expanduser() if os.getenv("SABIAI_STATSBOMB_DIR", "").strip() else None,
             fastf1_cache_dir=Path(os.getenv("SABIAI_FASTF1_CACHE_DIR", "")).expanduser() if os.getenv("SABIAI_FASTF1_CACHE_DIR", "").strip() else None,
+            api_sports_daily_request_budget=max(1, int(os.getenv("SABIAI_API_SPORTS_DAILY_REQUEST_BUDGET", "100"))),
+            sportsgameodds_daily_request_budget=max(1, int(os.getenv("SABIAI_SPORTSGAMEODDS_DAILY_REQUEST_BUDGET", "10"))),
             research_api_key=(os.getenv("SABIAI_RESEARCH_API_KEY") or os.getenv("ALIYUN_TOKEN_PLAN_COMPATIBLE_KEY") or "").strip() or None,
             research_api_base_url=(os.getenv("SABIAI_RESEARCH_API_BASE_URL", "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1").strip().rstrip("/") or "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"),
             research_model=os.getenv("SABIAI_RESEARCH_MODEL", "qwen3.8-max-preview").strip() or "qwen3.8-max-preview",

@@ -76,6 +76,8 @@ def _configured_source(
     configured: bool,
     notes: str,
     priority_bias: int = 0,
+    request_budget_per_day: int | None = None,
+    object_budget_per_month: int | None = None,
 ) -> Source:
     return Source(
         name=name,
@@ -87,6 +89,8 @@ def _configured_source(
         health="unknown" if configured else "not_configured",
         notes=notes,
         priority_bias=priority_bias,
+        request_budget_per_day=request_budget_per_day,
+        object_budget_per_month=object_budget_per_month,
     )
 
 

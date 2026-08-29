@@ -39,6 +39,8 @@ class SourceTools:
                     "sports": sorted(source.sports),
                     "capabilities": sorted(source.capabilities),
                     "has_direct_adapter": source.name in self.app.source_bundle.fetchers,
+                    "request_budget_per_day": source.request_budget_per_day,
+                    "object_budget_per_month": source.object_budget_per_month,
                     "notes": source.notes,
                 }
             )
