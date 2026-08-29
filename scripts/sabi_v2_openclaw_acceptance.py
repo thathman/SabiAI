@@ -56,6 +56,12 @@ REQUIRED_TOOLS = (
     "history.price_disagreements",
     "blog.reflection.context",
     "blog.triggers",
+    "engine.completeness",
+    "engine.sport_profile",
+    "engine.next_actions",
+    "engine.price.assess",
+    "engine.evidence.build",
+    "engine.calibration",
 )
 
 
