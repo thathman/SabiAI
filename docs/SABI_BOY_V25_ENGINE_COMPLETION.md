@@ -96,8 +96,9 @@ Open Data are local/cache-backed analytical sources. Local datasets are read fro
 and are not committed to the repository. Missing optional credentials or datasets are surfaced
 as explicit `not_configured`/disabled source states.
 
-The implementation is `cdfad54` with route hardening in `6d31dfb`; regression coverage is in
-`c4fecde` and `1014e11`. The local full suite at this point is **361 passed, 1 warning**. Dell
+The implementation is `cdfad54` with route hardening in `6d31dfb` and metered request guardrails
+in `86b2f14`; regression coverage is in `c4fecde`, `1014e11` and `f79fd8e`. The local full suite
+at this point is **362 passed, 1 warning**. Dell
 live source probes, private credential wiring for the isolated V2.5 runtime, and final
 source-funnel acceptance remain controlled release gates; V2.4 production is unchanged.
 

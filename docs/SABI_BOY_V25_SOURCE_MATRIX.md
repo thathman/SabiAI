@@ -22,6 +22,12 @@ All adapters use the existing cache-first `SourceService` and retain provider-sc
 raw provenance. API credentials are sent in request headers where the provider supports that
 contract and are never returned by source catalogues, health endpoints or error messages.
 
+Metered providers fail closed behind explicit paid access and runtime request budgets. The
+default guardrails are 100 uncached API-Sports requests per UTC day and 10 uncached
+SportsGameOdds requests per UTC day; operators can lower or raise these with
+`SABIAI_API_SPORTS_DAILY_REQUEST_BUDGET` and `SABIAI_SPORTSGAMEODDS_DAILY_REQUEST_BUDGET`.
+Cache reuse does not spend a provider request.
+
 SportsGameOdds is explicitly a market sensor, not an action bookmaker. API-Sports,
 SportsDataIO, SportMonks, PandaScore and SportsGameOdds cannot create an executable pick by
 themselves. SportyBet and Bet9ja remain the only action-price sources. No adapter contains a
