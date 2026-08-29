@@ -46,7 +46,7 @@ class JsonHttpClient:
         headers: Mapping[str, str] | None = None,
     ) -> object:
         query = {
-            str(key): str(value)
+            str(key): ("true" if value is True else "false" if value is False else str(value))
             for key, value in (params or {}).items()
             if value is not None and str(value) != ""
         }
