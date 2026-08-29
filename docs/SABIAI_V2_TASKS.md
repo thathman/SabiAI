@@ -572,6 +572,18 @@
 - Full local suite at the branch tip: **346 passed, 1 warning** (the existing Starlette/httpx deprecation warning). The added regression tests cover planner ordering, completeness labeling, exact context persistence/calibration, gateway exposure and scheduled precision-pick context persistence.
 - No Dell installation, public cutover, live-source acceptance, or production timer change is claimed for V2.5 by this evidence. Those remain controlled follow-up gates; V2.4 remains the active release baseline.
 
+### Phase 16 follow-up evidence — 2026-08-29 (V2.5 Dell isolated acceptance)
+
+- V2.5 was fetched from Forgejo and checked out at `19d03cba4426c9fc07b320967d13b958cd3e98d4` in a separate detached Dell worktree `/home/hendrix/.openclaw/workspace-prediction-v25`. The active production checkout remained `v2` at `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd`; no production service, database, timer or route was changed.
+- Full Dell V2.5 suite: **347 passed, 1 warning** (the existing Starlette/httpx deprecation warning). The V2.5 deterministic acceptance helper passed all checks: 31 profiles, complete contracts, schema 18, six engine tools, exact-price assessment and actionable degradation planning.
+- V2.5 gateway smoke on Dell exposed **155 tools** including all six engine-control tools. `engine.completeness` returned `ENGINE COMPLETE — source coverage DEGRADED`, `engine.sport_profile` returned the cricket contract, `engine.price.assess` returned 20.00% expected value for 60% at 2.00, and `engine.next_actions` returned `event_not_canonical` first.
+- Model-free source acceptance returned **48 same-day events across football, basketball, tennis, volleyball, baseball and ice hockey; 33 had fresh prices from Parse Flashscore/SportyBet; zero source failures**. A bounded 24-hour discovery radar returned 47 canonical events and 38 successful source responses without paid or metered calls; TheSportsDB HTTP 429 responses remained visible as source degradation.
+- Isolated settlement heartbeat completed successfully with zero source errors and no changes. The health heartbeat now initializes an empty/pre-created database safely and returned `READY` in the isolated check.
+- Isolated V2.5 dashboard/PWA smoke passed: `/health` identified Sabi Boy/read-only V2, `/manifest.json` returned the Sabi Boy manifest, `/sw.js` returned a fetch-capable service worker, `/api/v2/overview` returned the Sabi Boy read model, and `/api/v2/notifications` returned an empty history without error.
+- With the Alibaba credential supplied in-memory from the existing Dell OpenClaw gateway process (never printed or stored), the bounded V2.5 model run completed on **2026-08-29**: 16 events considered, 2 recommendations, 1 precision pick, 1 daily-chain ticket, no source failures, and 33,271 model tokens. Alibaba `qwen3.8-max` handled the primary path and the configured `qwen3.6-flash` fallback handled a sibling slice; push was disabled for isolation and no production ledger/report/subscription was touched.
+- Existing OpenClaw remains healthy and unchanged: technical agent `prediction`, human identity Sabi Boy, production workspace `/home/hendrix/.openclaw/workspace-prediction`, seven required Sabi Boy skills plus the coverage skill visible, and all five V2.4 timers enabled. V2.5 is not activated on that agent yet.
+- V2.5 status after this evidence: **READY FOR DELL STAGING / controlled activation review**. It is not a production release declaration; the next gate is an explicitly authorised in-place V2.5 staging/activation decision after reviewing the source-coverage and model-fallback evidence.
+
 ---
 
 ## Current release commands

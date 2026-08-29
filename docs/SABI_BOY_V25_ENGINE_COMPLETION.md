@@ -77,6 +77,21 @@ Then run the complete suite:
 .venv/bin/python -m pytest -q
 ```
 
-The V2.5 implementation must remain isolated from the V2.4 runtime until the Dell acceptance
-run proves the exact branch commit, migration, scheduled persistence, full pytest suite, and
-live source coverage behavior.
+The Dell isolated acceptance has now proven the exact branch commit, migration, scheduled
+persistence, full pytest suite, live source coverage behavior, settlement/readiness startup,
+and dashboard/PWA smoke without changing the V2.4 runtime. In-place activation and public
+cutover remain separate authorised gates.
+
+## Dell acceptance snapshot
+
+At `19d03cba4426c9fc07b320967d13b958cd3e98d4`:
+
+- 347 tests passed with one known Starlette/httpx deprecation warning.
+- The deterministic helper passed all checks and reported schema 18.
+- The source collector returned 48 same-day events across six sports; 33 had fresh
+  Parse Flashscore/SportyBet prices with no source failures.
+- The isolated Alibaba-backed run considered 16 events, produced two recommendations, one
+  Sabi Boy precision pick and one Daily 1.30 Chain ticket, and used the configured fallback
+  for one sibling slice. Push delivery was disabled for isolation.
+- The active production checkout stayed on V2.4 SHA
+  `2ead1725b7b0eac4a95f05eef78bbbb5556cfdcd` with its existing timers and route untouched.
