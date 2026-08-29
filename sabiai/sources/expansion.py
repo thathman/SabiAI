@@ -23,6 +23,7 @@ from .service import SourceRequest
 
 
 HttpGet = Callable[..., object]
+_SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9_.-]{1,120}$")
 
 
 def _client(http_get: HttpGet | None, *, timeout: int = 20) -> HttpGet:
@@ -31,6 +32,13 @@ def _client(http_get: HttpGet | None, *, timeout: int = 20) -> HttpGet:
 
 def _clean_params(values: Mapping[str, object]) -> dict[str, object]:
     return {str(key): value for key, value in values.items() if value not in (None, "", [])}
+
+
+def _segment(value: object, label: str) -> str:
+    text = str(value or "").strip()
+    if not text or not _SAFE_SEGMENT.fullmatch(text):
+        raise ValueError(f"{label} contains unsupported path characters.")
+    return text
 
 
 def _rows(payload: object) -> list[dict[str, Any]]:
@@ -358,6 +366,8 @@ class PandaScoreAdapter:
         metadata = request.metadata or {}
         if capability in {"fixtures", "results"}:
             game = str(metadata.get("game") or metadata.get("videogame") or "").strip().strip("/")
+            if game:
+                game = _segment(game, "PandaScore game")
             endpoint = f"/{game}/matches" if game else "/matches"
             if capability == "results":
                 endpoint += "/past"
@@ -365,7 +375,7 @@ class PandaScoreAdapter:
             identifier = metadata.get("event_id") or metadata.get("match_id")
             if not identifier:
                 raise ValueError("PandaScore event lookup needs metadata.event_id or match_id.")
-            endpoint = f"/matches/{identifier}"
+            endpoint = f"/matches/{_segment(identifier, 'PandaScore match id')}"
         else:
             routes = {"teams": "teams", "players": "players", "tournaments": "tournaments", "leagues": "leagues", "series": "series", "standings": "standings", "rosters": "rosters", "stats": "matches"}
             if capability not in routes:
@@ -431,8 +441,8 @@ class JolpicaF1Adapter:
     def fetch(self, request: SourceRequest) -> object:
         capability = request.capability.casefold().strip()
         metadata = request.metadata or {}
-        season = str(metadata.get("season") or "current")
-        round_value = metadata.get("round")
+        season = _segment(metadata.get("season") or "current", "Jolpica season")
+        round_value = _segment(metadata["round"], "Jolpica round") if metadata.get("round") is not None else None
         routes = {
             "fixtures": f"{season}.json",
             "schedule": f"{season}.json",
@@ -442,7 +452,7 @@ class JolpicaF1Adapter:
             "constructors": f"{season}/constructors.json",
             "qualifying": f"{season}/qualifying.json",
             "sprint": f"{season}/sprint.json",
-            "laps": f"{season}/{round_value}/laps/{metadata.get('lap')}.json" if round_value and metadata.get("lap") else f"{season}/{round_value}/laps.json" if round_value else f"{season}/laps.json",
+            "laps": f"{season}/{round_value}/laps/{_segment(metadata['lap'], 'Jolpica lap')}.json" if round_value and metadata.get("lap") else f"{season}/{round_value}/laps.json" if round_value else f"{season}/laps.json",
             "pit_stops": f"{season}/{round_value}/pitstops.json" if round_value else f"{season}/pitstops.json",
         }
         route = routes.get(capability)
@@ -622,6 +632,7 @@ class SportsDataIOAdapter:
     def fetch(self, request: SourceRequest) -> object:
         sport = str(request.metadata.get("api_sport") or request.metadata.get("league") or request.sport or "").casefold().replace(" ", "")
         sport = {"americanfootball": "nfl", "icehockey": "nhl", "soccer": "soccer"}.get(sport, sport)
+        sport = _segment(sport, "SportsDataIO sport")
         if not sport:
             raise ValueError("SportsDataIO request needs sport or metadata.api_sport.")
         capability = request.capability.casefold().strip()
@@ -680,7 +691,7 @@ class SportMonksAdapter:
             raise ValueError(f"{self.name} does not implement capability: {request.capability}")
         identifier = request.metadata.get("event_id") or request.metadata.get("fixture_id")
         if identifier:
-            route = f"{route}/{identifier}"
+            route = f"{route}/{_segment(identifier, 'SportMonks identifier')}"
         include = request.metadata.get("include")
         params = {"include": include, "per_page": request.metadata.get("per_page"), "page": request.metadata.get("page")}
         payload = self.http_get(f"{self.base_url}/{family}/{route}", params=_clean_params(params), headers={"Authorization": self.token})
@@ -775,8 +786,8 @@ class OpenLigaDBAdapter:
     def fetch(self, request: SourceRequest) -> object:
         capability = request.capability.casefold().strip()
         metadata = request.metadata or {}
-        league = metadata.get("league") or metadata.get("league_id")
-        season = metadata.get("season")
+        league = _segment(metadata.get("league") or metadata.get("league_id"), "OpenLigaDB league") if (metadata.get("league") or metadata.get("league_id")) else None
+        season = _segment(metadata.get("season"), "OpenLigaDB season") if metadata.get("season") is not None else None
         if capability in {"fixtures", "results", "standings", "last_changed"} and (not league or not season):
             raise ValueError("OpenLigaDB request needs metadata.league and metadata.season.")
         if capability in {"fixtures", "results"}:
@@ -789,7 +800,7 @@ class OpenLigaDBAdapter:
             identifier = metadata.get("event_id") or metadata.get("match_id")
             if not identifier:
                 raise ValueError("OpenLigaDB event lookup needs metadata.event_id or match_id.")
-            path = f"/getmatchdata/{identifier}"
+            path = f"/getmatchdata/{_segment(identifier, 'OpenLigaDB match id')}"
         elif capability == "league_catalog":
             path = "/getavailableleagues"
         elif capability == "team_catalog":
@@ -844,7 +855,7 @@ class NbaLiveDataAdapter:
             game_id = metadata.get("game_id") or metadata.get("event_id")
             if not game_id:
                 raise ValueError("NBA LiveData event lookup needs metadata.game_id or event_id.")
-            path = f"boxscore/boxscore_{game_id}.json"
+            path = f"boxscore/boxscore_{_segment(game_id, 'NBA game id')}.json"
         else:
             raise ValueError(f"{self.name} does not implement capability: {request.capability}")
         payload = self.http_get(f"{self.base_url}/{path}", params=None, headers=None)
